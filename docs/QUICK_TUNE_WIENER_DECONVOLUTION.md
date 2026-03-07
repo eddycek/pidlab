@@ -668,11 +668,11 @@ After snapshot, transition `quick_applied → verification_pending` (reuses exis
 
 | # | Task | Files | Tests |
 |---|------|-------|-------|
-| A1 | TransferFunctionEstimator core | `src/main/analysis/TransferFunctionEstimator.ts` | Unit tests: window slicing, FFT, H(f) computation, synthetic step extraction, edge cases (silent input, single window) |
-| A2 | New analysis types | `src/shared/types/analysis.types.ts` | Type-only, no runtime tests |
-| A3 | PIDAnalyzer.analyzeTransferFunction | `src/main/analysis/PIDAnalyzer.ts` | Unit tests: orchestration, progress reporting, result shape |
-| A4 | PIDRecommender frequency-domain input | `src/main/analysis/PIDRecommender.ts` | Unit tests: bandwidth-based P recommendation, margin-based D recommendation, confidence capping |
-| A5 | DataQualityScorer for Wiener | `src/main/analysis/DataQualityScorer.ts` | Unit tests: quality scoring for mixed-flight data |
+| A1 | ✅ TransferFunctionEstimator core | `src/main/analysis/TransferFunctionEstimator.ts` | Unit tests: window slicing, FFT, H(f) computation, synthetic step extraction, edge cases (silent input, single window) |
+| A2 | ✅ New analysis types | `src/shared/types/analysis.types.ts` | Type-only, no runtime tests |
+| A3 | ✅ PIDAnalyzer.analyzeTransferFunction | `src/main/analysis/PIDAnalyzer.ts` | Unit tests: orchestration, progress reporting, result shape |
+| A4 | ✅ PIDRecommender frequency-domain input | `src/main/analysis/PIDRecommender.ts` | Unit tests: bandwidth-based P recommendation, margin-based D recommendation, confidence capping |
+| A5 | ✅ DataQualityScorer for Wiener | `src/main/analysis/DataQualityScorer.ts` | Unit tests: quality scoring for mixed-flight data |
 
 ### Phase B: AnalysisOverview Enhancement (quick win, no session changes)
 
