@@ -1,24 +1,24 @@
-# Betaflight PID AutoTune
+# PIDlab
 
 **Desktop application that takes the guesswork out of FPV drone tuning.**
 
 Most pilots tune their drones by hand — changing PID numbers, test flying, reading Blackbox graphs, and repeating. It's slow, confusing, and error-prone.
 
-BFAutoTune connects to your Betaflight flight controller over USB, guides you through two short test flights, analyzes the Blackbox data automatically (FFT noise analysis for filters, step response metrics for PIDs), and applies optimized settings with one click. No graph reading, no spreadsheets, no guesswork.
+PIDlab connects to your Betaflight flight controller over USB, guides you through two short test flights, analyzes the Blackbox data automatically (FFT noise analysis for filters, step response metrics for PIDs), and applies optimized settings with one click. No graph reading, no spreadsheets, no guesswork.
 
 **How it works:** Connect FC → Fly hover + throttle sweeps → App tunes filters → Fly stick snaps → App tunes PIDs → Done.
 
 ## Download
 
-Pre-built binaries are available on the [Releases](https://github.com/eddycek/bfautotune/releases) page:
+Pre-built binaries are available on the [Releases](https://github.com/eddycek/pidlab/releases) page:
 
 | Platform | Format | File |
 |----------|--------|------|
-| **macOS** | Disk Image | `Betaflight.PID.AutoTune-*.dmg` |
-| **Windows** | Installer | `Betaflight.PID.AutoTune-Setup-*.exe` |
-| **Linux** | AppImage | `Betaflight.PID.AutoTune-*.AppImage` |
+| **macOS** | Disk Image | `PIDlab-*.dmg` |
+| **Windows** | Installer | `PIDlab-Setup-*.exe` |
+| **Linux** | AppImage | `PIDlab-*.AppImage` |
 
-> **Note:** macOS builds are currently unsigned. On first launch, right-click the app and select **Open**, or run `xattr -cr /Applications/Betaflight\ PID\ AutoTune.app` in Terminal to bypass Gatekeeper.
+> **Note:** macOS builds are currently unsigned. On first launch, right-click the app and select **Open**, or run `xattr -cr /Applications/PIDlab.app` in Terminal to bypass Gatekeeper.
 
 ## Supported Betaflight Versions
 
@@ -120,8 +120,8 @@ See [SPEC.md](./SPEC.md) for detailed phase tracking and test counts.
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/eddycek/bfautotune.git
-cd bfautotune
+git clone https://github.com/eddycek/pidlab.git
+cd pidlab
 ```
 
 2. Install dependencies:
@@ -212,7 +212,7 @@ This triggers the release workflow which builds native installers for macOS (`.d
 ## Project Structure
 
 ```
-bfautotune/
+pidlab/
 ├── src/
 │   ├── main/                    # Main process (Node.js)
 │   │   ├── index.ts             # Entry point, event wiring
@@ -491,9 +491,9 @@ The app uses the MultiWii Serial Protocol (MSP) v1 to communicate with Betafligh
 
 All data is stored locally per platform:
 
-- **macOS**: `~/Library/Application Support/bfautotune/data/`
-- **Windows**: `%APPDATA%/bfautotune/data/`
-- **Linux**: `~/.config/bfautotune/data/`
+- **macOS**: `~/Library/Application Support/pidlab/data/`
+- **Windows**: `%APPDATA%/pidlab/data/`
+- **Linux**: `~/.config/pidlab/data/`
 
 Subdirectories:
 - `profiles/` — Drone profile JSON files + metadata index
@@ -504,7 +504,7 @@ Subdirectories:
 
 ## How Autotuning Works
 
-Betaflight PID AutoTune automates the two core aspects of FPV drone tuning: **filter tuning** (reducing noise) and **PID tuning** (improving flight response). Both use Blackbox log analysis to produce data-driven recommendations.
+PIDlab automates the two core aspects of FPV drone tuning: **filter tuning** (reducing noise) and **PID tuning** (improving flight response). Both use Blackbox log analysis to produce data-driven recommendations.
 
 ### Filter Tuning (FFT Analysis)
 

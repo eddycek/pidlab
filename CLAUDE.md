@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Betaflight PID AutoTune is an Electron-based desktop application for managing FPV drone PID configurations. It uses MSP (MultiWii Serial Protocol) to communicate with Betaflight flight controllers over USB serial connection.
+PIDlab is an Electron-based desktop application for managing FPV drone PID configurations. It uses MSP (MultiWii Serial Protocol) to communicate with Betaflight flight controllers over USB serial connection.
 
 **Current Phase**: Phase 4 complete, Phase 6 complete (CI/CD, code quality, data quality scoring, flight quality score)
 
@@ -585,12 +585,12 @@ Design docs follow a lifecycle: **Proposed → Complete**. See `docs/README.md` 
 ## Claude Code Configuration
 
 ### Autonomous Repo Operations
-Claude has **full autonomous access** exclusively to `eddycek/bfautotune` repo:
+Claude has **full autonomous access** exclusively to `eddycek/pidlab` repo:
 - Push, force push, merge — no confirmation needed
 - PR create, merge (with `--admin` flag to bypass branch protection), close
 - All gh CLI operations allowed
 
-**CRITICAL**: NEVER push, merge, or interact with any repository other than `eddycek/bfautotune`. All git push/pull operations MUST target only `origin` remote (which points to `github.com/eddycek/bfautotune`). Never add, modify, or push to other remotes. For `gh` commands, never specify `--repo` pointing to a different repository.
+**CRITICAL**: NEVER push, merge, or interact with any repository other than `eddycek/pidlab`. All git push/pull operations MUST target only `origin` remote (which points to `github.com/eddycek/pidlab`). Never add, modify, or push to other remotes. For `gh` commands, never specify `--repo` pointing to a different repository.
 
 ### Permissions Strategy
 - **Allow**: git workflow, gh CLI, npm dev/build/test commands, filesystem ops, curated WebFetch domains

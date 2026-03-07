@@ -4,7 +4,7 @@
 
 ## Problem
 
-BFAutoTune only supports blackbox logging on FCs with **onboard SPI flash** (via `MSP_DATAFLASH_SUMMARY` / `MSP_DATAFLASH_READ`). Many FCs use **onboard SD cards** for blackbox storage — these report `supported: false` for dataflash, causing the misleading "Blackbox not supported or no flash storage detected" message even though blackbox logging works fine via SD card.
+PIDlab only supports blackbox logging on FCs with **onboard SPI flash** (via `MSP_DATAFLASH_SUMMARY` / `MSP_DATAFLASH_READ`). Many FCs use **onboard SD cards** for blackbox storage — these report `supported: false` for dataflash, causing the misleading "Blackbox not supported or no flash storage detected" message even though blackbox logging works fine via SD card.
 
 BF Configurator handles this via two mechanisms: detecting SD card state with `MSP_SDCARD_SUMMARY`, and downloading logs through MSC (Mass Storage Class) mode which reboots the FC as a USB drive.
 

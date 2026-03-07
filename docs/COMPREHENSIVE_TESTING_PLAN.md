@@ -1,4 +1,4 @@
-# Comprehensive Testing Plan — BFAutoTune
+# Comprehensive Testing Plan — PIDlab
 
 > **Goal**: 100% functional coverage. Every feature testable without manual intervention. Claude can work on tasks independently without human QA.
 
@@ -464,7 +464,7 @@ vi.mock('electron', () => ({
 }));
 
 // Real managers with temp storage
-const tempDir = path.join(os.tmpdir(), 'bfautotune-test-' + uuid());
+const tempDir = path.join(os.tmpdir(), 'pidlab-test-' + uuid());
 const profileManager = new ProfileManager(tempDir);
 const snapshotManager = new SnapshotManager(tempDir, mockMSPClient);
 const blackboxManager = new BlackboxManager(tempDir);

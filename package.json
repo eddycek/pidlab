@@ -1,7 +1,7 @@
 {
-  "name": "bfautotune",
+  "name": "pidlab",
   "version": "0.1.0",
-  "description": "Betaflight PID AutoTune - FPV Drone PID Autotuning Application",
+  "description": "PIDlab - FPV Drone PID Tuning Assistant",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "vite",
@@ -32,7 +32,7 @@
     "drone",
     "pid",
     "tuning",
-    "autotuning",
+    "analysis",
     "flight-controller",
     "electron"
   ],
@@ -79,8 +79,8 @@
     "vitest": "^4.0.18"
   },
   "build": {
-    "appId": "com.eddycek.bfautotune",
-    "productName": "Betaflight PID AutoTune",
+    "appId": "com.eddycek.pidlab",
+    "productName": "PIDlab",
     "directories": {
       "output": "release"
     },

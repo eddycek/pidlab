@@ -411,7 +411,7 @@ Checks before analysis:
 | `TuningSessionManager` | `{userData}/data/tuning/` | `{profileId}.json` per session |
 | `TuningHistoryManager` | `{userData}/data/tuning-history/` | `{profileId}.json` per profile (archived records) |
 
-**User data path:** `~/Library/Application Support/bfautotune/` (macOS) | `%APPDATA%/bfautotune/` (Windows) | `~/.config/bfautotune/` (Linux)
+**User data path:** `~/Library/Application Support/pidlab/` (macOS) | `%APPDATA%/pidlab/` (Windows) | `~/.config/pidlab/` (Linux)
 
 #### Profile Data Model
 
@@ -587,7 +587,7 @@ else                → Dashboard (ConnectionPanel, ProfileSelector, TuningStatu
 ```
 App (ToastProvider wrapper)
 ├── AppContent
-│   ├── Header: "Betaflight PID AutoTune" + version + "How to tune?" button
+│   ├── Header: "PIDlab" + version + "How to tune?" button
 │   │
 │   ├── [If analysisLogId] AnalysisOverview (read-only, single page)
 │   ├── [If activeLogId]   TuningWizard (guided multi-step)

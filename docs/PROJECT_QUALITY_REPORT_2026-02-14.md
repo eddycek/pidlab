@@ -1,4 +1,4 @@
-# BFAutoTune — Project Quality Report
+# PIDlab — Project Quality Report
 
 > **Date**: February 14, 2026 | **Snapshot**: Phase 4 & 6 Complete | **1700 tests, 91 files**
 >
@@ -59,15 +59,15 @@ Recommendations derive from absolute physical measurements (noise floor in dB �
 
 **2. Flight-PID Anchoring**
 
-PID recommendations anchor to values from the Blackbox header (PIDs active during the flight), not the FC's current values. This prevents the classic problem: "I changed P to 55, re-analyzed, and now it says P=60" — exponential drift. BFAutoTune always recommends the same target values from the same data, regardless of current FC state.
+PID recommendations anchor to values from the Blackbox header (PIDs active during the flight), not the FC's current values. This prevents the classic problem: "I changed P to 55, re-analyzed, and now it says P=60" — exponential drift. PIDlab always recommends the same target values from the same data, regardless of current FC state.
 
 **3. Feedforward-Aware PID Analysis**
 
-When overshoot is caused by feedforward (not P-gain), increasing D won't help. BFAutoTune compares |pidF| vs |pidP| at each step's overshoot peak. If the majority of steps are FF-dominated, it skips P/D rules and recommends reducing `feedforward_boost` instead. No other tool even detects FF in the context of PID tuning.
+When overshoot is caused by feedforward (not P-gain), increasing D won't help. PIDlab compares |pidF| vs |pidP| at each step's overshoot peak. If the majority of steps are FF-dominated, it skips P/D rules and recommends reducing `feedforward_boost` instead. No other tool even detects FF in the context of PID tuning.
 
 **4. RPM Filter-Aware Safety Bounds**
 
-When the RPM filter is active (detected via MSP or BBL headers), motor harmonics are already covered by 36 narrow RPM notch filters. BFAutoTune widens safety bounds (gyro LPF1 max 300→500 Hz, D-term max 200→300 Hz) and recommends dynamic notch optimization (count 3→1, Q 300→500). If motor harmonics persist with RPM active → diagnostic warns about `motor_poles` misconfiguration or ESC telemetry issues.
+When the RPM filter is active (detected via MSP or BBL headers), motor harmonics are already covered by 36 narrow RPM notch filters. PIDlab widens safety bounds (gyro LPF1 max 300→500 Hz, D-term max 200→300 Hz) and recommends dynamic notch optimization (count 3→1, Q 300→500). If motor harmonics persist with RPM active → diagnostic warns about `motor_poles` misconfiguration or ESC telemetry issues.
 
 **5. Data Quality Scoring**
 
@@ -96,7 +96,7 @@ Before generating any recommendations, rates input data quality 0-100 (excellent
 
 ## Competitive Positioning
 
-| Capability | BFAutoTune | PIDtoolbox | BF Configurator | Plasmatree PID-Analyzer |
+| Capability | PIDlab | PIDtoolbox | BF Configurator | Plasmatree PID-Analyzer |
 |---|:---:|:---:|:---:|:---:|
 | Automatic tuning recommendations | **Yes** | No | No | No |
 | Convergent (idempotent) | **Yes** | No | — | No |
@@ -112,7 +112,7 @@ Before generating any recommendations, rates input data quality 0-100 (excellent
 | Price | Free / open-source | MATLAB license | Free | Free |
 | Cross-platform | macOS/Win/Linux | MATLAB | Web | Python CLI |
 
-Existing tools (PIDtoolbox, BF Configurator Blackbox viewer, Plasmatree PID-Analyzer) show pilots graphs and leave them to interpret. BFAutoTune goes a step further — it **automatically decides what to change, explains why, and applies it with one click**.
+Existing tools (PIDtoolbox, BF Configurator Blackbox viewer, Plasmatree PID-Analyzer) show pilots graphs and leave them to interpret. PIDlab goes a step further — it **automatically decides what to change, explains why, and applies it with one click**.
 
 The tools that have more advanced analysis capabilities (Wiener deconvolution, chirp analysis) require either a MATLAB license, a Python CLI, or manual graph interpretation. None of them offer convergent recommendations, FF-awareness, RPM-aware bounds, data quality scoring, or a guided workflow.
 
@@ -122,7 +122,7 @@ The tools that have more advanced analysis capabilities (Wiener deconvolution, c
 
 Most FPV pilots tune their drones by trial and error: change a number, fly, check if it's better, repeat. Experienced pilots spend hours in PIDtoolbox interpreting FFT spectra and step response graphs. Beginners give up and fly on stock PIDs.
 
-BFAutoTune addresses both:
+PIDlab addresses both:
 
 - **For beginners** — Structured workflow with plain-English explanations ("Your quad has noise at 150 Hz — we're lowering the gyro filter to clean it up"). Data quality warnings prevent false confidence from bad test flights.
 - **For experienced pilots** — "Analyze and apply" saves hours of manual interpretation. Tuning history tracks improvements across sessions.

@@ -467,7 +467,7 @@ function AppContent() {
     <div className="app">
       <header className="app-header">
         <div className="app-header-left">
-          <h1>Betaflight PID AutoTune</h1>
+          <h1>PIDlab</h1>
           <span className="app-bf-compat">BF 4.3+</span>
         </div>
         <div className="app-header-right">

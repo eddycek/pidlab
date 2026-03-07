@@ -20,8 +20,8 @@
 ## Installation
 
 ```bash
-git clone https://github.com/eddycek/bfautotune.git
-cd bfautotune
+git clone https://github.com/eddycek/pidlab.git
+cd pidlab
 npm install
 npm run rebuild   # Rebuild native modules (serialport) for Electron
 ```
@@ -111,9 +111,9 @@ Auto-connects to a virtual FC, creates a demo profile, and generates realistic b
 ### Debug Logging
 
 Logs are in:
-- **macOS**: `~/Library/Logs/bfautotune/`
-- **Windows**: `%USERPROFILE%\AppData\Roaming\bfautotune\logs\`
-- **Linux**: `~/.config/bfautotune/logs/`
+- **macOS**: `~/Library/Logs/pidlab/`
+- **Windows**: `%USERPROFILE%\AppData\Roaming\pidlab\logs\`
+- **Linux**: `~/.config/pidlab/logs/`
 
 DevTools open automatically in dev mode, or press Cmd+Option+I / Ctrl+Shift+I.
 

@@ -59,12 +59,12 @@ describe('App', () => {
 
   it('renders without crashing', () => {
     render(<App />);
-    expect(screen.getByText('Betaflight PID AutoTune')).toBeInTheDocument();
+    expect(screen.getByText('PIDlab')).toBeInTheDocument();
   });
 
-  it('shows app title "Betaflight PID AutoTune"', () => {
+  it('shows app title "PIDlab"', () => {
     render(<App />);
-    const title = screen.getByRole('heading', { name: /betaflight pid autotune/i });
+    const title = screen.getByRole('heading', { name: /pidlab/i });
     expect(title).toBeInTheDocument();
     expect(title.tagName).toBe('H1');
   });
@@ -73,7 +73,7 @@ describe('App', () => {
     render(<App />);
     // ConnectionPanel should render (we can check for connection-related text)
     // Since ConnectionPanel is always rendered, we just verify the component tree doesn't crash
-    expect(screen.getByText('Betaflight PID AutoTune')).toBeInTheDocument();
+    expect(screen.getByText('PIDlab')).toBeInTheDocument();
   });
 
   it('shows version number', () => {

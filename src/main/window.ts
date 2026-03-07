@@ -14,13 +14,13 @@ export function createWindow(): BrowserWindow {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    title: 'Betaflight PID AutoTune',
+    title: 'PIDlab',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false // Required for serialport
-    }
+      sandbox: false, // Required for serialport
+    },
   });
 
   // Load app
