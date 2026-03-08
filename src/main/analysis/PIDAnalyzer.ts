@@ -32,6 +32,7 @@ import { analyzePropWash } from './PropWashDetector';
 import { suggestNextPID, type PIDObservation } from './BayesianPIDOptimizer';
 import { analyzeDTermEffectiveness } from './DTermAnalyzer';
 import { mapToSliders, computeSliderDelta, buildRecommendedPIDs } from './SliderMapper';
+import { analyzeFeedforward, recommendFeedforward } from './FeedforwardAnalyzer';
 
 /** Default PID configuration if none provided */
 const DEFAULT_PIDS: PIDConfiguration = {
@@ -178,6 +179,10 @@ export async function analyzePID(
   // Step 2c: D-term effectiveness analysis
   const dTermEffectiveness = analyzeDTermEffectiveness(flightData);
 
+  // Step 2d: Extended feedforward analysis
+  const allResponses = [...rollResponses, ...pitchResponses, ...yawResponses];
+  const feedforwardAnalysis = analyzeFeedforward(allResponses, feedforwardContext);
+
   // Step 3: Generate recommendations
   onProgress?.({ step: 'scoring', percent: 80 });
   const rawRecommendations = recommendPID(
@@ -191,6 +196,11 @@ export async function analyzePID(
     undefined, // tfMetrics
     dTermEffectiveness
   );
+
+  // Add FF-specific recommendations
+  const ffRecommendations = recommendFeedforward(feedforwardAnalysis, feedforwardContext);
+  rawRecommendations.push(...ffRecommendations);
+
   const recommendations = adjustPIDConfidenceByQuality(
     rawRecommendations,
     qualityResult.score.tier
@@ -233,6 +243,7 @@ export async function analyzePID(
     ...(propWash ? { propWash } : {}),
     ...(bayesianSuggestion ? { bayesianSuggestion } : {}),
     ...(dTermEffectiveness ? { dTermEffectiveness } : {}),
+    ...(feedforwardAnalysis ? { feedforwardAnalysis } : {}),
     sliderPosition: mapToSliders(currentPIDs),
     ...(recommendations.length > 0
       ? {

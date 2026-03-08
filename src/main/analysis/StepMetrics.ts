@@ -179,6 +179,31 @@ export function computeStepResponse(
   const steadyStateErrorPercent =
     holdLen > 0 ? (sumAbsErr / holdLen / Math.abs(magnitude)) * 100 : 0;
 
+  // Leading-edge overshoot: peak deviation from target in the first 20ms
+  // Used by FeedforwardAnalyzer to detect FF spike-dominated overshoot
+  const leadingEdgeSamples = Math.ceil(20 / msPerSample);
+  const leadingEdgeEnd = Math.min(startIndex + leadingEdgeSamples, endIndex);
+  let leadingEdgePeak = effectiveTarget;
+  for (let i = startIndex; i < leadingEdgeEnd; i++) {
+    const val = gyro.values[i];
+    if (effectiveMagnitude > 0) {
+      if (val > leadingEdgePeak) leadingEdgePeak = val;
+    } else {
+      if (val < leadingEdgePeak) leadingEdgePeak = val;
+    }
+  }
+  const leadingEdgeOvershootPercent =
+    Math.abs(effectiveMagnitude) > 1
+      ? Math.max(
+          0,
+          ((effectiveMagnitude > 0
+            ? leadingEdgePeak - effectiveTarget
+            : effectiveTarget - leadingEdgePeak) /
+            Math.abs(effectiveMagnitude)) *
+            100
+        )
+      : 0;
+
   return {
     step,
     riseTimeMs,
@@ -191,6 +216,7 @@ export function computeStepResponse(
     trace,
     trackingErrorRMS,
     steadyStateErrorPercent,
+    leadingEdgeOvershootPercent,
   };
 }
 
