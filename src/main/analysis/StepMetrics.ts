@@ -173,6 +173,15 @@ export function computeStepResponse(
   }
   const trackingErrorRMS = Math.sqrt(sumSqErr / windowLen);
 
+  // Compute steady-state error: mean |setpoint - gyro| / |magnitude| during hold phase (last 20%)
+  const holdLen = tailEnd - tailStart;
+  let sumAbsErr = 0;
+  for (let i = tailStart; i < tailEnd; i++) {
+    sumAbsErr += Math.abs(setpoint.values[i] - gyro.values[i]);
+  }
+  const steadyStateErrorPercent =
+    holdLen > 0 ? (sumAbsErr / holdLen / Math.abs(magnitude)) * 100 : 0;
+
   return {
     step,
     riseTimeMs,
@@ -184,6 +193,7 @@ export function computeStepResponse(
     steadyStateValue,
     trace,
     trackingErrorRMS,
+    steadyStateErrorPercent,
   };
 }
 
@@ -199,6 +209,7 @@ export function aggregateAxisMetrics(responses: StepResponse[]): AxisStepProfile
       meanSettlingTimeMs: 0,
       meanLatencyMs: 0,
       meanTrackingErrorRMS: 0,
+      meanSteadyStateError: 0,
     };
   }
 
@@ -214,6 +225,11 @@ export function aggregateAxisMetrics(responses: StepResponse[]): AxisStepProfile
     meanLatencyMs: mean(new Float64Array(src.map((r) => r.latencyMs)), 0, src.length),
     meanTrackingErrorRMS: mean(
       new Float64Array(src.map((r) => r.trackingErrorRMS ?? 0)),
+      0,
+      src.length
+    ),
+    meanSteadyStateError: mean(
+      new Float64Array(src.map((r) => r.steadyStateErrorPercent ?? 0)),
       0,
       src.length
     ),
