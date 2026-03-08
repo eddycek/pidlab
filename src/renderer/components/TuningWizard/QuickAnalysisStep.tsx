@@ -77,45 +77,49 @@ export function QuickAnalysisStep({
       {hasResults && (
         <>
           {filterResult && (
-            <div className="quick-analysis-section">
+            <div className="summary-section">
               <h4>Filter Recommendations</h4>
-              <p className="analysis-summary">{filterResult.summary}</p>
+              <p className="summary-section-subtitle">{filterResult.summary}</p>
               {filterRecs.length === 0 && (
                 <p className="analysis-no-recs">No filter changes recommended.</p>
               )}
-              {filterRecs.map((rec, i) => (
-                <RecommendationCard
-                  key={`filter-${i}`}
-                  setting={rec.setting}
-                  currentValue={rec.currentValue}
-                  recommendedValue={rec.recommendedValue}
-                  reason={rec.reason}
-                  impact={rec.impact}
-                  confidence={rec.confidence}
-                  unit="Hz"
-                />
-              ))}
+              <div className="recommendation-list">
+                {filterRecs.map((rec, i) => (
+                  <RecommendationCard
+                    key={`filter-${i}`}
+                    setting={rec.setting}
+                    currentValue={rec.currentValue}
+                    recommendedValue={rec.recommendedValue}
+                    reason={rec.reason}
+                    impact={rec.impact}
+                    confidence={rec.confidence}
+                    unit="Hz"
+                  />
+                ))}
+              </div>
             </div>
           )}
 
           {tfResult && (
-            <div className="quick-analysis-section">
+            <div className="summary-section">
               <h4>PID Recommendations</h4>
-              <p className="analysis-summary">{tfResult.summary}</p>
+              <p className="summary-section-subtitle">{tfResult.summary}</p>
               {tfRecs.length === 0 && (
                 <p className="analysis-no-recs">No PID changes recommended.</p>
               )}
-              {tfRecs.map((rec, i) => (
-                <RecommendationCard
-                  key={`tf-${i}`}
-                  setting={rec.setting}
-                  currentValue={rec.currentValue}
-                  recommendedValue={rec.recommendedValue}
-                  reason={rec.reason}
-                  impact={rec.impact}
-                  confidence={rec.confidence}
-                />
-              ))}
+              <div className="recommendation-list">
+                {tfRecs.map((rec, i) => (
+                  <RecommendationCard
+                    key={`tf-${i}`}
+                    setting={rec.setting}
+                    currentValue={rec.currentValue}
+                    recommendedValue={rec.recommendedValue}
+                    reason={rec.reason}
+                    impact={rec.impact}
+                    confidence={rec.confidence}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </>

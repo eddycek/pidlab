@@ -50,7 +50,15 @@ interface PhaseUI {
   guideTip?: TuningMode;
 }
 
-const STEP_LABELS = ['Prepare', 'Filter Flight', 'Filter Tune', 'PID Flight', 'PID Tune', 'Verify'];
+const DEEP_STEP_LABELS = [
+  'Prepare',
+  'Filter Flight',
+  'Filter Tune',
+  'PID Flight',
+  'PID Tune',
+  'Verify',
+];
+const FLASH_STEP_LABELS = ['Prepare', 'Flight', 'Tune', 'Verify'];
 
 function getPhaseUI(
   isSDCard: boolean
@@ -174,6 +182,8 @@ export function TuningStatusBanner({
     session.phase === 'filter_flight_pending' ||
     session.phase === 'pid_flight_pending' ||
     session.phase === 'quick_flight_pending';
+  const isFlashTune = session.tuningType === 'quick';
+  const stepLabels = isFlashTune ? FLASH_STEP_LABELS : DEEP_STEP_LABELS;
 
   // Determine step index and text
   let stepIndex: number;
@@ -187,7 +197,7 @@ export function TuningStatusBanner({
       : 'PIDs applied! Fly a short hover to verify noise improvement, or skip.';
   } else if (isVerification) {
     const vui = getVerificationUI(session);
-    stepIndex = vui.stepIndex;
+    stepIndex = isFlashTune ? 3 : vui.stepIndex;
     text = vui.text;
   } else {
     ui =
@@ -199,6 +209,11 @@ export function TuningStatusBanner({
       ];
     stepIndex = ui.stepIndex;
     text = ui.text;
+  }
+
+  // For completed phase, use the last step index
+  if (session.phase === 'completed') {
+    stepIndex = stepLabels.length - 1;
   }
 
   const flashHasData = flashUsedSize != null && flashUsedSize > 0;
@@ -392,7 +407,7 @@ export function TuningStatusBanner({
   return (
     <div className="tuning-status-banner">
       <div className="tuning-status-steps">
-        {STEP_LABELS.map((label, i) => {
+        {stepLabels.map((label, i) => {
           const isDone = i < activeStepIndex;
           const isCurrent = i === activeStepIndex;
           const className = isDone ? 'done' : isCurrent ? 'current' : 'upcoming';
