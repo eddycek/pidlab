@@ -1,6 +1,6 @@
 # Tuning Precision Improvements
 
-> **Status**: Active (PRs #119–#120, #137, #146–#152, #156–#160 — 14/15 implemented)
+> **Status**: Active (PRs #119–#120, #137, #146–#152, #156–#160 — 15/15 implemented)
 
 Research-based analysis of techniques to improve tuning recommendation accuracy. Prioritized by impact and implementation effort.
 
@@ -146,7 +146,7 @@ Also consider flight style: aggressive/race needs higher propwash floor (~120 Hz
 
 ---
 
-### 6. Extended Feedforward Tuning
+### 6. ✅ Extended Feedforward Tuning — `FeedforwardAnalyzer.ts`
 
 **Problem**: Current FF tuning only adjusts `feedforward_boost`. Other FF parameters (`ff_smooth_factor`, `feedforward_jitter_factor`) significantly affect response quality but are ignored.
 

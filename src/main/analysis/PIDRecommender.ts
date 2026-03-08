@@ -446,6 +446,18 @@ export function extractFlightPIDs(rawHeaders: Map<string, string>): PIDConfigura
 export function extractFeedforwardContext(rawHeaders: Map<string, string>): FeedforwardContext {
   const boost = parseIntOr(rawHeaders.get('feedforward_boost'));
   const maxRateLimit = parseIntOr(rawHeaders.get('feedforward_max_rate_limit'));
+  const smoothFactor = parseIntOr(rawHeaders.get('feedforward_smooth_factor'));
+  const jitterFactor = parseIntOr(rawHeaders.get('feedforward_jitter_factor'));
+
+  // Extract RC link rate from headers
+  const rcSmoothingInputHz = parseIntOr(rawHeaders.get('rc_smoothing_input_hz'));
+  const rcIntervalMs = parseIntOr(rawHeaders.get('rcIntervalMs'));
+  const rcLinkRateHz =
+    rcSmoothingInputHz !== undefined && rcSmoothingInputHz > 0
+      ? rcSmoothingInputHz
+      : rcIntervalMs !== undefined && rcIntervalMs > 0
+        ? Math.round(1000 / rcIntervalMs)
+        : undefined;
 
   const active = (boost ?? 0) > 0;
 
@@ -453,6 +465,9 @@ export function extractFeedforwardContext(rawHeaders: Map<string, string>): Feed
     active,
     ...(boost !== undefined ? { boost } : {}),
     ...(maxRateLimit !== undefined ? { maxRateLimit } : {}),
+    ...(smoothFactor !== undefined ? { smoothFactor } : {}),
+    ...(jitterFactor !== undefined ? { jitterFactor } : {}),
+    ...(rcLinkRateHz !== undefined ? { rcLinkRateHz } : {}),
   };
 }
 

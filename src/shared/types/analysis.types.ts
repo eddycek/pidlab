@@ -251,6 +251,30 @@ export interface FeedforwardContext {
   boost?: number;
   /** FF max rate limit */
   maxRateLimit?: number;
+  /** FF smooth factor (0-75, higher = more smoothing of FF output) */
+  smoothFactor?: number;
+  /** FF jitter factor (0-20, attenuates FF on small stick inputs) */
+  jitterFactor?: number;
+  /** Detected RC link rate in Hz (from BBL header or frame timing) */
+  rcLinkRateHz?: number;
+}
+
+/** Extended feedforward analysis result */
+export interface FeedforwardAnalysis {
+  /** Whether FF-specific tuning opportunities were found */
+  hasRecommendations: boolean;
+  /** Leading-edge overshoot ratio (0-20ms vs 20-100ms). >1 = spike-dominated */
+  leadingEdgeRatio: number;
+  /** Small-step (<30% stick) mean FF overshoot relative to large-step mean */
+  smallStepOvershootRatio: number;
+  /** Number of small steps analyzed */
+  smallStepCount: number;
+  /** Number of large steps analyzed */
+  largeStepCount: number;
+  /** Detected RC link rate in Hz (undefined if not available) */
+  rcLinkRateHz?: number;
+  /** Human-readable summary */
+  summary: string;
 }
 
 // ---- PID Step Response Analysis Types ----
@@ -307,6 +331,8 @@ export interface StepResponse {
   trackingErrorRMS?: number;
   /** Mean |setpoint−gyro|/|magnitude| during hold phase (last 20% of window), as percentage */
   steadyStateErrorPercent?: number;
+  /** Overshoot in the leading edge (0-20ms after step) — used for ff_smooth_factor analysis */
+  leadingEdgeOvershootPercent?: number;
 }
 
 /** Aggregated step response metrics for one axis */
@@ -397,6 +423,8 @@ export interface PIDAnalysisResult {
   sliderPosition?: SliderPosition;
   /** Slider change summary when recommendations are applied */
   sliderDelta?: { masterMultiplierDelta: number; pdRatioDelta: number; summary: string };
+  /** Extended feedforward analysis (leading-edge, jitter, RC rate) */
+  feedforwardAnalysis?: FeedforwardAnalysis;
 }
 
 // ---- D-Term Effectiveness Types ----
