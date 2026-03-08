@@ -27,6 +27,7 @@ import { estimateAllAxes, type TransferFunctionResult } from './TransferFunction
 import { STEP_RESPONSE_WINDOW_MAX_MS } from './constants';
 import { analyzeCrossAxisCoupling } from './CrossAxisDetector';
 import { analyzePropWash } from './PropWashDetector';
+import { analyzeDTermEffectiveness } from './DTermAnalyzer';
 
 /** Default PID configuration if none provided */
 const DEFAULT_PIDS: PIDConfiguration = {
@@ -156,6 +157,9 @@ export async function analyzePID(
   // Step 2b: Prop wash analysis (runs on any flight with throttle data)
   const propWash = analyzePropWash(flightData);
 
+  // Step 2c: D-term effectiveness analysis
+  const dTermEffectiveness = analyzeDTermEffectiveness(flightData);
+
   // Step 3: Generate recommendations
   onProgress?.({ step: 'scoring', percent: 80 });
   const rawRecommendations = recommendPID(
@@ -165,7 +169,9 @@ export async function analyzePID(
     currentPIDs,
     flightPIDs,
     feedforwardContext,
-    flightStyle
+    flightStyle,
+    undefined,
+    dTermEffectiveness
   );
   const recommendations = adjustPIDConfidenceByQuality(
     rawRecommendations,
@@ -201,6 +207,7 @@ export async function analyzePID(
     ...(warnings.length > 0 ? { warnings } : {}),
     ...(crossAxisCoupling ? { crossAxisCoupling } : {}),
     ...(propWash ? { propWash } : {}),
+    ...(dTermEffectiveness ? { dTermEffectiveness } : {}),
   };
 }
 

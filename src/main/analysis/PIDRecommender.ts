@@ -7,6 +7,7 @@
 import type { PIDConfiguration } from '@shared/types/pid.types';
 import type {
   AxisStepProfile,
+  DTermEffectiveness,
   FeedforwardContext,
   PIDRecommendation,
 } from '@shared/types/analysis.types';
@@ -53,7 +54,8 @@ export function recommendPID(
   flightPIDs?: PIDConfiguration,
   feedforwardContext?: FeedforwardContext,
   flightStyle: FlightStyle = 'balanced',
-  tfMetrics?: TransferFunctionContext
+  tfMetrics?: TransferFunctionContext,
+  dTermEffectiveness?: DTermEffectiveness
 ): PIDRecommendation[] {
   const recommendations: PIDRecommendation[] = [];
   const profiles = [roll, pitch, yaw] as const;
@@ -247,6 +249,11 @@ export function recommendPID(
     }
   }
 
+  // Post-process: apply D-term effectiveness context to D recommendations.
+  if (dTermEffectiveness) {
+    applyDTermEffectiveness(recommendations, dTermEffectiveness);
+  }
+
   // Post-process: validate D/P damping ratio for coordinated P/D recommendations.
   // Only applies to roll and pitch (yaw often has D=0).
   validateDampingRatio(recommendations, currentPIDs);
@@ -320,6 +327,41 @@ function validateDampingRatio(
           confidence: 'medium',
         });
       }
+    }
+  }
+}
+
+/**
+ * Apply D-term effectiveness context to existing D recommendations.
+ *
+ * - When D is being recommended to increase and dCritical is true → boost confidence to 'high'
+ * - When D is being recommended to increase and effectiveness is low (<0.3) → add note to reason
+ */
+function applyDTermEffectiveness(
+  recommendations: PIDRecommendation[],
+  dte: DTermEffectiveness
+): void {
+  const axisEffectiveness: Record<string, number> = {
+    roll: dte.roll,
+    pitch: dte.pitch,
+    yaw: dte.yaw,
+  };
+
+  for (const rec of recommendations) {
+    // Only apply to D-term increase recommendations
+    const dMatch = rec.setting.match(/^pid_(roll|pitch|yaw)_d$/);
+    if (!dMatch) continue;
+    if (rec.recommendedValue <= rec.currentValue) continue;
+
+    const axisName = dMatch[1];
+    const effectiveness = axisEffectiveness[axisName];
+
+    if (dte.dCritical) {
+      // D is critical for stability — boost confidence
+      rec.confidence = 'high';
+    } else if (effectiveness < 0.3) {
+      // D-term isn't doing much work — note that in the reason
+      rec.reason += ` Note: D-term effectiveness on ${axisName} is low — the current D-term isn't doing much dampening work.`;
     }
   }
 }

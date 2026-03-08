@@ -9,6 +9,7 @@ import type { TransferFunctionContext } from './PIDRecommender';
 import type { PIDConfiguration } from '@shared/types/pid.types';
 import type {
   AxisStepProfile,
+  DTermEffectiveness,
   FeedforwardContext,
   StepResponse,
   StepEvent,
@@ -1167,6 +1168,144 @@ describe('PIDRecommender', () => {
       const resultRatio = rollD!.recommendedValue / 60;
       expect(resultRatio).toBeGreaterThanOrEqual(DAMPING_RATIO_MIN);
       expect(resultRatio).toBeLessThanOrEqual(DAMPING_RATIO_MAX);
+    });
+  });
+
+  describe('D-term effectiveness integration', () => {
+    it('should boost D increase confidence to high when dCritical is true', () => {
+      const overshoot = makeProfile({ meanOvershoot: 20 }); // moderate → D+5 with medium confidence
+      const dte: DTermEffectiveness = {
+        roll: 0.8,
+        pitch: 0.8,
+        yaw: 0.5,
+        overall: 0.8,
+        dCritical: true,
+      };
+
+      const recs = recommendPID(
+        overshoot,
+        emptyProfile(),
+        emptyProfile(),
+        DEFAULT_PIDS,
+        undefined,
+        undefined,
+        'balanced',
+        undefined,
+        dte
+      );
+
+      const dRec = recs.find((r) => r.setting === 'pid_roll_d');
+      expect(dRec).toBeDefined();
+      expect(dRec!.confidence).toBe('high');
+    });
+
+    it('should add low-effectiveness note when D effectiveness < 0.3', () => {
+      const overshoot = makeProfile({ meanOvershoot: 20 }); // moderate → D+5
+      const dte: DTermEffectiveness = {
+        roll: 0.1,
+        pitch: 0.2,
+        yaw: 0.05,
+        overall: 0.15,
+        dCritical: false,
+      };
+
+      const recs = recommendPID(
+        overshoot,
+        emptyProfile(),
+        emptyProfile(),
+        DEFAULT_PIDS,
+        undefined,
+        undefined,
+        'balanced',
+        undefined,
+        dte
+      );
+
+      const dRec = recs.find((r) => r.setting === 'pid_roll_d');
+      expect(dRec).toBeDefined();
+      expect(dRec!.reason).toContain('D-term effectiveness');
+      expect(dRec!.reason).toContain('low');
+    });
+
+    it('should not modify D decrease recommendations', () => {
+      // High D/P ratio triggers D decrease recommendation
+      const highDPids: PIDConfiguration = {
+        roll: { P: 35, I: 80, D: 40 },
+        pitch: { P: 35, I: 80, D: 40 },
+        yaw: { P: 45, I: 80, D: 0 },
+      };
+      const good = makeProfile({ meanOvershoot: 5, meanRiseTimeMs: 30 });
+      const dte: DTermEffectiveness = {
+        roll: 0.1,
+        pitch: 0.1,
+        yaw: 0.0,
+        overall: 0.1,
+        dCritical: false,
+      };
+
+      const recs = recommendPID(
+        good,
+        good,
+        emptyProfile(),
+        highDPids,
+        undefined,
+        undefined,
+        'balanced',
+        undefined,
+        dte
+      );
+
+      const rollD = recs.find((r) => r.setting === 'pid_roll_d');
+      expect(rollD).toBeDefined();
+      // D decrease recommendation should NOT have effectiveness note
+      expect(rollD!.reason).not.toContain('D-term effectiveness');
+    });
+
+    it('should not modify recommendations when dTermEffectiveness is undefined', () => {
+      const overshoot = makeProfile({ meanOvershoot: 20 });
+
+      const recsWithout = recommendPID(overshoot, emptyProfile(), emptyProfile(), DEFAULT_PIDS);
+      const recsWith = recommendPID(
+        overshoot,
+        emptyProfile(),
+        emptyProfile(),
+        DEFAULT_PIDS,
+        undefined,
+        undefined,
+        'balanced',
+        undefined,
+        undefined
+      );
+
+      expect(recsWith).toEqual(recsWithout);
+    });
+
+    it('should not modify non-D recommendations', () => {
+      // Sluggish → P increase
+      const sluggish = makeProfile({ meanOvershoot: 3, meanRiseTimeMs: 100 });
+      const dte: DTermEffectiveness = {
+        roll: 0.1,
+        pitch: 0.1,
+        yaw: 0.0,
+        overall: 0.1,
+        dCritical: false,
+      };
+
+      const recs = recommendPID(
+        sluggish,
+        emptyProfile(),
+        emptyProfile(),
+        DEFAULT_PIDS,
+        undefined,
+        undefined,
+        'balanced',
+        undefined,
+        dte
+      );
+
+      const pRec = recs.find((r) => r.setting === 'pid_roll_p');
+      expect(pRec).toBeDefined();
+      expect(pRec!.reason).not.toContain('D-term effectiveness');
     });
   });
 });
