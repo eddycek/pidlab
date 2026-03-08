@@ -93,39 +93,29 @@ export const PID_FLIGHT_TIPS: string[] = [
   'After landing, check motor temperatures',
 ];
 
-// ---- Quick Tune Flight Guide (any normal flight) ----
+// ---- Flash Tune Flight Guide (any normal flight) ----
 
 export const QUICK_FLIGHT_PHASES: FlightPhase[] = [
   {
-    title: 'Take off & Hover',
-    duration: '10–15 sec',
-    description: 'Hover at mid-throttle to warm up motors and collect baseline noise data.',
-  },
-  {
-    title: 'Fly Freely',
-    duration: '30–60 sec',
+    title: 'Rip a Pack',
+    duration: '1 flight',
     description:
-      'Fly your normal style — freestyle, cruising, racing. Mix movements and throttle levels. The more varied, the better the analysis.',
+      'Just fly. Freestyle, race, cruise — whatever you normally do. No special maneuvers needed. The more varied your throttle and stick inputs, the better the data.',
   },
   {
-    title: 'Final Hover',
-    duration: '5–10 sec',
-    description: 'Brief hover before landing for additional noise data.',
-  },
-  {
-    title: 'Land',
+    title: 'Land & Plug In',
     duration: '',
-    description: 'Done! Total flight: 45–90 seconds.',
+    description: 'Done! Connect via USB and let PIDlab do the rest.',
   },
 ];
 
 export const QUICK_FLIGHT_TIPS: string[] = [
-  'Fly in calm weather — wind adds noise to the data',
-  'Include some hover time for filter analysis quality',
-  'Vary your throttle — high and low RPM data improves filter tuning',
-  'Include some sharp stick movements for better PID analysis',
+  'Any flight style works — freestyle, racing, cruising, even a hover',
+  'Longer flights give more data, but even 30 seconds is enough',
+  'Varying throttle (punch-outs, dives) helps filter analysis',
+  'Sharp stick movements (rolls, flips) help PID analysis',
   'Make sure Blackbox logging is enabled with 2 kHz rate',
-  'A freestyle or racing session works great — no special maneuvers needed',
+  'Calm weather gives cleaner data, but windy sessions still work',
 ];
 
 // ---- Verification Hover Guide (post-tuning noise check) ----

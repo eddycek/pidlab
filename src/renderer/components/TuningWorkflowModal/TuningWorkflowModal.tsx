@@ -32,7 +32,7 @@ function getSubtitle(mode?: FlightGuideMode): string {
   if (mode === 'filter') return 'Follow these steps for the filter tuning flight.';
   if (mode === 'pid') return 'Follow these steps for the PID tuning flight.';
   if (mode === 'quick')
-    return 'One flight covers both filters and PIDs. Fly freely — no special maneuvers needed.';
+    return 'Rip a pack, land, tune. Any flight works — no special maneuvers needed.';
   if (mode === 'verification') return 'Fly a short hover to verify noise improvement after tuning.';
   return 'Follow this workflow each time you tune. Repeat until your quad feels dialed in.';
 }
@@ -97,7 +97,7 @@ function FlashTuneContent({ fcVersion }: { fcVersion?: string }) {
   return (
     <>
       <p className="workflow-tab-subtitle">
-        One flight covers both filters and PIDs. Fly freely — no special maneuvers needed.
+        Rip a pack, land, tune. Any flight works — no special maneuvers needed.
       </p>
       <FlightGuideContent mode="quick" fcVersion={fcVersion} />
     </>

@@ -105,7 +105,7 @@ function getPhaseUI(
     },
     quick_flight_pending: {
       stepIndex: 0,
-      text: `Erase Blackbox data from ${storageName}, then fly any normal flight (freestyle, cruise, etc.).`,
+      text: `Erase Blackbox data from ${storageName}, then rip a pack — any flight style works.`,
       buttonLabel: eraseLabel,
       action: 'erase_flash',
       guideTip: 'quick',

@@ -72,7 +72,7 @@ describe('TuningWorkflowModal', () => {
     expect(screen.queryByText('Flight 1: Filter Test Flight')).not.toBeInTheDocument();
 
     // Flash Tune content should be visible
-    expect(screen.getByText(/One flight covers both filters and PIDs/)).toBeInTheDocument();
+    expect(screen.getByText(/Rip a pack, land, tune/)).toBeInTheDocument();
   });
 
   it('switches back to Deep Tune tab', async () => {

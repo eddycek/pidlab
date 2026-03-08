@@ -22,8 +22,8 @@ export function StartTuningModal({ onStart, onCancel }: StartTuningModalProps) {
               <span className="start-tuning-option-badge">2 flights</span>
             </div>
             <p className="start-tuning-option-desc">
-              Two dedicated flights: hover for filters, stick snaps for PIDs. Best accuracy for
-              beginners or first-time tuning.
+              Separate filter and PID flights for maximum precision. Hover + throttle sweeps for
+              filters, then stick snaps for PIDs. Best for first tune or building a clean baseline.
             </p>
           </button>
 
@@ -36,8 +36,8 @@ export function StartTuningModal({ onStart, onCancel }: StartTuningModalProps) {
               <span className="start-tuning-option-badge start-tuning-badge-quick">1 flight</span>
             </div>
             <p className="start-tuning-option-desc">
-              Analyze filters and PIDs from any single flight. Faster iteration for experienced
-              pilots with an existing tune.
+              Rip a pack, land, tune. Analyzes filters and PIDs from any flight — freestyle, racing,
+              cruising. Perfect for iterating on an existing tune.
             </p>
           </button>
         </div>
