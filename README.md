@@ -165,7 +165,7 @@ Demo mode auto-connects to a virtual FC, creates a demo profile, and generates r
 
 All UI changes must include tests. Tests automatically run before commits. Coverage thresholds enforced: 80% lines/functions/statements, 75% branches.
 
-**Unit tests:** 2126 tests across 105 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation, E2E workflows.
+**Unit tests:** 2180 tests across 107 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation, E2E workflows.
 
 **Playwright E2E:** 23 tests across 4 spec files — launches real Electron app in demo mode, walks through complete tuning cycles (guided and quick tune).
 
