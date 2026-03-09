@@ -425,6 +425,33 @@ export interface PIDAnalysisResult {
   sliderDelta?: { masterMultiplierDelta: number; pdRatioDelta: number; summary: string };
   /** Extended feedforward analysis (leading-edge, jitter, RC rate) */
   feedforwardAnalysis?: FeedforwardAnalysis;
+  /** Per-axis transfer function metrics (only present for Wiener deconvolution analysis) */
+  transferFunctionMetrics?: {
+    roll: {
+      bandwidthHz: number;
+      phaseMarginDeg: number;
+      gainMarginDb: number;
+      overshootPercent: number;
+      settlingTimeMs: number;
+      riseTimeMs: number;
+    };
+    pitch: {
+      bandwidthHz: number;
+      phaseMarginDeg: number;
+      gainMarginDb: number;
+      overshootPercent: number;
+      settlingTimeMs: number;
+      riseTimeMs: number;
+    };
+    yaw: {
+      bandwidthHz: number;
+      phaseMarginDeg: number;
+      gainMarginDb: number;
+      overshootPercent: number;
+      settlingTimeMs: number;
+      riseTimeMs: number;
+    };
+  };
 }
 
 // ---- D-Term Effectiveness Types ----
