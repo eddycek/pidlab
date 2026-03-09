@@ -15,8 +15,32 @@ import {
   generatePIDDemoBBL,
   generateQuickDemoBBL,
   generateVerificationDemoBBL,
+  generatePoorQualityBBL,
+  generateMechanicalIssueBBL,
+  generateWindyFlightBBL,
 } from './DemoDataGenerator';
 import { logger } from '../utils/logger';
+
+/** BBL generator function signature */
+type BBLGenerator = (cycle: number) => Buffer;
+
+/**
+ * Stress-test scenario — overrides the default progressive generator
+ * for one specific flight type in the auto-flight sequence.
+ */
+export interface StressScenario {
+  /** Which flight type to override */
+  flightType: 'filter' | 'pid' | 'quick';
+  /** Custom BBL generator to use instead of the default */
+  generator: BBLGenerator;
+}
+
+/** Pre-built stress scenarios for common edge cases */
+export const STRESS_SCENARIOS = {
+  poorQuality: { flightType: 'filter' as const, generator: generatePoorQualityBBL },
+  mechanical: { flightType: 'filter' as const, generator: generateMechanicalIssueBBL },
+  windy: { flightType: 'filter' as const, generator: generateWindyFlightBBL },
+} satisfies Record<string, StressScenario>;
 
 /** Demo FC serial number — used for profile matching */
 export const DEMO_FC_SERIAL = 'DEMO-0001-0002-0003';
@@ -168,11 +192,28 @@ export class MockMSPClient extends EventEmitter {
   _tuningCycle = 0;
   /** Timer handle for auto-flight scheduling (for cleanup) */
   private _autoFlightTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Per-cycle stress scenario overrides.
+   * Key = cycle number, value = generator to use instead of the default.
+   * Only applies to the matching flight type (filter/pid/quick).
+   */
+  private _stressSchedule = new Map<number, StressScenario>();
 
   constructor() {
     super();
     this.connection = new MockMSPConnection();
     logger.info('[DEMO] MockMSPClient created — demo mode active');
+
+    // Auto-configure stress schedule when DEMO_STRESS env var is set
+    if (process.env.DEMO_STRESS === 'true') {
+      this.setStressSchedule([
+        [0, STRESS_SCENARIOS.poorQuality],
+        [1, STRESS_SCENARIOS.windy],
+        [2, STRESS_SCENARIOS.mechanical],
+        // Cycles 3-4: normal progressive (no override) — shows recovery
+      ]);
+      logger.info('[DEMO] Stress mode enabled via env var');
+    }
   }
 
   // ── Public state accessors ──────────────────────────────────────────
@@ -245,6 +286,7 @@ export class MockMSPClient extends EventEmitter {
     this.connection.appliedSettings.clear();
     this._flashHasData = false;
     this._demoBBLData = null;
+    this._stressSchedule.clear();
     logger.info('[DEMO] Demo state reset — starting from cycle 0');
   }
 
@@ -271,6 +313,21 @@ export class MockMSPClient extends EventEmitter {
     this._nextFlightType = 'quick';
     this._lastSessionType = 'quick';
     logger.info('[DEMO] Quick tune mode set — next flight: quick');
+  }
+
+  /**
+   * Configure stress-test scenario overrides per cycle.
+   * When a cycle matches, the stress generator is used instead of the default.
+   *
+   * Example: `setStressSchedule([[0, STRESS_SCENARIOS.poorQuality], [2, STRESS_SCENARIOS.mechanical]])`
+   * → Cycle 0 filter flight uses poor quality BBL, cycle 2 uses mechanical issue BBL.
+   */
+  setStressSchedule(schedule: Array<[number, StressScenario]>): void {
+    this._stressSchedule.clear();
+    for (const [cycle, scenario] of schedule) {
+      this._stressSchedule.set(cycle, scenario);
+    }
+    logger.info(`[DEMO] Stress schedule configured: ${schedule.length} overrides`);
   }
 
   // ── MSPClient interface implementation ──────────────────────────────
@@ -528,13 +585,20 @@ export class MockMSPClient extends EventEmitter {
       logger.info(`[DEMO] Auto-flight complete (${this._nextFlightType} cycle ${c})`);
       this._flashHasData = true;
 
-      const generators: Record<typeof this._nextFlightType, (cycle: number) => Buffer> = {
-        filter: generateFilterDemoBBL,
-        pid: generatePIDDemoBBL,
-        quick: generateQuickDemoBBL,
-        verification: generateVerificationDemoBBL,
-      };
-      this._demoBBLData = generators[this._nextFlightType](c);
+      // Check if stress schedule overrides this cycle + flight type
+      const stressOverride = this._stressSchedule.get(c);
+      if (stressOverride && stressOverride.flightType === this._nextFlightType) {
+        logger.info(`[DEMO] Using stress override for cycle ${c} (${stressOverride.flightType})`);
+        this._demoBBLData = stressOverride.generator(c);
+      } else {
+        const generators: Record<typeof this._nextFlightType, (cycle: number) => Buffer> = {
+          filter: generateFilterDemoBBL,
+          pid: generatePIDDemoBBL,
+          quick: generateQuickDemoBBL,
+          verification: generateVerificationDemoBBL,
+        };
+        this._demoBBLData = generators[this._nextFlightType](c);
+      }
 
       const nextType: Record<string, typeof this._nextFlightType> = {
         filter: 'pid',
