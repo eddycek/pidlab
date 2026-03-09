@@ -1,17 +1,17 @@
 # PIDlab
 
-**The first open-source desktop app that auto-tunes Betaflight PID and filter settings from Blackbox data.**
+**Data-driven Betaflight autotuning. Fly → Analyze → Apply.**
 
-Most FPV pilots tune their quads by hand — tweaking PID numbers, test flying, staring at Blackbox graphs, and repeating. It takes dozens of flights, deep BF knowledge, and a lot of patience. Tools like PIDtoolbox show you the data but don't tell you what to change. PIDlab closes that gap: it reads your Blackbox log, runs signal processing (FFT noise analysis, step response detection, Wiener deconvolution), and produces concrete Betaflight CLI commands — with plain-English explanations — that you apply with one click.
+PIDlab reads your Blackbox log, runs signal processing (FFT noise analysis, step response measurement, Wiener deconvolution), and computes optimal filter cutoffs and PID values from the measured data — not from presets or guesswork. Every recommendation is derived from your quad's actual flight characteristics: noise spectrum, step response dynamics, and frequency-domain transfer function. The result is concrete Betaflight CLI commands — with plain-English explanations — that you apply with one click.
 
 **What makes it different:**
-- **Fully automated recommendations** — not just graphs, but actual filter cutoffs and PID values ready to flash
+- **Data-driven recommendations** — not just graphs, but computed filter cutoffs and PID values derived from measured flight data, ready to flash
 - **Two tuning modes** — Deep Tune (2 dedicated flights, direct step response measurement) or Flash Tune (any single flight, Wiener deconvolution à la [Plasmatree](https://github.com/Plasmatree/PID-Analyzer))
 - **Convergent by design** — re-analyzing the same log always produces the same result, no recommendation drift
 - **Safety-first** — every apply creates an automatic rollback snapshot, all values clamped to proven safe bounds
 - **Multi-quad profiles** — auto-detects each FC by serial number, stores configs and tuning history per quad
 - **Flight style adaptation** — Smooth (cinematic), Balanced (freestyle), Aggressive (racing) thresholds
-- **24 analysis modules** — FFT, step response, Wiener deconvolution, Bode plots, prop wash detection, D-term effectiveness, cross-axis coupling, throttle spectrograms, per-band transfer function, group delay estimation, feedforward analysis, slider mapping, dynamic lowpass, Bayesian PID optimizer, mechanical health, wind disturbance
+- **25 analysis modules** — FFT, step response, Wiener deconvolution, Bode plots, prop wash detection, D-term effectiveness, cross-axis coupling, throttle spectrograms, per-band transfer function, group delay estimation, feedforward analysis, slider mapping, dynamic lowpass, Bayesian PID optimizer, mechanical health, wind disturbance
 - **Works offline** — demo mode with simulated FC for testing without hardware
 
 **How it works:** Connect FC via USB → Erase flash → Fly → Download log → PIDlab analyzes and applies optimized settings → Done.
@@ -249,6 +249,7 @@ npm run test:e2e:ui                  # Build + Playwright UI
 npm run demo:generate-history        # Generate 5 mixed tuning sessions (~2 min)
 npm run demo:generate-history:deep   # Generate 5 Deep Tune sessions
 npm run demo:generate-history:flash  # Generate 5 Flash Tune sessions
+npm run demo:generate-history:stress # Stress test (edge cases, poor data quality)
 
 # Code quality
 npm run lint                         # ESLint check
@@ -267,7 +268,7 @@ All UI changes must include tests. Tests automatically run before commits. Cover
 
 **Unit tests:** 2331 tests across 114 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation.
 
-**Playwright E2E:** 25 tests across 4 spec files — launches real Electron app in demo mode, walks through complete tuning cycles (Deep Tune and Flash Tune).
+**Playwright E2E:** 26 tests across 5 spec files — launches real Electron app in demo mode, walks through complete tuning cycles (Deep Tune, Flash Tune, and stress-test edge cases).
 
 See [TESTING.md](./TESTING.md) for complete testing guidelines, test inventory, and best practices.
 
@@ -308,7 +309,7 @@ pidlab/
 │   │   │   ├── commands.ts      # MSP command definitions
 │   │   │   └── types.ts         # MSP type definitions
 │   │   ├── blackbox/            # BBL binary log parser (6 modules, 245 tests)
-│   │   ├── analysis/            # Signal processing & tuning engine (24 modules)
+│   │   ├── analysis/            # Signal processing & tuning engine (25 modules)
 │   │   │   ├── FFTCompute.ts              # Welch's method, Hanning window
 │   │   │   ├── SegmentSelector.ts         # Hover/sweep segment detection
 │   │   │   ├── NoiseAnalyzer.ts           # Peak detection, noise classification
@@ -432,7 +433,8 @@ pidlab/
 │   ├── demo-smoke.spec.ts             # 4 smoke tests
 │   ├── demo-tuning-cycle.spec.ts      # 11 Deep Tune cycle tests
 │   ├── demo-quick-tune-cycle.spec.ts  # 7 Flash Tune cycle tests
-│   └── demo-generate-history.spec.ts  # Mixed history generator
+│   ├── demo-generate-history.spec.ts  # Mixed history generator
+│   └── demo-generate-stress.spec.ts   # Stress test (edge cases)
 │
 └── docs/                        # Design documents (see docs/README.md for index)
     ├── README.md                          # Document index
@@ -625,14 +627,22 @@ Subdirectories:
 
 ## How Autotuning Works
 
-PIDlab automates the two core aspects of FPV quad tuning: **filter tuning** (reducing noise) and **PID tuning** (improving flight response). Both use Blackbox log analysis to produce data-driven recommendations. Deep Tune runs filter analysis on the first flight and PID analysis (step response) on the second flight. Flash Tune runs both filter analysis and transfer function PID analysis **in parallel** from a single flight.
+This section documents the signal processing and decision logic behind PIDlab's recommendations. All recommendations are **data-driven** — computed from measured flight characteristics (noise spectrum, step response, transfer function), not from presets or lookup tables. The system is **convergent by design**: re-analyzing the same Blackbox log always produces identical recommendations regardless of current FC settings.
+
+| | Deep Tune | Flash Tune |
+|---|---|---|
+| **Flights** | 2 dedicated flights | 1 normal flight |
+| **Filter data** | Dedicated hover + throttle sweeps | Same flight (hover segments extracted or entire-flight fallback) |
+| **PID data** | Step response (stick snaps) | Transfer function (Wiener deconvolution from any flying) |
+| **Filter + PID** | Sequential (flight 1 → filters, flight 2 → PIDs) | Parallel (`Promise.all` — both analyses from same log) |
+| **Post-processing** | Shared unified pipeline | Shared unified pipeline |
 
 ### Filter Tuning (FFT Analysis)
 
-The filter tuning pipeline analyzes gyro noise to determine optimal lowpass filter cutoff frequencies. The analysis code (`FilterAnalyzer.analyze()`) is identical for both tuning modes — what differs is the **input flight data** and how that affects segment selection:
+Analyzes gyro noise to compute optimal lowpass cutoffs. The analysis code (`FilterAnalyzer.analyze()`) is identical for both modes — only the input flight data differs:
 
-- **Deep Tune** — Runs on a **dedicated filter flight** (phase `filter_flight_pending`). The pilot is guided to fly gentle hovers with throttle sweeps (~30 seconds). This produces ideal data for `SegmentSelector`: plenty of hover segments and clean throttle sweeps across the RPM range.
-- **Flash Tune** — Runs on the **same flight** used for PID/TF analysis (phase `quick_flight_pending`). The pilot flies normally (freestyle, race, cruise — no special maneuvers). `SegmentSelector` extracts any hover/sweep segments it can find from the normal flying. If none are found (e.g. aggressive acro with no hover), the pipeline falls back to analyzing the entire flight with an accuracy warning. Filter and transfer function analyses run **in parallel** (`Promise.all` in `useTuningWizard`).
+- **Deep Tune** — Dedicated filter flight (hover + throttle sweeps, ~30s). `SegmentSelector` finds clean hover and sweep segments easily.
+- **Flash Tune** — Same flight as PID analysis. `SegmentSelector` extracts any hover/sweep segments from normal flying. If none found (aggressive acro), falls back to entire-flight analysis with accuracy warning and lower data quality score.
 
 **Core pipeline:** `SegmentSelector` → `FFTCompute` → `NoiseAnalyzer` → `FilterRecommender`
 **Supplementary:** `DataQualityScorer`, `ThrottleSpectrogramAnalyzer`, `GroupDelayEstimator`, `WindDisturbanceDetector`, `MechanicalHealthChecker`, `DynamicLowpassRecommender`
@@ -710,13 +720,20 @@ The -10 dB and -70 dB anchor points are calibrated from real Blackbox logs acros
 
 ### PID Tuning (Unified Pipeline)
 
-PID tuning uses a unified pipeline that supports two extraction methods feeding into shared post-processing. Deep Tune detects sharp stick inputs and measures direct step response. Flash Tune estimates the transfer function via Wiener deconvolution and derives synthetic step response metrics. Both methods produce the same `AxisStepProfile` structure, which flows into the same recommendation engine.
+Two extraction methods feed into the same recommendation engine. Both produce an `AxisStepProfile` per axis (roll, pitch, yaw) with identical metrics — the difference is how those metrics are measured.
 
-**Unified Pipeline:** Mode-specific extraction → `PIDRecommender` → Post-processing (D-term gating, prop wash, FF energy, data quality, Bayesian, sliders)
-
-**Deep Tune extraction:** `StepDetector` → `StepMetrics` → profiles + `CrossAxisDetector` + `FeedforwardAnalyzer` (energy-based)
-**Flash Tune extraction:** `TransferFunctionEstimator` (Wiener deconvolution) → synthetic metrics + `ThrottleTFAnalyzer`
-**Shared analyses (both modes):** `PropWashDetector`, `DTermAnalyzer`, `DataQualityScorer`, `FeedforwardAnalyzer` (header-based), `SliderMapper`, `BayesianPIDOptimizer`
+```
+Deep Tune:  StepDetector → StepMetrics → profiles + CrossAxisDetector + FeedforwardAnalyzer
+Flash Tune: TransferFunctionEstimator (Wiener deconvolution) → synthetic profiles + ThrottleTFAnalyzer
+                ↓                                                       ↓
+                └──────────────── analyzePIDCore() ─────────────────────┘
+                                      ↓
+              PropWashDetector + DTermAnalyzer + DataQualityScorer + FeedforwardAnalyzer (header)
+                                      ↓
+              PIDRecommender → Post-processing (D-term gating, prop wash, damping ratio, quality)
+                                      ↓
+              SliderMapper + BayesianPIDOptimizer (when ≥3 sessions)
+```
 
 #### Deep Tune: Step Detection
 
@@ -752,7 +769,7 @@ Flash Tune uses Wiener deconvolution to estimate the closed-loop transfer functi
 
 #### Shared Recommendation Engine
 
-The recommendation engine applies rule-based tuning logic anchored to the PID values from the Blackbox log header (the PIDs that were active during the flight). This anchoring makes recommendations **convergent** — applying them and re-analyzing the same log produces no further changes. Both Deep Tune and Flash Tune feed into the same `recommendPID()` call — step-response rules and TF rules run together, with deduplication preventing conflicting recommendations on the same setting.
+All recommendations are anchored to the PID values from the Blackbox log header (the PIDs active during the flight). This makes recommendations **convergent** — applying them and re-analyzing the same log produces no further changes. Step-response rules and TF rules run together in a single `recommendPID()` call, with deduplication preventing conflicting recommendations on the same setting.
 
 **Flight Style Thresholds:**
 
@@ -832,26 +849,7 @@ Base confidence is then adjusted by the same post-processing as step-response ru
 - **D-term effectiveness gating** — When D-term effectiveness data is available (from `DTermAnalyzer`), D recommendations are gated in three tiers: ratio > 0.7 (dCritical) → confidence boosted to high; ratio 0.3–0.7 → allowed with "monitor motor temps" advisory; ratio < 0.3 → D increase downgraded to low confidence with "improve filters first" redirect. This prevents the common failure mode of blindly increasing D when the real problem is noise from inadequate filtering.
 - **Prop wash integration** — When `PropWashDetector` finds severe oscillation (≥ 5× baseline energy in the 20–90 Hz band), the recommender either boosts confidence on an existing D-increase for the worst axis, or generates a new D +5 recommendation if none exists. Events below the moderate threshold (< 2×) or with fewer than 3 detections are ignored to avoid false positives. This directly connects the pilot's most common complaint ("my quad shakes when I descend") to an actionable PID change.
 
-### Interactive Analysis Charts
-
-Analysis results are visualized with interactive SVG charts (Recharts):
-
-- **Spectrum Chart** — FFT noise spectrum per axis (roll/pitch/yaw), with noise floor reference lines and peak frequency markers. Helps users visually understand where noise lives in the frequency domain.
-- **Step Response Chart** — Overlaid setpoint vs. gyro traces for individual steps, with prev/next navigation and a metrics overlay (overshoot %, rise time, settling time, latency). Shows exactly how the quad tracked each stick input.
-- **Bode Plot** — Transfer function magnitude (dB) and phase (degrees) vs frequency. Shows bandwidth, gain margin, and phase margin from Wiener deconvolution. Available in Flash Tune wizard and AnalysisOverview.
-- **Noise Comparison Chart** — Before/after spectrum overlay with per-axis dB delta indicators. Shows tuning improvement on completion.
-- **Quality Trend Chart** — Flight quality score progression across tuning sessions. Minimum 2 data points to render.
-- **Axis Tabs** — Shared roll/pitch/yaw/all tab selector for all chart types.
-
-Charts are integrated directly into the tuning wizard steps (filter analysis, PID analysis, quick analysis) as collapsible sections, open by default.
-
-### Safety & Rollback
-- All tuning changes create an automatic safety snapshot before applying
-- One-click rollback to any previous configuration via CLI command replay
-- Safety bounds prevent extreme PID and filter values
-- Plain-English explanations accompany every recommended change
-
-### Tuning Methodology Sources
+### Methodology Sources
 
 The autotuning rules and thresholds are based on established FPV community practices:
 
@@ -871,10 +869,9 @@ The autotuning rules and thresholds are based on established FPV community pract
 - MSP v1 only (v2 support planned)
 - Requires test flights in a safe environment
 - Huffman-compressed Blackbox data not yet supported (rare, BF 4.1+ feature)
-- Feedforward: detection, FF-aware PID recommendations, and CLI apply implemented; direct FF parameter write via MSP not yet supported
-- Bayesian PID optimizer: framework complete, full pipeline integration pending (currently returns suggestions, not auto-applied)
-- Throttle spectrogram and per-band TF: analysis modules complete, UI visualization pending
-- Mechanical health checker and wind disturbance detector: analysis modules complete, UI integration pending
+- Feedforward parameter write via MSP not yet supported (FF detection, FF-aware PID recommendations, and CLI apply all work; only direct MSP write of `feedforward_smooth_factor`/`feedforward_jitter_factor` is missing)
+- Bayesian PID optimizer: framework complete (GP surrogate, Expected Improvement), full auto-apply pipeline integration pending (currently returns suggestions alongside rule-based recommendations)
+- Throttle spectrogram: per-throttle-bin FFT data computed and used for dynamic lowpass recommendations; dedicated spectrogram chart visualization not yet in UI
 
 ## Development Roadmap
 
@@ -885,14 +882,10 @@ The autotuning rules and thresholds are based on established FPV community pract
 - **Phase 4**: ✅ Stateful Deep Tune workflow with smart reconnect, verification flight, tuning history
 - **Phase 5**: ⬜ Complete manual testing & UX polish (real hardware validation)
 - **Phase 6**: ✅ CI/CD & cross-platform releases (macOS/Windows/Linux installers)
-- **Phase 7a**: ✅ Playwright E2E tests (demo mode, 25 tests)
+- **Phase 7a**: ✅ Playwright E2E tests (demo mode, 26 tests across 5 spec files)
 - **Phase 7b**: ⬜ E2E tests on real FC in CI pipeline
 
 See [SPEC.md](./SPEC.md) for detailed requirements and phase tracking.
-
-## License
-
-MIT
 
 ## Acknowledgments
 
@@ -903,3 +896,7 @@ MIT
 ## Contributing
 
 Contributions welcome! Please open an issue first to discuss changes.
+
+## License
+
+MIT
