@@ -16,7 +16,7 @@ test.setTimeout(300_000);
 let demo: DemoApp;
 
 test.beforeAll(async () => {
-  demo = await launchDemoApp({ persistToDevData: true });
+  demo = await launchDemoApp({ persistToDevData: true, stressMode: true });
   await demo.waitForDemoReady();
 });
 

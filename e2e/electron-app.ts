@@ -39,6 +39,12 @@ export interface LaunchOptions {
    * data persists across sessions.
    */
   persistToDevData?: boolean;
+  /**
+   * When true, enables stress-test mode in MockMSPClient.
+   * Cycles 0-2 use stress BBL generators (poor quality, windy, mechanical),
+   * cycles 3-4 use normal progressive generators to show recovery.
+   */
+  stressMode?: boolean;
 }
 
 /** Path to the shared demo userData dir (used by dev:demo and generate-history) */
@@ -53,6 +59,7 @@ export const DEMO_USER_DATA_DIR = '.demo-userdata';
 export async function launchDemoApp(options?: LaunchOptions): Promise<DemoApp> {
   const appPath = path.resolve(__dirname, '..');
   const persistToDevData = options?.persistToDevData ?? false;
+  const stressMode = options?.stressMode ?? false;
 
   const userDataDir = path.join(
     appPath,
@@ -72,6 +79,7 @@ export async function launchDemoApp(options?: LaunchOptions): Promise<DemoApp> {
       ...process.env,
       DEMO_MODE: 'true',
       E2E_USER_DATA_DIR: userDataDir,
+      ...(stressMode ? { DEMO_STRESS: 'true' } : {}),
     },
   });
 
