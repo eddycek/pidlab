@@ -6,7 +6,11 @@ import type {
   PIDMetricsSummary,
   TransferFunctionMetricsSummary,
 } from '@shared/types/tuning-history.types';
-import { extractFilterMetrics, extractPIDMetrics } from '@shared/utils/metricsExtract';
+import {
+  extractFilterMetrics,
+  extractPIDMetrics,
+  extractTransferFunctionMetrics,
+} from '@shared/utils/metricsExtract';
 import { TUNING_MODE } from '@shared/constants';
 import { WizardProgress } from './WizardProgress';
 import { TestFlightGuideStep } from './TestFlightGuideStep';
@@ -92,8 +96,10 @@ export function TuningWizard({ logId, mode = 'full', onExit, onApplyComplete }: 
               : null;
         const pidMetrics = pidMetricsSource ? extractPIDMetrics(pidMetricsSource) : undefined;
 
-        // TODO: Extract full TF metrics once TransferFunctionEstimator exposes them on PIDAnalysisResult
-        const transferFunctionMetrics = undefined;
+        const transferFunctionMetrics =
+          mode === TUNING_MODE.FLASH && wizard.tfResult?.transferFunctionMetrics
+            ? extractTransferFunctionMetrics(wizard.tfResult.transferFunctionMetrics)
+            : undefined;
 
         onApplyComplete({
           filterChanges,

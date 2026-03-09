@@ -383,6 +383,7 @@ export async function analyzeTransferFunction(
     analysisMethod: 'wiener_deconvolution',
     ...(warnings.length > 0 ? { warnings } : {}),
     transferFunction: tfResult,
+    transferFunctionMetrics: tfResult.metrics,
     sliderPosition: mapToSliders(currentPIDs),
     ...(recommendations.length > 0
       ? {
