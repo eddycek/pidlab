@@ -1,5 +1,5 @@
 import { app, BrowserWindow } from 'electron';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { createWindow, getMainWindow } from './window';
 import { MSPClient } from './msp/MSPClient';
 import { SnapshotManager } from './storage/SnapshotManager';
@@ -30,9 +30,9 @@ import { generateFilterDemoBBL } from './demo/DemoDataGenerator';
 /** Whether the app is running in demo mode (DEMO_MODE env var or --demo flag) */
 const isDemoMode = process.env.DEMO_MODE === 'true' || process.argv.includes('--demo');
 
-// Allow overriding userData path (used by E2E tests for isolation)
+// Allow overriding userData path (used by E2E tests and dev:demo for isolation)
 if (process.env.E2E_USER_DATA_DIR) {
-  app.setPath('userData', process.env.E2E_USER_DATA_DIR);
+  app.setPath('userData', resolve(process.env.E2E_USER_DATA_DIR));
 }
 
 let mspClient: MSPClient | MockMSPClient;

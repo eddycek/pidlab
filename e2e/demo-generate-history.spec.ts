@@ -15,7 +15,8 @@ test.setTimeout(300_000);
 let demo: DemoApp;
 
 test.beforeAll(async () => {
-  demo = await launchDemoApp();
+  // Persist to dev userData so data is available via `npm run dev:demo`
+  demo = await launchDemoApp({ persistToDevData: true });
   await demo.waitForDemoReady();
 });
 
