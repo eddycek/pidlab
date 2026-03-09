@@ -31,17 +31,35 @@ export interface DemoApp {
   close(): Promise<void>;
 }
 
+export interface LaunchOptions {
+  /**
+   * When true, use `.demo-userdata/` (shared with `dev:demo`) instead of
+   * `.e2e-userdata/`. Both directories are wiped on launch for clean state,
+   * but `.demo-userdata/` is also used by `npm run dev:demo` so generated
+   * data persists across sessions.
+   */
+  persistToDevData?: boolean;
+}
+
+/** Path to the shared demo userData dir (used by dev:demo and generate-history) */
+export const DEMO_USER_DATA_DIR = '.demo-userdata';
+
 /**
  * Launch the Electron app in demo mode.
  *
  * Requires the app to be built first (`npm run build:e2e`).
  * Returns a DemoApp instance with convenience helpers.
  */
-export async function launchDemoApp(): Promise<DemoApp> {
+export async function launchDemoApp(options?: LaunchOptions): Promise<DemoApp> {
   const appPath = path.resolve(__dirname, '..');
-  const userDataDir = path.join(appPath, '.e2e-userdata');
+  const persistToDevData = options?.persistToDevData ?? false;
 
-  // Wipe user data directory to ensure clean state for each test file
+  const userDataDir = path.join(
+    appPath,
+    persistToDevData ? DEMO_USER_DATA_DIR : '.e2e-userdata'
+  );
+
+  // Wipe for clean state
   fs.rmSync(userDataDir, { recursive: true, force: true });
   fs.mkdirSync(userDataDir, { recursive: true });
 
@@ -53,7 +71,6 @@ export async function launchDemoApp(): Promise<DemoApp> {
     env: {
       ...process.env,
       DEMO_MODE: 'true',
-      // Use a separate userData dir for E2E to avoid polluting dev data
       E2E_USER_DATA_DIR: userDataDir,
     },
   });
