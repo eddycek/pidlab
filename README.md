@@ -75,13 +75,20 @@ See [SPEC.md](./SPEC.md) for detailed phase tracking and test counts.
 - FFT noise analysis (Welch's method, Hanning window, peak detection)
 - Noise source classification (frame resonance, motor harmonics, electrical)
 - Noise-floor-based filter cutoff targeting with linear interpolation
+- Medium noise handling: 20 Hz deadzone with low-confidence recommendations (avoids recommendation churn in the -50 to -30 dB range)
+- Notch-aware resonance filtering: peaks within dyn_notch range are excluded from LPF recommendations (avoids redundant lowpass when notch already handles the peak)
 - RPM filter awareness: widens safety bounds (gyro LPF1 up to 500 Hz), optimizes dynamic notch (count/Q), diagnoses motor harmonic anomalies
+- Conditional dynamic notch Q: keeps Q=300 (wide) when strong frame resonance detected, Q=500 (narrow) otherwise
+- LPF2 recommendations: disable when RPM active + clean signal (< -45 dB), enable when noisy (≥ -30 dB) without RPM
 - Propwash floor protection (never pushes gyro LPF1 below 100 Hz)
 - Group delay estimation for filter chain latency visualization
 
 ### Automated PID Tuning
 - Step response analysis (rise time, overshoot, settling time, latency, ringing)
-- I-term rules: steady-state error detection with I increase/decrease recommendations
+- Quad-size-aware PID safety bounds: per-size P/D/I min/max/typical for 9 drone sizes (1"–10"), prevents dangerous values on micros and allows higher D on large quads
+- Severity-scaled sluggish P increase: P+5 for mild, P+10 for very sluggish (rise time > 2× threshold)
+- P-too-high informational warning: alerts when P exceeds typical value for quad size (1.3× pTypical)
+- I-term rules: steady-state error detection with I increase/decrease recommendations (I min = 40)
 - Damping ratio validation: D/P ratio check (0.45–0.85 range) with automatic correction
 - D-term effectiveness analysis: measures D dampening vs noise amplification ratio
 - Prop wash detection: throttle-down event analysis with severity scoring per axis
@@ -100,7 +107,8 @@ Inspired by [Plasmatree PID-Analyzer](https://github.com/Plasmatree/PID-Analyzer
 - Synthetic step response via IFFT → cumulative sum (impulse → step integration)
 - Bode plot visualization (magnitude + phase vs frequency)
 - Classical stability metrics: bandwidth (-3 dB), phase margin (at 0 dB gain crossover), gain margin (at -180° phase crossover)
-- Frequency-domain PID rules: low phase margin → D increase, low bandwidth → P increase
+- Frequency-domain PID rules: low phase margin → D increase, low bandwidth → P increase (per-style thresholds: smooth=30, balanced=40, aggressive=60 Hz)
+- Per-axis coherence warnings: flags unreliable transfer function estimates when coherence ≤ 0.3
 - Unified pipeline with Deep Tune — same recommendation rules (D-term gating, prop wash, I-term) applied to both modes; confidence determined by data quality and gating logic, not blanket caps
 - DC gain analysis for I-term: detects poor steady-state tracking from transfer function (< -1 dB → I increase)
 - Per-band transfer function analysis across throttle levels — detects TPA tuning problems
