@@ -188,4 +188,56 @@ describe('recommendDynamicLowpass', () => {
     expect(recs[0].recommendedValue).toBe(120); // 200 * 0.6
     expect(recs[1].recommendedValue).toBe(280); // 200 * 1.4
   });
+
+  it('should include D-term dynamic lowpass when dterm LPF1 is provided', () => {
+    const analysis = {
+      recommended: true,
+      noiseIncreaseDeltaDb: 10,
+      throttleNoiseCorrelation: 0.9,
+      bandsAnalyzed: 5,
+      summary: 'Dynamic lowpass recommended.',
+    };
+    const recs = recommendDynamicLowpass(analysis, 250, 150);
+
+    expect(recs).toHaveLength(4);
+    // Gyro recs
+    expect(recs[0].setting).toBe('gyro_lpf1_dyn_min_hz');
+    expect(recs[0].recommendedValue).toBe(150); // 250 * 0.6
+    expect(recs[1].setting).toBe('gyro_lpf1_dyn_max_hz');
+    expect(recs[1].recommendedValue).toBe(350); // 250 * 1.4
+    // D-term recs
+    expect(recs[2].setting).toBe('dterm_lpf1_dyn_min_hz');
+    expect(recs[2].recommendedValue).toBe(90); // 150 * 0.6
+    expect(recs[3].setting).toBe('dterm_lpf1_dyn_max_hz');
+    expect(recs[3].recommendedValue).toBe(210); // 150 * 1.4
+  });
+
+  it('should skip D-term dynamic lowpass when dterm LPF1 is 0', () => {
+    const analysis = {
+      recommended: true,
+      noiseIncreaseDeltaDb: 10,
+      throttleNoiseCorrelation: 0.9,
+      bandsAnalyzed: 5,
+      summary: 'Dynamic lowpass recommended.',
+    };
+    const recs = recommendDynamicLowpass(analysis, 250, 0);
+
+    expect(recs).toHaveLength(2);
+    expect(recs.every((r) => r.setting.startsWith('gyro_'))).toBe(true);
+  });
+
+  it('should only generate D-term recs when gyro LPF1 is disabled', () => {
+    const analysis = {
+      recommended: true,
+      noiseIncreaseDeltaDb: 10,
+      throttleNoiseCorrelation: 0.9,
+      bandsAnalyzed: 5,
+      summary: 'Dynamic lowpass recommended.',
+    };
+    const recs = recommendDynamicLowpass(analysis, 0, 150);
+
+    expect(recs).toHaveLength(2);
+    expect(recs[0].setting).toBe('dterm_lpf1_dyn_min_hz');
+    expect(recs[1].setting).toBe('dterm_lpf1_dyn_max_hz');
+  });
 });

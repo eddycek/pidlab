@@ -98,42 +98,81 @@ export function analyzeDynamicLowpass(
 /**
  * Generate filter recommendations for dynamic lowpass if appropriate.
  *
+ * Recommends both gyro LPF1 and D-term LPF1 dynamic lowpass when throttle-dependent
+ * noise is detected. D-term benefits even more from dynamic filtering because D amplifies
+ * high-frequency noise — ramping the cutoff with throttle reduces motor heating at high
+ * throttle while preserving stick feel at cruise.
+ *
  * @param analysis - Result from analyzeDynamicLowpass
  * @param currentGyroLpf1 - Current static gyro LPF1 cutoff (Hz)
+ * @param currentDtermLpf1 - Current static D-term LPF1 cutoff (Hz), defaults to 0 (skip)
  * @returns Array of recommendations (may be empty)
  */
 export function recommendDynamicLowpass(
   analysis: DynamicLowpassAnalysis | undefined,
-  currentGyroLpf1: number
+  currentGyroLpf1: number,
+  currentDtermLpf1: number = 0
 ): FilterRecommendation[] {
   if (!analysis || !analysis.recommended) return [];
 
-  // Only recommend if there's a static lowpass to replace
-  if (currentGyroLpf1 === 0) return [];
+  const recs: FilterRecommendation[] = [];
+  const deltaNote = `${analysis.noiseIncreaseDeltaDb.toFixed(0)} dB`;
 
-  return [
-    {
-      setting: 'gyro_lpf1_dyn_min_hz',
-      currentValue: 0,
-      recommendedValue: Math.round(currentGyroLpf1 * 0.6),
-      reason:
-        `Noise increases significantly with throttle (${analysis.noiseIncreaseDeltaDb.toFixed(0)} dB from low to high). ` +
-        'Enabling dynamic lowpass ramps the filter cutoff with throttle — lower cutoff at high throttle for more filtering, ' +
-        'higher cutoff at low throttle for less latency. This gives you the best of both worlds.',
-      impact: 'both',
-      confidence: 'medium',
-    },
-    {
-      setting: 'gyro_lpf1_dyn_max_hz',
-      currentValue: 0,
-      recommendedValue: Math.round(currentGyroLpf1 * 1.4),
-      reason:
-        'Sets the upper limit of the dynamic lowpass range. At low throttle the filter operates near this value, ' +
-        'giving minimal latency when noise is naturally lower.',
-      impact: 'latency',
-      confidence: 'medium',
-    },
-  ];
+  // Gyro LPF1 dynamic lowpass
+  if (currentGyroLpf1 > 0) {
+    recs.push(
+      {
+        setting: 'gyro_lpf1_dyn_min_hz',
+        currentValue: 0,
+        recommendedValue: Math.round(currentGyroLpf1 * 0.6),
+        reason:
+          `Noise increases significantly with throttle (${deltaNote} from low to high). ` +
+          'Enabling dynamic lowpass ramps the filter cutoff with throttle — lower cutoff at high throttle for more filtering, ' +
+          'higher cutoff at low throttle for less latency. This gives you the best of both worlds.',
+        impact: 'both',
+        confidence: 'medium',
+      },
+      {
+        setting: 'gyro_lpf1_dyn_max_hz',
+        currentValue: 0,
+        recommendedValue: Math.round(currentGyroLpf1 * 1.4),
+        reason:
+          'Sets the upper limit of the dynamic lowpass range. At low throttle the filter operates near this value, ' +
+          'giving minimal latency when noise is naturally lower.',
+        impact: 'latency',
+        confidence: 'medium',
+      }
+    );
+  }
+
+  // D-term LPF1 dynamic lowpass — D amplifies noise, so dynamic filtering helps even more
+  if (currentDtermLpf1 > 0) {
+    recs.push(
+      {
+        setting: 'dterm_lpf1_dyn_min_hz',
+        currentValue: 0,
+        recommendedValue: Math.round(currentDtermLpf1 * 0.6),
+        reason:
+          `Throttle-dependent noise (${deltaNote} increase) also affects the D-term. ` +
+          'Enabling dynamic D-term lowpass reduces motor heating at high throttle while keeping ' +
+          'sharp stick response at cruise speeds.',
+        impact: 'both',
+        confidence: 'medium',
+      },
+      {
+        setting: 'dterm_lpf1_dyn_max_hz',
+        currentValue: 0,
+        recommendedValue: Math.round(currentDtermLpf1 * 1.4),
+        reason:
+          'Upper limit of the D-term dynamic lowpass range. At low throttle the filter uses this higher cutoff ' +
+          'for minimal latency in the D-term path.',
+        impact: 'latency',
+        confidence: 'medium',
+      }
+    );
+  }
+
+  return recs;
 }
 
 /**
