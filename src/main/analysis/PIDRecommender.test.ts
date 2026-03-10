@@ -1508,3 +1508,185 @@ describe('PIDRecommender', () => {
     });
   });
 });
+
+describe('quad-size-aware PID bounds', () => {
+  it('should clamp D to smaller max for tiny whoops (1")', () => {
+    // 1" quad: dMax=50. Extreme overshoot (100%) → D+15 from 40 = 55, clamped to 50
+    const profile = makeProfile({
+      meanOvershoot: 100,
+      meanRiseTimeMs: 30,
+      meanSettlingTimeMs: 300,
+    });
+    const pids: PIDConfiguration = {
+      roll: { P: 40, I: 60, D: 40 },
+      pitch: { P: 40, I: 60, D: 40 },
+      yaw: { P: 40, I: 60, D: 0 },
+    };
+    const recs = recommendPID(
+      profile,
+      emptyProfile(),
+      emptyProfile(),
+      pids,
+      undefined,
+      undefined,
+      'balanced',
+      undefined,
+      undefined,
+      undefined,
+      '1"'
+    );
+    const dRec = recs.find((r) => r.setting === 'pid_roll_d');
+    expect(dRec).toBeDefined();
+    expect(dRec!.recommendedValue).toBeLessThanOrEqual(50); // 1" dMax
+  });
+
+  it('should allow higher D for 7" long range (dMax=100)', () => {
+    // 7" quad: dMax=100. Moderate overshoot (20%) > balanced moderateOvershoot(15) → D+5
+    // With D=90, D+5=95 which is within 7" bounds (100) but would be capped at 80 on 5"
+    const profile = makeProfile({ meanOvershoot: 20, meanRiseTimeMs: 30, meanSettlingTimeMs: 200 });
+    const pids: PIDConfiguration = {
+      roll: { P: 50, I: 80, D: 90 },
+      pitch: { P: 50, I: 80, D: 90 },
+      yaw: { P: 50, I: 80, D: 0 },
+    };
+    const recs = recommendPID(
+      profile,
+      emptyProfile(),
+      emptyProfile(),
+      pids,
+      undefined,
+      undefined,
+      'balanced',
+      undefined,
+      undefined,
+      undefined,
+      '7"'
+    );
+    const dRec = recs.find((r) => r.setting === 'pid_roll_d');
+    expect(dRec).toBeDefined();
+    expect(dRec!.recommendedValue).toBe(95); // 90+5, within 7" dMax=100
+  });
+
+  it('should use default 5" bounds when droneSize is undefined', () => {
+    // Severe overshoot → D+15 from 75 = 90, clamped to 5" dMax=80
+    const profile = makeProfile({
+      meanOvershoot: 100,
+      meanRiseTimeMs: 30,
+      meanSettlingTimeMs: 300,
+    });
+    const pids: PIDConfiguration = {
+      roll: { P: 45, I: 80, D: 75 },
+      pitch: { P: 45, I: 80, D: 75 },
+      yaw: { P: 45, I: 80, D: 0 },
+    };
+    const recs = recommendPID(profile, emptyProfile(), emptyProfile(), pids);
+    const dRec = recs.find((r) => r.setting === 'pid_roll_d');
+    expect(dRec).toBeDefined();
+    expect(dRec!.recommendedValue).toBeLessThanOrEqual(80); // 5" dMax
+  });
+
+  it('should clamp I to minimum 40 (raised from 30)', () => {
+    // Low steady-state error + overshoot + slow settling → try to reduce I
+    const profile = makeProfile({
+      meanOvershoot: 20,
+      meanRiseTimeMs: 30,
+      meanSettlingTimeMs: 300,
+      meanSteadyStateError: 0.5,
+    });
+    const pids: PIDConfiguration = {
+      roll: { P: 45, I: 45, D: 30 },
+      pitch: { P: 45, I: 45, D: 30 },
+      yaw: { P: 45, I: 45, D: 0 },
+    };
+    const recs = recommendPID(profile, emptyProfile(), emptyProfile(), pids);
+    const iRec = recs.find((r) => r.setting === 'pid_roll_i');
+    if (iRec) {
+      expect(iRec.recommendedValue).toBeGreaterThanOrEqual(40); // New I_GAIN_MIN
+    }
+  });
+});
+
+describe('severity-scaled sluggish P increase', () => {
+  it('should increase P by 10 for very sluggish response (>2x threshold)', () => {
+    // balanced: sluggishRise=80ms. Rise time 200ms → severity 2.5 → P+10
+    const profile = makeProfile({ meanOvershoot: 3, meanRiseTimeMs: 200, meanSettlingTimeMs: 200 });
+    const recs = recommendPID(profile, emptyProfile(), emptyProfile(), DEFAULT_PIDS);
+    const pRec = recs.find((r) => r.setting === 'pid_roll_p');
+    expect(pRec).toBeDefined();
+    expect(pRec!.recommendedValue).toBe(DEFAULT_PIDS.roll.P + 10);
+  });
+
+  it('should increase P by 5 for moderately sluggish response (1-2x threshold)', () => {
+    // balanced: sluggishRise=80ms. Rise time 100ms → severity 1.25 → P+5
+    const profile = makeProfile({ meanOvershoot: 3, meanRiseTimeMs: 100, meanSettlingTimeMs: 200 });
+    const recs = recommendPID(profile, emptyProfile(), emptyProfile(), DEFAULT_PIDS);
+    const pRec = recs.find((r) => r.setting === 'pid_roll_p');
+    expect(pRec).toBeDefined();
+    expect(pRec!.recommendedValue).toBe(DEFAULT_PIDS.roll.P + 5);
+  });
+});
+
+describe('P-too-high informational warning', () => {
+  it('should warn when P is above typical for quad size (5" pTypical=48)', () => {
+    // P=70 on 5" quad (pTypical=48, threshold=48*1.3=62.4) → informational warning
+    const goodProfile = makeProfile({
+      meanOvershoot: 5,
+      meanRiseTimeMs: 30,
+      meanSettlingTimeMs: 150,
+    });
+    const highPPids: PIDConfiguration = {
+      roll: { P: 70, I: 80, D: 30 },
+      pitch: { P: 70, I: 80, D: 30 },
+      yaw: { P: 45, I: 80, D: 0 },
+    };
+    const recs = recommendPID(
+      goodProfile,
+      goodProfile,
+      emptyProfile(),
+      highPPids,
+      undefined,
+      undefined,
+      'balanced',
+      undefined,
+      undefined,
+      undefined,
+      '5"'
+    );
+    const pRec = recs.find(
+      (r) => r.setting === 'pid_roll_p' && r.reason.includes('higher than typical')
+    );
+    expect(pRec).toBeDefined();
+    expect(pRec!.confidence).toBe('low');
+    expect(pRec!.recommendedValue).toBe(70); // informational — same value
+  });
+
+  it('should NOT warn when P is within typical range', () => {
+    const goodProfile = makeProfile({
+      meanOvershoot: 5,
+      meanRiseTimeMs: 30,
+      meanSettlingTimeMs: 150,
+    });
+    const normalPPids: PIDConfiguration = {
+      roll: { P: 50, I: 80, D: 30 },
+      pitch: { P: 50, I: 80, D: 30 },
+      yaw: { P: 45, I: 80, D: 0 },
+    };
+    const recs = recommendPID(
+      goodProfile,
+      goodProfile,
+      emptyProfile(),
+      normalPPids,
+      undefined,
+      undefined,
+      'balanced',
+      undefined,
+      undefined,
+      undefined,
+      '5"'
+    );
+    const pWarning = recs.find(
+      (r) => r.setting === 'pid_roll_p' && r.reason.includes('higher than typical')
+    );
+    expect(pWarning).toBeUndefined();
+  });
+});

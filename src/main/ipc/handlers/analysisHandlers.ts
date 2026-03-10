@@ -186,13 +186,17 @@ export function registerAnalysisHandlers(deps: HandlerDependencies): void {
         // Extract flight-time PIDs from BBL header for convergent recommendations
         const flightPIDs = extractFlightPIDs(session.header.rawHeaders);
 
-        // Read flight style from current profile for style-aware thresholds
+        // Read flight style and drone size from current profile
         let flightStyle: 'smooth' | 'balanced' | 'aggressive' = 'balanced';
+        let droneSize: import('@shared/types/profile.types').DroneSize | undefined;
         if (deps.profileManager) {
           try {
             const currentProfile = await deps.profileManager.getCurrentProfile();
             if (currentProfile?.flightStyle) {
               flightStyle = currentProfile.flightStyle;
+            }
+            if (currentProfile?.size) {
+              droneSize = currentProfile.size;
             }
           } catch {
             // Fall back to balanced
@@ -209,7 +213,9 @@ export function registerAnalysisHandlers(deps: HandlerDependencies): void {
           },
           flightPIDs,
           session.header.rawHeaders,
-          flightStyle
+          flightStyle,
+          undefined,
+          droneSize
         );
 
         // Attach header warnings to the result
@@ -276,11 +282,15 @@ export function registerAnalysisHandlers(deps: HandlerDependencies): void {
         const flightPIDs = extractFlightPIDs(session.header.rawHeaders);
 
         let flightStyle: 'smooth' | 'balanced' | 'aggressive' = 'balanced';
+        let droneSize: import('@shared/types/profile.types').DroneSize | undefined;
         if (deps.profileManager) {
           try {
             const currentProfile = await deps.profileManager.getCurrentProfile();
             if (currentProfile?.flightStyle) {
               flightStyle = currentProfile.flightStyle;
+            }
+            if (currentProfile?.size) {
+              droneSize = currentProfile.size;
             }
           } catch {
             // Fall back to balanced
@@ -296,7 +306,9 @@ export function registerAnalysisHandlers(deps: HandlerDependencies): void {
           },
           flightPIDs,
           session.header.rawHeaders,
-          flightStyle
+          flightStyle,
+          undefined,
+          droneSize
         );
 
         logger.info(

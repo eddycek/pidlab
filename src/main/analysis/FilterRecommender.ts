@@ -27,6 +27,8 @@ import {
   RESONANCE_CUTOFF_MARGIN_HZ,
   PROPWASH_GYRO_LPF1_FLOOR_HZ,
   PROPWASH_FLOOR_BYPASS_DB,
+  GYRO_LPF2_DISABLE_THRESHOLD_DB,
+  DTERM_LPF2_DISABLE_THRESHOLD_DB,
 } from './constants';
 
 /** Detect whether RPM filter is active from settings */
@@ -57,15 +59,18 @@ export function recommend(
   // 3. Dynamic notch validation
   recommendDynamicNotchAdjustments(noise, current, recommendations);
 
-  // 4. RPM-aware dynamic notch count/Q recommendations
+  // 4. RPM-aware dynamic notch count/Q recommendations (conditional on resonance peaks)
   if (rpmActive) {
-    recommendDynamicNotchForRPM(current, recommendations);
+    recommendDynamicNotchForRPM(noise, current, recommendations);
   }
 
   // 5. Motor harmonic diagnostic when RPM filter is active
   if (rpmActive) {
     recommendMotorHarmonicDiagnostic(noise, recommendations);
   }
+
+  // 6. LPF2 recommendations (disable when clean + RPM, enable when noisy)
+  recommendLpf2Adjustments(noise, current, recommendations, rpmActive);
 
   // Deduplicate: if multiple rules recommend the same setting, keep the more aggressive one
   return deduplicateRecommendations(recommendations);
@@ -101,9 +106,6 @@ function recommendNoiseFloorAdjustments(
   rpmActive: boolean
 ): void {
   const { overallLevel } = noise;
-
-  // Skip medium noise — no lowpass changes needed
-  if (overallLevel === 'medium') return;
 
   // Skip gyro LPF noise-floor adjustment when gyro_lpf1 is disabled (0 = common in BF 4.4+ with RPM filter)
   const gyroLpfDisabled = current.gyro_lpf1_static_hz === 0;
@@ -198,11 +200,57 @@ function recommendNoiseFloorAdjustments(
         confidence: 'medium',
       });
     }
+  } else {
+    // Medium noise → only recommend if current settings are significantly off-target (>20 Hz)
+    const mediumDeadzone = 20;
+
+    if (
+      !gyroLpfDisabled &&
+      Math.abs(targetGyroLpf1 - current.gyro_lpf1_static_hz) > mediumDeadzone
+    ) {
+      out.push({
+        setting: 'gyro_lpf1_static_hz',
+        currentValue: current.gyro_lpf1_static_hz,
+        recommendedValue: targetGyroLpf1,
+        reason:
+          'Noise levels are moderate but your gyro filter cutoff is significantly off from the optimal range. ' +
+          'Adjusting it will better balance noise rejection and response.' +
+          rpmNote +
+          propwashNote,
+        impact: 'both',
+        confidence: 'low',
+      });
+    }
+
+    if (Math.abs(targetDtermLpf1 - current.dterm_lpf1_static_hz) > mediumDeadzone) {
+      out.push({
+        setting: 'dterm_lpf1_static_hz',
+        currentValue: current.dterm_lpf1_static_hz,
+        recommendedValue: targetDtermLpf1,
+        reason:
+          'Noise levels are moderate but your D-term filter cutoff is significantly off from the optimal range. ' +
+          'Adjusting it will reduce motor heating without sacrificing too much response.' +
+          rpmNote,
+        impact: 'both',
+        confidence: 'low',
+      });
+    }
   }
 }
 
 /**
+ * Check if a peak frequency falls within the dynamic notch filter's tracking range.
+ * If the notch can handle it, we prefer notch tracking over lowering the LPF cutoff
+ * (less phase delay).
+ */
+function isPeakInDynNotchRange(freq: number, current: CurrentFilterSettings): boolean {
+  return freq >= current.dyn_notch_min_hz && freq <= current.dyn_notch_max_hz;
+}
+
+/**
  * Recommend fixes for detected resonance peaks.
+ * Notch-aware: if a peak is within dyn_notch range, prefer notch handling
+ * over lowering the lowpass cutoff (less phase delay).
  */
 function recommendResonanceFixes(
   noise: NoiseProfile,
@@ -226,8 +274,16 @@ function recommendResonanceFixes(
   const gyroMaxHz = rpmActive ? GYRO_LPF1_MAX_HZ_RPM : GYRO_LPF1_MAX_HZ;
   const dtermMaxHz = rpmActive ? DTERM_LPF1_MAX_HZ_RPM : DTERM_LPF1_MAX_HZ;
 
-  // Find the lowest significant peak frequency
-  const lowestPeakFreq = Math.min(...significantPeaks.map((p) => p.frequency));
+  // Filter out peaks that the dynamic notch can already handle (prefer notch over LPF)
+  const peaksNeedingLpf = significantPeaks.filter(
+    (p) => !isPeakInDynNotchRange(p.frequency, current)
+  );
+
+  // If all peaks are within notch range, no LPF changes needed
+  if (peaksNeedingLpf.length === 0) return;
+
+  // Find the lowest significant peak frequency that the notch can't handle
+  const lowestPeakFreq = Math.min(...peaksNeedingLpf.map((p) => p.frequency));
 
   // If the gyro LPF is disabled (0) or the peak is below the cutoff, the filter isn't catching it
   const gyroLpfDisabled = current.gyro_lpf1_static_hz === 0;
@@ -239,7 +295,7 @@ function recommendResonanceFixes(
     // When disabled, always recommend enabling; otherwise check it's lower than current
     if (gyroLpfDisabled || targetCutoff < current.gyro_lpf1_static_hz) {
       const peakType =
-        significantPeaks.find((p) => p.frequency === lowestPeakFreq)?.type || 'unknown';
+        peaksNeedingLpf.find((p) => p.frequency === lowestPeakFreq)?.type || 'unknown';
       const typeLabel =
         peakType === 'frame_resonance'
           ? 'frame resonance'
@@ -352,13 +408,24 @@ function recommendDynamicNotchAdjustments(
  * Recommend dynamic notch count and Q adjustments when RPM filter is active.
  * With RPM filter handling motor harmonics, the dynamic notch only needs to catch
  * frame resonances — fewer notches with narrower Q.
+ *
+ * Exception: if significant resonance peaks are detected, keep Q at 300 (wider)
+ * to better track the resonance. Q=500 is too narrow for strong frame resonances.
  */
 function recommendDynamicNotchForRPM(
+  noise: NoiseProfile,
   current: CurrentFilterSettings,
   out: FilterRecommendation[]
 ): void {
   const currentCount = current.dyn_notch_count;
   const currentQ = current.dyn_notch_q;
+
+  // Check for significant resonance peaks — affects Q recommendation
+  const hasStrongResonance = [noise.roll, noise.pitch, noise.yaw].some((axis) =>
+    axis.peaks.some(
+      (p) => p.amplitude >= RESONANCE_ACTION_THRESHOLD_DB && p.type === 'frame_resonance'
+    )
+  );
 
   // Only recommend if we have the data and it differs from RPM-optimal values
   if (currentCount !== undefined && currentCount > DYN_NOTCH_COUNT_WITH_RPM) {
@@ -374,7 +441,8 @@ function recommendDynamicNotchForRPM(
     });
   }
 
-  if (currentQ !== undefined && currentQ < DYN_NOTCH_Q_WITH_RPM) {
+  // Q recommendation: keep 300 (wider) if strong frame resonance, else narrow to 500
+  if (!hasStrongResonance && currentQ !== undefined && currentQ < DYN_NOTCH_Q_WITH_RPM) {
     out.push({
       setting: 'dyn_notch_q',
       currentValue: currentQ,
@@ -384,6 +452,18 @@ function recommendDynamicNotchForRPM(
         'This means less signal distortion while still catching frame resonances.',
       impact: 'latency',
       confidence: 'high',
+    });
+  } else if (hasStrongResonance && currentQ !== undefined && currentQ > 300) {
+    // Strong resonance present — keep Q at 300 (wider) for better tracking
+    out.push({
+      setting: 'dyn_notch_q',
+      currentValue: currentQ,
+      recommendedValue: 300,
+      reason:
+        'Strong frame resonance detected. Keeping the dynamic notch Q at 300 (wider bandwidth) ' +
+        'ensures the notch can effectively track and suppress the resonance.',
+      impact: 'noise',
+      confidence: 'medium',
     });
   }
 }
@@ -499,6 +579,76 @@ export function generateSummary(
   }
 
   return parts.join(' ');
+}
+
+/**
+ * Recommend LPF2 adjustments:
+ * - With RPM filter + clean noise: disable LPF2 for less latency
+ * - Without RPM + high noise + LPF2 disabled: warn to enable
+ */
+function recommendLpf2Adjustments(
+  noise: NoiseProfile,
+  current: CurrentFilterSettings,
+  out: FilterRecommendation[],
+  rpmActive: boolean
+): void {
+  const worstFloor = Math.max(noise.roll.noiseFloorDb, noise.pitch.noiseFloorDb);
+
+  // Clean signal + RPM active → disable LPF2 for less phase delay
+  if (rpmActive && worstFloor < GYRO_LPF2_DISABLE_THRESHOLD_DB) {
+    if (current.gyro_lpf2_static_hz > 0) {
+      out.push({
+        setting: 'gyro_lpf2_static_hz',
+        currentValue: current.gyro_lpf2_static_hz,
+        recommendedValue: 0,
+        reason:
+          'With RPM filter active and very clean gyro data, the second gyro lowpass filter can be ' +
+          'disabled to reduce phase delay and improve response.',
+        impact: 'latency',
+        confidence: 'medium',
+      });
+    }
+    if (current.dterm_lpf2_static_hz > 0) {
+      out.push({
+        setting: 'dterm_lpf2_static_hz',
+        currentValue: current.dterm_lpf2_static_hz,
+        recommendedValue: 0,
+        reason:
+          'With RPM filter active and low noise, the second D-term lowpass filter can be ' +
+          'disabled to reduce latency and improve stick feel.',
+        impact: 'latency',
+        confidence: 'medium',
+      });
+    }
+  }
+
+  // High noise + no RPM + LPF2 disabled → recommend enabling
+  if (!rpmActive && noise.overallLevel === 'high') {
+    if (current.gyro_lpf2_static_hz === 0) {
+      out.push({
+        setting: 'gyro_lpf2_static_hz',
+        currentValue: 0,
+        recommendedValue: 250,
+        reason:
+          'High noise detected without RPM filter. Enabling the second gyro lowpass filter ' +
+          'provides additional noise rejection that helps with motor temperatures.',
+        impact: 'noise',
+        confidence: 'low',
+      });
+    }
+    if (current.dterm_lpf2_static_hz === 0) {
+      out.push({
+        setting: 'dterm_lpf2_static_hz',
+        currentValue: 0,
+        recommendedValue: 150,
+        reason:
+          'High noise detected without RPM filter. Enabling the second D-term lowpass filter ' +
+          'helps reduce motor heating from noisy D-term output.',
+        impact: 'noise',
+        confidence: 'low',
+      });
+    }
+  }
 }
 
 function clamp(value: number, min: number, max: number): number {

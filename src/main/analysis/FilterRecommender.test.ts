@@ -114,15 +114,40 @@ describe('recommend', () => {
     expect(dtermRec!.recommendedValue).toBeGreaterThan(current.dterm_lpf1_static_hz);
   });
 
-  it('should not recommend changes for medium noise', () => {
-    const noise = makeNoiseProfile({ level: 'medium' });
-    const recs = recommend(noise, DEFAULT_FILTER_SETTINGS);
+  it('should not recommend changes for medium noise when settings are close to target', () => {
+    // Noise floors (-50 dB) produce target ~225 Hz for gyro, ~157 Hz for dterm
+    // Set current values within 20 Hz deadzone of targets
+    const noise = makeNoiseProfile({ level: 'medium', rollFloor: -50, pitchFloor: -50 });
+    const current: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      gyro_lpf1_static_hz: 225, // Exactly at target
+      dterm_lpf1_static_hz: 157, // Exactly at target
+    };
 
-    // No noise-floor-based changes
+    const recs = recommend(noise, current);
     const gyroRec = recs.find((r) => r.setting === 'gyro_lpf1_static_hz');
     const dtermRec = recs.find((r) => r.setting === 'dterm_lpf1_static_hz');
     expect(gyroRec).toBeUndefined();
     expect(dtermRec).toBeUndefined();
+  });
+
+  it('should recommend changes for medium noise when settings are far from target', () => {
+    // Noise floor -50 dB produces target ~225 Hz for gyro, ~157 Hz for dterm
+    // Current settings are far off → should recommend with low confidence
+    const noise = makeNoiseProfile({ level: 'medium', rollFloor: -50, pitchFloor: -50 });
+    const current: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      gyro_lpf1_static_hz: 100, // Far below target (~225)
+      dterm_lpf1_static_hz: 70, // Far below target (~157)
+    };
+
+    const recs = recommend(noise, current);
+    const gyroRec = recs.find((r) => r.setting === 'gyro_lpf1_static_hz');
+    const dtermRec = recs.find((r) => r.setting === 'dterm_lpf1_static_hz');
+    expect(gyroRec).toBeDefined();
+    expect(gyroRec!.confidence).toBe('low');
+    expect(dtermRec).toBeDefined();
+    expect(dtermRec!.confidence).toBe('low');
   });
 
   it('should respect minimum safety bounds', () => {
@@ -176,7 +201,26 @@ describe('recommend', () => {
     expect(dtermRec).toBeUndefined();
   });
 
-  it('should recommend lowering cutoff for resonance peak below filter', () => {
+  it('should recommend lowering cutoff for resonance peak below filter (outside notch range)', () => {
+    const noise = makeNoiseProfile({
+      level: 'medium',
+      rollPeaks: [{ frequency: 80, amplitude: 15, type: 'frame_resonance' }],
+    });
+
+    const current: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      gyro_lpf1_static_hz: 250,
+      dyn_notch_min_hz: 150, // Peak at 80 Hz is below notch range → LPF must handle it
+    };
+
+    const recs = recommend(noise, current);
+    const gyroRec = recs.find((r) => r.setting === 'gyro_lpf1_static_hz');
+    expect(gyroRec).toBeDefined();
+    expect(gyroRec!.recommendedValue).toBeLessThan(80);
+    expect(gyroRec!.confidence).toBe('high');
+  });
+
+  it('should skip LPF lowering when resonance peak is within dyn_notch range', () => {
     const noise = makeNoiseProfile({
       level: 'medium',
       rollPeaks: [{ frequency: 180, amplitude: 15, type: 'frame_resonance' }],
@@ -184,28 +228,33 @@ describe('recommend', () => {
 
     const current: CurrentFilterSettings = {
       ...DEFAULT_FILTER_SETTINGS,
-      gyro_lpf1_static_hz: 250, // Peak at 180 is below cutoff
+      gyro_lpf1_static_hz: 225, // Close to noise-based target (no medium noise rec)
+      dterm_lpf1_static_hz: 157,
+      dyn_notch_min_hz: 100,
+      dyn_notch_max_hz: 600, // Peak at 180 is within notch range
     };
 
     const recs = recommend(noise, current);
+    // Notch can handle resonance → no resonance-based LPF change
     const gyroRec = recs.find((r) => r.setting === 'gyro_lpf1_static_hz');
-    expect(gyroRec).toBeDefined();
-    expect(gyroRec!.recommendedValue).toBeLessThan(180);
-    expect(gyroRec!.confidence).toBe('high');
+    expect(gyroRec).toBeUndefined();
   });
 
   it('should not recommend changes for peaks above current cutoff', () => {
     const noise = makeNoiseProfile({
       level: 'medium',
-      rollPeaks: [{ frequency: 350, amplitude: 15, type: 'unknown' }],
+      rollPeaks: [{ frequency: 650, amplitude: 15, type: 'unknown' }],
     });
 
     const current: CurrentFilterSettings = {
       ...DEFAULT_FILTER_SETTINGS,
-      gyro_lpf1_static_hz: 200, // Peak at 350 is already filtered
+      gyro_lpf1_static_hz: 225, // Close to noise target (avoids medium noise rec)
+      dterm_lpf1_static_hz: 157,
+      dyn_notch_max_hz: 600, // Peak at 650 is above notch range AND above LPF cutoff
     };
 
     const recs = recommend(noise, current);
+    // LPF only lowered when peak is BELOW cutoff — 650 > 225, no resonance-based LPF change
     const gyroRec = recs.find((r) => r.setting === 'gyro_lpf1_static_hz');
     expect(gyroRec).toBeUndefined();
   });
@@ -220,7 +269,11 @@ describe('recommend', () => {
 
     const recs = recommend(noise, DEFAULT_FILTER_SETTINGS);
     // No resonance recommendation since amplitude < 12 dB
-    expect(recs.length).toBe(0);
+    // Medium noise may produce other recs, but no resonance-specific ones
+    const resonanceRecs = recs.filter(
+      (r) => r.reason.includes('resonance') || r.reason.includes('noise spike')
+    );
+    expect(resonanceRecs.length).toBe(0);
   });
 
   it('should recommend dynamic notch min adjustment when peak is below range', () => {
@@ -273,20 +326,21 @@ describe('recommend', () => {
     expect(dtermRec).toBeDefined();
   });
 
-  it('should recommend enabling gyro LPF for resonance peak when LPF is disabled', () => {
+  it('should recommend enabling gyro LPF for resonance peak when LPF is disabled (peak outside notch)', () => {
     const noise = makeNoiseProfile({
       level: 'medium',
-      rollPeaks: [{ frequency: 150, amplitude: 15, type: 'frame_resonance' }],
+      rollPeaks: [{ frequency: 80, amplitude: 15, type: 'frame_resonance' }],
     });
     const current: CurrentFilterSettings = {
       ...DEFAULT_FILTER_SETTINGS,
       gyro_lpf1_static_hz: 0, // Disabled
+      dyn_notch_min_hz: 150, // Peak at 80 Hz is below notch range
     };
 
     const recs = recommend(noise, current);
     const gyroRec = recs.find((r) => r.setting === 'gyro_lpf1_static_hz');
     expect(gyroRec).toBeDefined();
-    expect(gyroRec!.recommendedValue).toBeLessThan(150);
+    expect(gyroRec!.recommendedValue).toBeLessThanOrEqual(80);
     expect(gyroRec!.reason).toContain('disabled');
   });
 
@@ -689,5 +743,131 @@ describe('propwash-aware filter floor', () => {
     const gyroRec = recs.find((r) => r.setting === 'gyro_lpf1_static_hz');
     expect(gyroRec).toBeDefined();
     expect(gyroRec!.recommendedValue).toBe(PROPWASH_GYRO_LPF1_FLOOR_HZ);
+  });
+});
+
+describe('LPF2 recommendations', () => {
+  it('should recommend disabling gyro LPF2 when RPM active and noise is very clean', () => {
+    // Noise floor < -45 dB (GYRO_LPF2_DISABLE_THRESHOLD_DB), RPM active, LPF2 enabled
+    const noise = makeNoiseProfile({ level: 'low', rollFloor: -55, pitchFloor: -50 });
+    const current: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      gyro_lpf2_static_hz: 250,
+      rpm_filter_harmonics: 3,
+    };
+
+    const recs = recommend(noise, current);
+    const gyroLpf2Rec = recs.find((r) => r.setting === 'gyro_lpf2_static_hz');
+    expect(gyroLpf2Rec).toBeDefined();
+    expect(gyroLpf2Rec!.recommendedValue).toBe(0);
+    expect(gyroLpf2Rec!.impact).toBe('latency');
+  });
+
+  it('should recommend disabling dterm LPF2 when RPM active and noise is very clean', () => {
+    // Noise floor < -45 dB, RPM active, dterm LPF2 enabled
+    const noise = makeNoiseProfile({ level: 'low', rollFloor: -55, pitchFloor: -50 });
+    const current: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      dterm_lpf2_static_hz: 150,
+      rpm_filter_harmonics: 3,
+    };
+
+    const recs = recommend(noise, current);
+    const dtermLpf2Rec = recs.find((r) => r.setting === 'dterm_lpf2_static_hz');
+    expect(dtermLpf2Rec).toBeDefined();
+    expect(dtermLpf2Rec!.recommendedValue).toBe(0);
+    expect(dtermLpf2Rec!.impact).toBe('latency');
+  });
+
+  it('should recommend enabling gyro LPF2 when noise is high and no RPM', () => {
+    // overallLevel='high', RPM off, gyro_lpf2_static_hz=0 → recommend 250
+    const noise = makeNoiseProfile({ level: 'high', rollFloor: -25, pitchFloor: -20 });
+    const current: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      gyro_lpf2_static_hz: 0,
+      rpm_filter_harmonics: 0,
+    };
+
+    const recs = recommend(noise, current);
+    const gyroLpf2Rec = recs.find((r) => r.setting === 'gyro_lpf2_static_hz');
+    expect(gyroLpf2Rec).toBeDefined();
+    expect(gyroLpf2Rec!.recommendedValue).toBe(250);
+    expect(gyroLpf2Rec!.impact).toBe('noise');
+  });
+
+  it('should NOT recommend LPF2 changes when noise is moderate', () => {
+    // overallLevel='medium' → no LPF2 recs (neither disable nor enable path triggers)
+    const noise = makeNoiseProfile({ level: 'medium', rollFloor: -40, pitchFloor: -40 });
+    const current: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      gyro_lpf2_static_hz: 250,
+      dterm_lpf2_static_hz: 150,
+      rpm_filter_harmonics: 0,
+    };
+
+    const recs = recommend(noise, current);
+    const gyroLpf2Rec = recs.find((r) => r.setting === 'gyro_lpf2_static_hz');
+    const dtermLpf2Rec = recs.find((r) => r.setting === 'dterm_lpf2_static_hz');
+    expect(gyroLpf2Rec).toBeUndefined();
+    expect(dtermLpf2Rec).toBeUndefined();
+  });
+
+  it('should NOT recommend LPF2 disable when RPM is inactive even with clean noise', () => {
+    // Noise floor < -45 dB but RPM off → disable path requires RPM active
+    const noise = makeNoiseProfile({ level: 'low', rollFloor: -55, pitchFloor: -55 });
+    const current: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      gyro_lpf2_static_hz: 250,
+      dterm_lpf2_static_hz: 150,
+      rpm_filter_harmonics: 0,
+    };
+
+    const recs = recommend(noise, current);
+    const gyroLpf2Rec = recs.find((r) => r.setting === 'gyro_lpf2_static_hz');
+    const dtermLpf2Rec = recs.find((r) => r.setting === 'dterm_lpf2_static_hz');
+    // No disable recommendation without RPM
+    expect(gyroLpf2Rec).toBeUndefined();
+    expect(dtermLpf2Rec).toBeUndefined();
+  });
+});
+
+describe('Conditional dynamic notch Q with resonance', () => {
+  it('should keep dyn_notch_q at 300 when RPM active but strong frame resonance present', () => {
+    // RPM active, Q=500, resonance peak with type='frame_resonance' and amplitude >= 12
+    // → recommend Q=300 (wider) to track resonance
+    const noise = makeNoiseProfile({
+      level: 'medium',
+      rollPeaks: [{ frequency: 150, amplitude: 15, type: 'frame_resonance' }],
+    });
+    const current: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      rpm_filter_harmonics: 3,
+      dyn_notch_count: 1, // Already at RPM-optimal count
+      dyn_notch_q: 500, // Too narrow for resonance
+    };
+
+    const recs = recommend(noise, current);
+    const qRec = recs.find((r) => r.setting === 'dyn_notch_q');
+    expect(qRec).toBeDefined();
+    expect(qRec!.recommendedValue).toBe(300);
+    expect(qRec!.confidence).toBe('medium');
+    expect(qRec!.reason).toContain('resonance');
+  });
+
+  it('should recommend Q=500 when RPM active and no significant resonance peaks', () => {
+    // RPM active, Q=300, no resonance peaks → recommend Q=500 (narrower)
+    const noise = makeNoiseProfile({ level: 'medium' });
+    const current: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      rpm_filter_harmonics: 3,
+      dyn_notch_count: 1,
+      dyn_notch_q: 300,
+    };
+
+    const recs = recommend(noise, current);
+    const qRec = recs.find((r) => r.setting === 'dyn_notch_q');
+    expect(qRec).toBeDefined();
+    expect(qRec!.recommendedValue).toBe(DYN_NOTCH_Q_WITH_RPM); // 500
+    expect(qRec!.confidence).toBe('high');
   });
 });

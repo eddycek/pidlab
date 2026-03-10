@@ -301,12 +301,24 @@ export function scoreWienerDataQuality(input: WienerQualityInput): {
   // Sub-score: axis coverage from coherence
   let axisCoverageScore = 50; // default when coherence not available
   if (input.coherenceMean) {
-    const activeAxes = [
-      input.coherenceMean.roll,
-      input.coherenceMean.pitch,
-      input.coherenceMean.yaw,
-    ].filter((c) => c > 0.3).length;
+    const axisCoherences = [
+      { name: 'Roll', value: input.coherenceMean.roll },
+      { name: 'Pitch', value: input.coherenceMean.pitch },
+      { name: 'Yaw', value: input.coherenceMean.yaw },
+    ];
+    const activeAxes = axisCoherences.filter((c) => c.value > 0.3).length;
     axisCoverageScore = clamp100((activeAxes / 3) * 100);
+
+    // Per-axis coherence warnings
+    for (const axis of axisCoherences) {
+      if (axis.value <= 0.3 && axis.value > 0) {
+        warnings.push({
+          code: 'low_coherence',
+          message: `Low coherence on ${axis.name} axis (${(axis.value * 100).toFixed(0)}%). Transfer function estimate for this axis may be unreliable.`,
+          severity: axis.value < 0.15 ? 'warning' : 'info',
+        });
+      }
+    }
   }
 
   const subScores: DataQualitySubScore[] = [

@@ -12,7 +12,7 @@ import type {
   PIDRecommendation,
   PropWashAnalysis,
 } from '@shared/types/analysis.types';
-import type { FlightStyle } from '@shared/types/profile.types';
+import type { DroneSize, FlightStyle } from '@shared/types/profile.types';
 import type { TransferFunctionMetrics } from './TransferFunctionEstimator';
 import {
   PID_STYLE_THRESHOLDS,
@@ -25,6 +25,10 @@ import {
   DAMPING_RATIO_MIN,
   DAMPING_RATIO_MAX,
   DAMPING_RATIO_DEADZONE,
+  QUAD_SIZE_BOUNDS,
+  DEFAULT_QUAD_SIZE_BOUNDS,
+  BANDWIDTH_LOW_HZ_BY_STYLE,
+  type QuadSizeBounds,
 } from './constants';
 
 /** Per-axis transfer function metrics for frequency-domain PID recommendations */
@@ -35,6 +39,12 @@ export interface TransferFunctionContext {
 }
 
 const AXIS_NAMES = ['roll', 'pitch', 'yaw'] as const;
+
+/** Resolve PID bounds for a given drone size (falls back to 5" defaults) */
+export function resolveBounds(droneSize?: DroneSize): QuadSizeBounds {
+  if (!droneSize) return DEFAULT_QUAD_SIZE_BOUNDS;
+  return QUAD_SIZE_BOUNDS[droneSize] ?? DEFAULT_QUAD_SIZE_BOUNDS;
+}
 
 /**
  * Generate PID recommendations from step response profiles.
@@ -57,11 +67,13 @@ export function recommendPID(
   flightStyle: FlightStyle = 'balanced',
   tfMetrics?: TransferFunctionContext,
   dTermEffectiveness?: DTermEffectiveness,
-  propWash?: PropWashAnalysis
+  propWash?: PropWashAnalysis,
+  droneSize?: DroneSize
 ): PIDRecommendation[] {
   const recommendations: PIDRecommendation[] = [];
   const profiles = [roll, pitch, yaw] as const;
   const thresholds = PID_STYLE_THRESHOLDS[flightStyle];
+  const bounds = resolveBounds(droneSize);
 
   for (let axis = 0; axis < 3; axis++) {
     const profile = profiles[axis];
@@ -73,7 +85,16 @@ export function recommendPID(
 
     // If we have transfer function metrics and no step data, use frequency-domain rules
     if (profile.responses.length === 0 && axisTF) {
-      generateFrequencyDomainRecs(axisTF, axisName, pids, base, thresholds, recommendations);
+      generateFrequencyDomainRecs(
+        axisTF,
+        axisName,
+        pids,
+        base,
+        thresholds,
+        recommendations,
+        bounds,
+        flightStyle
+      );
       continue;
     }
 
@@ -117,7 +138,7 @@ export function recommendPID(
       // Scale D step with overshoot severity for faster convergence
       const severity = profile.meanOvershoot / overshootThreshold;
       const dStep = severity > 4 ? 15 : severity > 2 ? 10 : 5;
-      const targetD = clamp(base.D + dStep, D_GAIN_MIN, D_GAIN_MAX);
+      const targetD = clamp(base.D + dStep, bounds.dMin, bounds.dMax);
       if (targetD !== pids.D) {
         recommendations.push({
           setting: `pid_${axisName}_d`,
@@ -129,9 +150,9 @@ export function recommendPID(
         });
       }
       // Reduce P when overshoot is extreme (>2x threshold) or D is already high
-      if (severity > 2 || base.D >= D_GAIN_MAX * 0.6) {
+      if (severity > 2 || base.D >= bounds.dMax * 0.6) {
         const pStep = severity > 4 ? 10 : 5;
-        const targetP = clamp(base.P - pStep, P_GAIN_MIN, P_GAIN_MAX);
+        const targetP = clamp(base.P - pStep, bounds.pMin, bounds.pMax);
         if (targetP !== pids.P) {
           const ffNote =
             meanFFEnergyRatio !== undefined && meanFFEnergyRatio > 0.6
@@ -149,7 +170,7 @@ export function recommendPID(
       }
     } else if (profile.meanOvershoot > moderateOvershoot) {
       // Moderate overshoot (15-25%): increase D only
-      const targetD = clamp(base.D + 5, D_GAIN_MIN, D_GAIN_MAX);
+      const targetD = clamp(base.D + 5, bounds.dMin, bounds.dMax);
       if (targetD !== pids.D) {
         recommendations.push({
           setting: `pid_${axisName}_d`,
@@ -162,12 +183,14 @@ export function recommendPID(
       }
     }
 
-    // Rule 2: Sluggish response (low overshoot + slow rise) → increase P by 5 (FPVSIM guidance)
+    // Rule 2: Sluggish response (low overshoot + slow rise) → increase P (severity-scaled)
     if (
       profile.meanOvershoot < thresholds.overshootIdeal &&
       profile.meanRiseTimeMs > sluggishRiseMs
     ) {
-      const targetP = clamp(base.P + 5, P_GAIN_MIN, P_GAIN_MAX);
+      const slugSeverity = profile.meanRiseTimeMs / sluggishRiseMs;
+      const pStep = slugSeverity > 2 ? 10 : 5;
+      const targetP = clamp(base.P + pStep, bounds.pMin, bounds.pMax);
       if (targetP !== pids.P) {
         recommendations.push({
           setting: `pid_${axisName}_p`,
@@ -183,7 +206,7 @@ export function recommendPID(
     // Rule 3: Excessive ringing → increase D (BF: any visible bounce-back should be addressed)
     const maxRinging = Math.max(...profile.responses.map((r) => r.ringingCount));
     if (maxRinging > thresholds.ringingMax) {
-      const targetD = clamp(base.D + 5, D_GAIN_MIN, D_GAIN_MAX);
+      const targetD = clamp(base.D + 5, bounds.dMin, bounds.dMax);
       if (targetD !== pids.D) {
         // Don't duplicate if we already recommended D increase for overshoot
         const existingDRec = recommendations.find((r) => r.setting === `pid_${axisName}_d`);
@@ -208,7 +231,7 @@ export function recommendPID(
       // Only if overshoot isn't the problem (settling from other causes)
       const existingDRec = recommendations.find((r) => r.setting === `pid_${axisName}_d`);
       if (!existingDRec) {
-        const targetD = clamp(base.D + 5, D_GAIN_MIN, D_GAIN_MAX);
+        const targetD = clamp(base.D + 5, bounds.dMin, bounds.dMax);
         if (targetD !== pids.D) {
           recommendations.push({
             setting: `pid_${axisName}_d`,
@@ -227,7 +250,7 @@ export function recommendPID(
     if (ssError > thresholds.steadyStateErrorMax) {
       // High hold-phase error → I-term is too low (quad drifts from target)
       const iStep = ssError > thresholds.steadyStateErrorMax * 2 ? 10 : 5;
-      const targetI = clamp(base.I + iStep, I_GAIN_MIN, I_GAIN_MAX);
+      const targetI = clamp(base.I + iStep, bounds.iMin, bounds.iMax);
       if (targetI !== pids.I) {
         recommendations.push({
           setting: `pid_${axisName}_i`,
@@ -244,7 +267,7 @@ export function recommendPID(
       profile.meanOvershoot > moderateOvershoot
     ) {
       // Low error but slow settling + overshoot → I may be causing slow oscillation
-      const targetI = clamp(base.I - 5, I_GAIN_MIN, I_GAIN_MAX);
+      const targetI = clamp(base.I - 5, bounds.iMin, bounds.iMax);
       if (targetI !== pids.I) {
         recommendations.push({
           setting: `pid_${axisName}_i`,
@@ -258,9 +281,12 @@ export function recommendPID(
     }
   }
 
+  // Post-process: P-too-high informational warning
+  detectHighP(recommendations, currentPIDs, bounds);
+
   // Post-process: validate D/P damping ratio for coordinated P/D recommendations.
   // Only applies to roll and pitch (yaw often has D=0).
-  validateDampingRatio(recommendations, currentPIDs);
+  validateDampingRatio(recommendations, currentPIDs, bounds);
 
   // Post-process: apply D-term effectiveness context to D recommendations
   // (runs after damping ratio to annotate all D recs including ratio-generated ones)
@@ -270,7 +296,7 @@ export function recommendPID(
 
   // Post-process: prop wash context — boost D confidence or suggest D when severe
   if (propWash) {
-    applyPropWashContext(recommendations, propWash, currentPIDs, flightPIDs);
+    applyPropWashContext(recommendations, propWash, currentPIDs, flightPIDs, bounds);
   }
 
   return recommendations;
@@ -284,9 +310,44 @@ export function recommendPID(
  * 2. Overdamped (D/P too high) after D increase without P adjustment → add P
  * 3. Overdamped (D/P too high) with no recommendations → reduce D
  */
+/**
+ * Detect P values significantly above the quad's typical range.
+ * Emits an informational (low confidence) recommendation when P is high
+ * but step response doesn't show problems — may cause hot motors/noise.
+ */
+function detectHighP(
+  recommendations: PIDRecommendation[],
+  currentPIDs: PIDConfiguration,
+  bounds: QuadSizeBounds
+): void {
+  const highPThreshold = bounds.pTypical * 1.3; // 30% above typical
+
+  for (const axisName of ['roll', 'pitch'] as const) {
+    const pids = currentPIDs[axisName];
+
+    // Skip if we already have a P recommendation for this axis
+    const existingPRec = recommendations.find((r) => r.setting === `pid_${axisName}_p`);
+    if (existingPRec) continue;
+
+    if (pids.P > highPThreshold) {
+      recommendations.push({
+        setting: `pid_${axisName}_p`,
+        currentValue: pids.P,
+        recommendedValue: pids.P, // informational — same value
+        reason:
+          `P-term on ${axisName} (${pids.P}) is higher than typical for this quad size (${bounds.pTypical}). ` +
+          'Step response looks fine, but monitor motor temperatures — high P amplifies noise and can cause motor heating.',
+        impact: 'both',
+        confidence: 'low',
+      });
+    }
+  }
+}
+
 function validateDampingRatio(
   recommendations: PIDRecommendation[],
-  currentPIDs: PIDConfiguration
+  currentPIDs: PIDConfiguration,
+  bounds: QuadSizeBounds
 ): void {
   for (const axisName of ['roll', 'pitch'] as const) {
     const pids = currentPIDs[axisName];
@@ -305,7 +366,7 @@ function validateDampingRatio(
 
     if (ratio < DAMPING_RATIO_MIN && !dRec) {
       // Underdamped — need more D relative to P
-      const targetD = clamp(Math.round(resultP * DAMPING_RATIO_MIN), D_GAIN_MIN, D_GAIN_MAX);
+      const targetD = clamp(Math.round(resultP * DAMPING_RATIO_MIN), bounds.dMin, bounds.dMax);
       if (Math.abs(targetD - pids.D) >= DAMPING_RATIO_DEADZONE) {
         recommendations.push({
           setting: `pid_${axisName}_d`,
@@ -318,7 +379,7 @@ function validateDampingRatio(
       }
     } else if (ratio > DAMPING_RATIO_MAX && dRec && !pRec) {
       // D was increased by a rule but P wasn't adjusted — ratio pushed too high
-      const targetP = clamp(Math.round(resultD / DAMPING_RATIO_MAX), P_GAIN_MIN, P_GAIN_MAX);
+      const targetP = clamp(Math.round(resultD / DAMPING_RATIO_MAX), bounds.pMin, bounds.pMax);
       if (targetP > pids.P && Math.abs(targetP - pids.P) >= DAMPING_RATIO_DEADZONE) {
         recommendations.push({
           setting: `pid_${axisName}_p`,
@@ -331,7 +392,7 @@ function validateDampingRatio(
       }
     } else if (ratio > DAMPING_RATIO_MAX && !dRec && !pRec) {
       // No existing recommendations but ratio is already too high — reduce D
-      const targetD = clamp(Math.round(resultP * DAMPING_RATIO_MAX), D_GAIN_MIN, D_GAIN_MAX);
+      const targetD = clamp(Math.round(resultP * DAMPING_RATIO_MAX), bounds.dMin, bounds.dMax);
       if (Math.abs(targetD - pids.D) >= DAMPING_RATIO_DEADZONE) {
         recommendations.push({
           setting: `pid_${axisName}_d`,
@@ -403,7 +464,8 @@ function applyPropWashContext(
   recommendations: PIDRecommendation[],
   pw: PropWashAnalysis,
   currentPIDs: PIDConfiguration,
-  flightPIDs?: PIDConfiguration
+  flightPIDs?: PIDConfiguration,
+  bounds: QuadSizeBounds = DEFAULT_QUAD_SIZE_BOUNDS
 ): void {
   if (pw.events.length < 3 || pw.meanSeverity < PROPWASH_MODERATE_THRESHOLD) return;
 
@@ -427,7 +489,7 @@ function applyPropWashContext(
   if (isSevere) {
     const pids = currentPIDs[worstAxis];
     const base = flightPIDs ? flightPIDs[worstAxis] : pids;
-    const targetD = clamp(base.D + 5, D_GAIN_MIN, D_GAIN_MAX);
+    const targetD = clamp(base.D + 5, bounds.dMin, bounds.dMax);
     if (targetD !== pids.D) {
       recommendations.push({
         setting: `pid_${worstAxis}_d`,
@@ -559,9 +621,6 @@ function parseIntOr(value: string | undefined): number | undefined {
 
 // ---- Frequency-domain recommendation thresholds ----
 
-/** Minimum bandwidth (Hz) below which we consider P too low */
-const BANDWIDTH_LOW_HZ = 40;
-
 /** Phase margin threshold below which we consider the system under-damped */
 const PHASE_MARGIN_LOW_DEG = 45;
 
@@ -580,17 +639,20 @@ function generateFrequencyDomainRecs(
   pids: { P: number; I: number; D: number },
   base: { P: number; I: number; D: number },
   thresholds: (typeof PID_STYLE_THRESHOLDS)[FlightStyle],
-  recommendations: PIDRecommendation[]
+  recommendations: PIDRecommendation[],
+  bounds: QuadSizeBounds = DEFAULT_QUAD_SIZE_BOUNDS,
+  flightStyle: FlightStyle = 'balanced'
 ): void {
   const isYaw = axisName === 'yaw';
   const overshootThreshold = isYaw ? thresholds.overshootMax * 1.5 : thresholds.overshootMax;
   const moderateOvershoot = isYaw ? thresholds.overshootMax : thresholds.moderateOvershoot;
-  const bandwidthLow = isYaw ? BANDWIDTH_LOW_HZ * 0.7 : BANDWIDTH_LOW_HZ;
+  const bandwidthLowBase = BANDWIDTH_LOW_HZ_BY_STYLE[flightStyle];
+  const bandwidthLow = isYaw ? bandwidthLowBase * 0.7 : bandwidthLowBase;
 
   // Rule TF-1: Low phase margin → increase D (under-damped system)
   if (tf.phaseMarginDeg < PHASE_MARGIN_LOW_DEG && tf.phaseMarginDeg > 0) {
     const dStep = tf.phaseMarginDeg < PHASE_MARGIN_CRITICAL_DEG ? 10 : 5;
-    const targetD = clamp(base.D + dStep, D_GAIN_MIN, D_GAIN_MAX);
+    const targetD = clamp(base.D + dStep, bounds.dMin, bounds.dMax);
     if (targetD !== pids.D) {
       recommendations.push({
         setting: `pid_${axisName}_d`,
@@ -609,7 +671,7 @@ function generateFrequencyDomainRecs(
     const dStep = severity > 4 ? 15 : severity > 2 ? 10 : 5;
     const existingDRec = recommendations.find((r) => r.setting === `pid_${axisName}_d`);
     if (!existingDRec) {
-      const targetD = clamp(base.D + dStep, D_GAIN_MIN, D_GAIN_MAX);
+      const targetD = clamp(base.D + dStep, bounds.dMin, bounds.dMax);
       if (targetD !== pids.D) {
         recommendations.push({
           setting: `pid_${axisName}_d`,
@@ -622,9 +684,9 @@ function generateFrequencyDomainRecs(
       }
     }
     // Reduce P for extreme overshoot
-    if (severity > 2 || base.D >= D_GAIN_MAX * 0.6) {
+    if (severity > 2 || base.D >= bounds.dMax * 0.6) {
       const pStep = severity > 4 ? 10 : 5;
-      const targetP = clamp(base.P - pStep, P_GAIN_MIN, P_GAIN_MAX);
+      const targetP = clamp(base.P - pStep, bounds.pMin, bounds.pMax);
       if (targetP !== pids.P) {
         recommendations.push({
           setting: `pid_${axisName}_p`,
@@ -640,7 +702,7 @@ function generateFrequencyDomainRecs(
     // Moderate overshoot
     const existingDRec = recommendations.find((r) => r.setting === `pid_${axisName}_d`);
     if (!existingDRec) {
-      const targetD = clamp(base.D + 5, D_GAIN_MIN, D_GAIN_MAX);
+      const targetD = clamp(base.D + 5, bounds.dMin, bounds.dMax);
       if (targetD !== pids.D) {
         recommendations.push({
           setting: `pid_${axisName}_d`,
@@ -660,7 +722,7 @@ function generateFrequencyDomainRecs(
     tf.bandwidthHz > 0 &&
     tf.overshootPercent < thresholds.overshootIdeal
   ) {
-    const targetP = clamp(base.P + 5, P_GAIN_MIN, P_GAIN_MAX);
+    const targetP = clamp(base.P + 5, bounds.pMin, bounds.pMax);
     if (targetP !== pids.P) {
       const existingPRec = recommendations.find((r) => r.setting === `pid_${axisName}_p`);
       if (!existingPRec) {
@@ -681,7 +743,7 @@ function generateFrequencyDomainRecs(
     // DC gain below -1 dB means system doesn't fully track setpoint at steady state
     const deficit = Math.abs(tf.dcGainDb);
     const iStep = deficit > 3 ? 10 : 5;
-    const targetI = clamp(base.I + iStep, I_GAIN_MIN, I_GAIN_MAX);
+    const targetI = clamp(base.I + iStep, bounds.iMin, bounds.iMax);
     if (targetI !== pids.I) {
       const existingIRec = recommendations.find((r) => r.setting === `pid_${axisName}_i`);
       if (!existingIRec) {

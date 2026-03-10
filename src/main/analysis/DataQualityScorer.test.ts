@@ -507,5 +507,47 @@ describe('DataQualityScorer', () => {
       const shortWarning = result.warnings.find((w) => w.code === 'short_hover_time');
       expect(shortWarning?.severity).toBe('error');
     });
+
+    it('should warn about low coherence per axis', () => {
+      const result = scoreWienerDataQuality({
+        sampleCount: 40000,
+        sampleRateHz: 4000,
+        setpointRMS: 80,
+        coherenceMean: { roll: 0.8, pitch: 0.2, yaw: 0.1 },
+      });
+
+      const coherenceWarnings = result.warnings.filter((w) => w.code === 'low_coherence');
+      expect(coherenceWarnings.length).toBe(2); // pitch and yaw
+      expect(coherenceWarnings[0].message).toContain('Pitch');
+      expect(coherenceWarnings[1].message).toContain('Yaw');
+    });
+
+    it('should not warn about coherence when all axes are good', () => {
+      const result = scoreWienerDataQuality({
+        sampleCount: 40000,
+        sampleRateHz: 4000,
+        setpointRMS: 80,
+        coherenceMean: { roll: 0.8, pitch: 0.7, yaw: 0.5 },
+      });
+
+      const coherenceWarnings = result.warnings.filter((w) => w.code === 'low_coherence');
+      expect(coherenceWarnings.length).toBe(0);
+    });
+
+    it('should set warning severity based on coherence level', () => {
+      const result = scoreWienerDataQuality({
+        sampleCount: 40000,
+        sampleRateHz: 4000,
+        setpointRMS: 80,
+        coherenceMean: { roll: 0.8, pitch: 0.25, yaw: 0.1 },
+      });
+
+      const coherenceWarnings = result.warnings.filter((w) => w.code === 'low_coherence');
+      // pitch=0.25 > 0.15 → info, yaw=0.1 < 0.15 → warning
+      const pitchWarning = coherenceWarnings.find((w) => w.message.includes('Pitch'));
+      const yawWarning = coherenceWarnings.find((w) => w.message.includes('Yaw'));
+      expect(pitchWarning?.severity).toBe('info');
+      expect(yawWarning?.severity).toBe('warning');
+    });
   });
 });
