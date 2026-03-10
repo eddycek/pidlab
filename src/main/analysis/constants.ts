@@ -165,6 +165,11 @@ export const STEP_RESPONSE_WINDOW_MIN_MS = 150;
 /** Multiplier for median settling time to compute adaptive window */
 export const ADAPTIVE_WINDOW_SETTLING_MULTIPLIER = 2;
 
+/** Minimum ringing amplitude as fraction of step magnitude.
+ * Zero-crossings with amplitude below this are treated as noise, not real oscillation.
+ * 5% filters out gyro noise while preserving genuine mechanical ringing. */
+export const RINGING_MIN_AMPLITUDE_FRACTION = 0.05;
+
 /** Minimum gap between steps to avoid rapid reversals (ms) */
 export const STEP_COOLDOWN_MS = 100;
 

@@ -24,6 +24,7 @@ import {
   STEP_RESPONSE_WINDOW_MIN_MS,
   STEP_RESPONSE_WINDOW_MAX_MS,
   ADAPTIVE_WINDOW_SETTLING_MULTIPLIER,
+  RINGING_MIN_AMPLITUDE_FRACTION,
 } from './constants';
 
 /**
@@ -134,18 +135,22 @@ export function computeStepResponse(
     }
   }
 
-  // Ringing: count zero-crossings of (gyro - steadyState) in response tail
-  // Start counting after the first rise
+  // Ringing: count zero-crossings of (gyro - steadyState) in response tail.
+  // SNR filter: only count crossings where the deviation exceeds a minimum
+  // amplitude threshold to exclude gyro noise from the count.
   const ringingStartIdx = riseHighIdx >= 0 ? riseHighIdx : startIndex + Math.floor(windowLen * 0.3);
+  const ringingMinAmplitude = Math.abs(effectiveMagnitude) * RINGING_MIN_AMPLITUDE_FRACTION;
   let ringingCount = 0;
   let prevSign = 0;
   for (let i = ringingStartIdx; i < endIndex; i++) {
     const diff = gyro.values[i] - effectiveTarget;
-    const sign = diff > 0 ? 1 : diff < 0 ? -1 : 0;
-    if (sign !== 0 && prevSign !== 0 && sign !== prevSign) {
+    // Ignore oscillations smaller than the noise floor threshold
+    if (Math.abs(diff) < ringingMinAmplitude) continue;
+    const sign = diff > 0 ? 1 : -1;
+    if (prevSign !== 0 && sign !== prevSign) {
       ringingCount++;
     }
-    if (sign !== 0) prevSign = sign;
+    prevSign = sign;
   }
   // Each full oscillation is 2 zero crossings, report oscillation count
   ringingCount = Math.floor(ringingCount / 2);
