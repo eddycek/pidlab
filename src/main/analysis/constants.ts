@@ -3,6 +3,8 @@
  * All thresholds are tunable — adjust based on real-world data.
  */
 
+import type { DroneSize, FlightStyle } from '@shared/types/profile.types';
+
 // ---- FFT Parameters ----
 
 /** FFT window size in samples. 4096 at 8 kHz → 0.5s window, ~2 Hz resolution */
@@ -143,8 +145,10 @@ export const PROPWASH_FLOOR_BYPASS_DB = -15;
 
 // ---- Step Detection ----
 
-/** Minimum setpoint change to count as a step (deg/s) */
-export const STEP_MIN_MAGNITUDE_DEG_S = 100;
+/** Minimum setpoint change to count as a step (deg/s).
+ * Raised from 100 to 150 to reduce false positives in turbulent data.
+ * DataQualityScorer warns below 200 deg/s for "clear" responses. */
+export const STEP_MIN_MAGNITUDE_DEG_S = 150;
 
 /** Minimum setpoint derivative (deg/s per second) for edge detection */
 export const STEP_DERIVATIVE_THRESHOLD = 500;
@@ -196,8 +200,6 @@ export const RINGING_MAX_COUNT = 2;
 export const SETTLING_MAX_MS = 200;
 
 // ---- PID Style Thresholds ----
-
-import type { FlightStyle } from '@shared/types/profile.types';
 
 export interface PIDStyleThresholds {
   overshootIdeal: number;
@@ -272,11 +274,65 @@ export const DAMPING_RATIO_MAX = 0.85;
  * Prevents trivial 1-point adjustments from rounding. */
 export const DAMPING_RATIO_DEADZONE = 3;
 
-/** Minimum I gain */
-export const I_GAIN_MIN = 30;
+/** Minimum I gain. 40 prevents dangerous hover drift (BF defaults I=60-90).
+ * I=30 causes poor wind rejection and attitude drift. */
+export const I_GAIN_MIN = 40;
 
 /** Maximum I gain */
 export const I_GAIN_MAX = 120;
+
+// ---- Quad-Size-Aware PID Bounds ----
+
+export interface QuadSizeBounds {
+  pMin: number;
+  pMax: number;
+  dMin: number;
+  dMax: number;
+  iMin: number;
+  iMax: number;
+  /** Typical P for this size — used for "P too high" informational warning */
+  pTypical: number;
+}
+
+/**
+ * Per-size PID safety bounds. Prevents dangerous values on small quads
+ * (motor saturation) and allows higher D on large quads (high inertia).
+ *
+ * Sizes map to categories: micro (1-2.5"), small (3-4"), standard (5"),
+ * large (6-7"), ultra (10").
+ */
+export const QUAD_SIZE_BOUNDS: Record<DroneSize, QuadSizeBounds> = {
+  '1"': { pMin: 20, pMax: 80, dMin: 15, dMax: 50, iMin: 40, iMax: 100, pTypical: 40 },
+  '2"': { pMin: 20, pMax: 80, dMin: 15, dMax: 50, iMin: 40, iMax: 100, pTypical: 40 },
+  '2.5"': { pMin: 20, pMax: 90, dMin: 15, dMax: 55, iMin: 40, iMax: 110, pTypical: 42 },
+  '3"': { pMin: 20, pMax: 100, dMin: 15, dMax: 60, iMin: 40, iMax: 110, pTypical: 45 },
+  '4"': { pMin: 20, pMax: 110, dMin: 15, dMax: 70, iMin: 40, iMax: 120, pTypical: 46 },
+  '5"': { pMin: 20, pMax: 120, dMin: 15, dMax: 80, iMin: 40, iMax: 120, pTypical: 48 },
+  '6"': { pMin: 20, pMax: 120, dMin: 15, dMax: 90, iMin: 40, iMax: 120, pTypical: 50 },
+  '7"': { pMin: 20, pMax: 120, dMin: 15, dMax: 100, iMin: 40, iMax: 120, pTypical: 50 },
+  '10"': { pMin: 20, pMax: 120, dMin: 15, dMax: 100, iMin: 40, iMax: 120, pTypical: 50 },
+};
+
+/** Fallback bounds when drone size is unknown (= standard 5" bounds) */
+export const DEFAULT_QUAD_SIZE_BOUNDS: QuadSizeBounds = QUAD_SIZE_BOUNDS['5"'];
+
+// ---- Bandwidth Thresholds Per Flight Style ----
+
+/** Minimum bandwidth (Hz) below which TF rule TF-3 recommends P increase.
+ * Aggressive pilots need higher bandwidth for locked-in feel. */
+export const BANDWIDTH_LOW_HZ_BY_STYLE: Record<FlightStyle, number> = {
+  smooth: 30,
+  balanced: 40,
+  aggressive: 60,
+};
+
+// ---- LPF2 Recommendation Constants ----
+
+/** Gyro LPF2 can be disabled when RPM filter is active and noise is this clean (dB) */
+export const GYRO_LPF2_DISABLE_THRESHOLD_DB = -45;
+
+/** D-term LPF2 can be disabled when noise is this clean (dB) */
+export const DTERM_LPF2_DISABLE_THRESHOLD_DB = -45;
 
 // ---- Prop Wash Detection ----
 

@@ -92,7 +92,8 @@ export interface AnalysisWarning {
     | 'few_steps_per_axis'
     | 'missing_axis_coverage'
     | 'low_step_magnitude'
-    | 'tpa_variance';
+    | 'tpa_variance'
+    | 'low_coherence';
   message: string;
   severity: 'info' | 'warning' | 'error';
 }

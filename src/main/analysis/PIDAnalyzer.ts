@@ -13,7 +13,7 @@
  */
 import type { BlackboxFlightData } from '@shared/types/blackbox.types';
 import type { PIDConfiguration } from '@shared/types/pid.types';
-import type { FlightStyle } from '@shared/types/profile.types';
+import type { DroneSize, FlightStyle } from '@shared/types/profile.types';
 import type {
   AnalysisProgress,
   AnalysisWarning,
@@ -264,6 +264,7 @@ interface CoreParams {
   flightPIDs?: PIDConfiguration;
   rawHeaders?: Map<string, string>;
   flightStyle: FlightStyle;
+  droneSize?: DroneSize;
   historyObservations?: PIDObservation[];
   onProgress?: (progress: AnalysisProgress) => void;
   startTime: number;
@@ -278,6 +279,7 @@ async function analyzePIDCore(params: CoreParams): Promise<PIDAnalysisResult> {
     flightPIDs,
     rawHeaders,
     flightStyle,
+    droneSize,
     historyObservations,
     onProgress,
     startTime,
@@ -338,7 +340,8 @@ async function analyzePIDCore(params: CoreParams): Promise<PIDAnalysisResult> {
     flightStyle,
     extracted.tfMetrics,
     dTermEffectiveness,
-    propWash
+    propWash,
+    droneSize
   );
 
   // FF recommendations (header-based for both; energy-based only when steps exist)
@@ -450,7 +453,8 @@ export async function analyzePID(
   flightPIDs?: PIDConfiguration,
   rawHeaders?: Map<string, string>,
   flightStyle: FlightStyle = 'balanced',
-  historyObservations?: PIDObservation[]
+  historyObservations?: PIDObservation[],
+  droneSize?: DroneSize
 ): Promise<PIDAnalysisResult> {
   const startTime = performance.now();
   const extracted = await extractViaStepResponse(flightData, onProgress);
@@ -462,6 +466,7 @@ export async function analyzePID(
     flightPIDs,
     rawHeaders,
     flightStyle,
+    droneSize,
     historyObservations,
     onProgress,
     startTime,
@@ -482,7 +487,8 @@ export async function analyzeTransferFunction(
   flightPIDs?: PIDConfiguration,
   rawHeaders?: Map<string, string>,
   flightStyle: FlightStyle = 'balanced',
-  historyObservations?: PIDObservation[]
+  historyObservations?: PIDObservation[],
+  droneSize?: DroneSize
 ): Promise<PIDAnalysisResult & { transferFunction: TransferFunctionResult }> {
   const startTime = performance.now();
   const extracted = await extractViaWiener(flightData, onProgress);
@@ -494,6 +500,7 @@ export async function analyzeTransferFunction(
     flightPIDs,
     rawHeaders,
     flightStyle,
+    droneSize,
     historyObservations,
     onProgress,
     startTime,

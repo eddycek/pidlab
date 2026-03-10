@@ -423,7 +423,10 @@ PIDlab's noise-to-cutoff interpolation range: **-70 dB (cleanest) to -10 dB (noi
 5 sequential rules, deduplicated at the end:
 
 **Rule 1: Noise-Floor-Based Lowpass Adjustment**
-- Scope: Roll and pitch axes, skipped for medium noise levels
+- Scope: Roll and pitch axes
+- **High noise** (> -30 dB): full-confidence noise-to-cutoff interpolation
+- **Medium noise** (-50 to -30 dB): 20 Hz deadzone, low confidence recommendations (avoids churn)
+- **Low noise** (< -50 dB): skipped (no recommendation needed)
 - Linear interpolation from noise floor (dB) to cutoff (Hz):
   ```
   t = (noiseFloorDb - (-10)) / ((-70) - (-10))
@@ -443,9 +446,10 @@ PIDlab's noise-to-cutoff interpolation range: **-70 dB (cleanest) to -10 dB (noi
 - **Deadzone**: 5 Hz minimum change to trigger recommendation (prevents trivial adjustments)
 - **Propwash safety floor**: If target gyro LPF1 < 100 Hz AND worst noise floor ≤ -15 dB, raise to 100 Hz. Matches BF community guidance: "avoid filter cutoffs below 100 Hz." Bypassed only when noise is extreme (> -15 dB) because filtering takes priority over propwash.
 
-**Rule 2: Resonance Peak Mitigation**
+**Rule 2: Resonance Peak Mitigation** (notch-aware)
 - Collect peaks ≥12 dB above noise floor on roll and pitch
-- If significant peak below current cutoff or cutoff disabled:
+- **Notch-aware filtering**: Peaks within dyn_notch_min–dyn_notch_max range are excluded — the dynamic notch already handles them. Only peaks outside this range trigger LPF recommendations.
+- If significant peak outside notch range AND below current cutoff or cutoff disabled:
   - Target cutoff = lowest_peak_freq - 20 Hz, clamped to safety bounds
   - Recommend lowering both gyro LPF1 and D-term LPF1
 
@@ -456,8 +460,17 @@ PIDlab's noise-to-cutoff interpolation range: **-70 dB (cleanest) to -10 dB (noi
 
 **Rule 4: RPM-Aware Dynamic Notch Simplification** (when RPM filter active)
 - If dyn_notch_count > 1: recommend reducing to 1 (frame resonance tracking only)
-- If dyn_notch_q < 500: recommend increasing to 500 (narrower notch, less signal distortion)
-- *Rationale*: With RPM handling motor harmonics, dynamic notch only needs to catch frame resonance — 1 narrow notch suffices. Community consensus supports this (UAV Tech, BF 4.3+ notes).
+- **Conditional Q recommendation**:
+  - If strong frame resonance detected (≥12 dB peaks in 80-200 Hz): keep Q=300 (wider notch needed to catch broad resonance)
+  - Otherwise: recommend Q=500 (narrower notch, less signal distortion)
+- *Rationale*: With RPM handling motor harmonics, dynamic notch only needs to catch frame resonance — 1 narrow notch suffices. But strong frame resonance needs wider Q to be effective. Community consensus supports this (UAV Tech, BF 4.3+ notes).
+
+**Rule 6: LPF2 Recommendations** (new)
+- **Disable gyro LPF2**: When RPM filter active AND noise floor < -45 dB (very clean). Reduces filter delay.
+- **Disable D-term LPF2**: When noise floor < -45 dB (very clean). Reduces D-term latency.
+- **Enable gyro LPF2**: When no RPM filter AND noise floor ≥ -30 dB (noisy). Extra filtering protects motors.
+- **Enable D-term LPF2**: When noise floor ≥ -30 dB AND LPF2 currently disabled. Extra D-term protection.
+- *Rationale*: LPF2 adds significant phase delay — only worth it when noise level justifies it. With RPM filter + clean noise, LPF2 is counterproductive.
 
 **Rule 5: Motor Harmonic Diagnostic** (when RPM filter active)
 - If motor harmonics still detected at ≥12 dB: emit warning about possible `motor_poles` misconfiguration or ESC telemetry issues
@@ -477,9 +490,12 @@ Per-axis rules anchored to **flight PIDs from BBL header** (convergent design �
 **Rule 2: Moderate Overshoot** (between moderateOvershoot and overshootMax)
 - D increase by 5 only
 
-**Rule 3: Sluggish Response** (low overshoot + slow rise time)
+**Rule 3: Sluggish Response** (low overshoot + slow rise time, severity-scaled)
 - Trigger: meanOvershoot < overshootIdeal AND meanRiseTime > sluggishRise threshold
-- P increase by 5 (per FPVSIM guidance: "if too sluggish, raise P")
+- **Severity-scaled P increase**: `slugSeverity = meanRiseTime / sluggishRise`
+  - If severity > 2× threshold: P increase by +10 (very sluggish)
+  - Otherwise: P increase by +5 (per FPVSIM guidance: "if too sluggish, raise P")
+- **P-too-high informational warning**: If P > pTypical × 1.3 for quad size, emit low-confidence warning (no value change). Alerts the user that P is unusually high for their quad type without forcing a reduction.
 
 **Rule 4: Excessive Ringing** (maxRinging > ringingMax)
 - D increase by 5 (skipped if D already increased for overshoot)
@@ -530,7 +546,8 @@ Per-axis rules anchored to **flight PIDs from BBL header** (convergent design �
 **Rule TF-2: Synthetic Overshoot** (> overshootThreshold)
 - Same severity scale as time-domain Rule 1
 
-**Rule TF-3: Low Bandwidth** (< 40 Hz)
+**Rule TF-3: Low Bandwidth** (per-style threshold)
+- Threshold varies by flight style: smooth < 30 Hz, balanced < 40 Hz, aggressive < 60 Hz
 - Only if overshoot is low (system just sluggish, not oscillating)
 - P increase by 5
 
@@ -539,16 +556,31 @@ Per-axis rules anchored to **flight PIDs from BBL header** (convergent design �
 - If |dcGain| > 3 dB: I increase +10, else +5
 - Flash Tune equivalent of steady-state error detection (no direct step measurement available)
 
-### PID Safety Bounds
+### PID Safety Bounds (Quad-Size-Aware)
 
-| Parameter | PIDlab Bound | BF Firmware Limit | Rationale |
-|-----------|-------------|-------------------|-----------|
-| P min | 20 | 0 | Below 20 is non-functional for any quad size |
-| P max | 120 | 250 | Practical ceiling — only tiny whoops approach 100+. 120 gives headroom while preventing damage. |
-| D min | 15 | 0 | Below 15 provides negligible damping |
-| D max | 80 | 250 | Community: above ~60-70 only on very clean builds. 80 gives safety margin. |
-| I min | 30 | 0 | Below 30 gives insufficient hover stability |
-| I max | 120 | 250 | Community: rarely above 110. 120 gives headroom. |
+Default bounds (used when drone size is unknown) match standard 5" values. When drone size is known from the profile, per-size bounds apply:
+
+| Size | P min | P max | D min | D max | I min | I max | P typical |
+|------|-------|-------|-------|-------|-------|-------|-----------|
+| 1" | 20 | 80 | 15 | 50 | 40 | 100 | 40 |
+| 2" | 20 | 80 | 15 | 50 | 40 | 100 | 40 |
+| 2.5" | 20 | 90 | 15 | 55 | 40 | 110 | 42 |
+| 3" | 20 | 100 | 15 | 60 | 40 | 110 | 45 |
+| 4" | 20 | 110 | 15 | 70 | 40 | 120 | 46 |
+| **5"** (default) | **20** | **120** | **15** | **80** | **40** | **120** | **48** |
+| 6" | 20 | 120 | 15 | 90 | 40 | 120 | 50 |
+| 7" | 20 | 120 | 15 | 100 | 40 | 120 | 50 |
+| 10" | 20 | 120 | 15 | 100 | 40 | 120 | 50 |
+
+| Parameter | Rationale |
+|-----------|-----------|
+| P min = 20 | Below 20 is non-functional for any quad size |
+| P max 80-120 | Micro quads saturate motors at lower P. Standard/large quads tolerate higher P. |
+| D min = 15 | Below 15 provides negligible damping |
+| D max 50-100 | Small quads: high noise, low inertia → D > 50 dangerous. Large quads: high inertia needs more D damping. |
+| I min = 40 | I=30 causes poor wind rejection and attitude drift. BF defaults I=60-90. |
+| I max 100-120 | Micro quads rarely need I > 100. Standard quads: community rarely above 110. |
+| P typical | Size-specific P reference for "P too high" informational warning (triggers at 1.3×) |
 
 ### Flight Style Thresholds (PIDlab-Specific)
 
@@ -565,12 +597,14 @@ PIDlab adjusts all PID thresholds based on the pilot's declared flight style. Th
 | Steady-state error max | 8% | 5% | 3% | — |
 | Steady-state error low | 2% | 1% | 1% | — |
 
-*Rationale*: **Balanced** maps to typical community targets (10% overshoot, 200ms settling). **Smooth** is for cinematic/long-range where stability trumps response. **Aggressive** is for racing where pilots accept more overshoot for faster rise times.
+| Bandwidth low (TF) | 30 Hz | 40 Hz | 60 Hz | Per-style TF-3 threshold |
+
+*Rationale*: **Balanced** maps to typical community targets (10% overshoot, 200ms settling). **Smooth** is for cinematic/long-range where stability trumps response. **Aggressive** is for racing where pilots accept more overshoot for faster rise times. Bandwidth thresholds reflect that aggressive pilots need higher bandwidth for locked-in feel.
 
 ### Step Detection (PIDlab-Specific)
 
 - Derivative threshold: 500 deg/s/s
-- Minimum magnitude: 100 deg/s
+- Minimum magnitude: 150 deg/s (raised from 100 to reduce false positives in turbulent data)
 - Hold validation: ≥50 ms at ±50% of step size
 - Cooldown between steps: 100 ms
 - Adaptive window: 2× median settling time, clamped [150, 500] ms
@@ -637,6 +671,8 @@ Scored before generating filter recommendations:
 | Sample rate | 0.20 | < 1 kHz | 4 kHz |
 | Stick activity | 0.30 | 0 deg/s RMS | 50+ deg/s |
 | Axis coverage | 0.20 | 0 active axes | 3 active axes (coherence >0.3) |
+
+**Warnings**: `short_hover_time` (<5s), `low_logging_rate` (<2kHz), `low_step_magnitude` (RMS <10 deg/s), `low_coherence` (per-axis coherence ≤0.3 — severity: <0.15 warning, 0.15-0.3 info)
 
 ### Quality Tiers & Confidence Adjustment
 
