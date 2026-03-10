@@ -114,6 +114,14 @@ export interface TransferFunctionMetricsSummary {
   dataQuality?: { overall: number; tier: string };
   /** Downsampled synthetic step response for history chart rendering */
   stepResponse?: CompactStepResponse;
+  /** Throttle-band TF analysis summary (Flash Tune only) */
+  throttleBands?: {
+    bandsWithData: number;
+    metricsVariance: { bandwidthHz: number; overshootPercent: number; phaseMarginDeg: number };
+    tpaWarning?: string;
+  };
+  /** Per-axis DC gain from transfer function (dB) */
+  dcGain?: { roll: number; pitch: number; yaw: number };
 }
 
 /** A completed tuning session archived for history/comparison */

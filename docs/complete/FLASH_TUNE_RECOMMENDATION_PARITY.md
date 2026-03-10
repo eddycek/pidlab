@@ -1,6 +1,6 @@
 # Flash Tune Recommendation Parity
 
-> **Status**: Active (PRs #203–#205: Tasks 1, 2, 3, 4, 5, 6 done)
+> **Status**: Complete (PRs #203–#206: all 9 tasks implemented)
 
 ## Problem Statement
 
@@ -251,7 +251,7 @@ Now handled automatically by the unified pipeline (Task 1 calls `recommendFeedfo
 - Unit test: `FeedforwardAnalyzer.test.ts` — verify `recommendFeedforward(null, context)` returns header-based recs
 - Verify no crash when `feedforwardAnalysis` is null
 
-### Task 3: Response vs Throttle (Per-Band Transfer Function)
+### Task 3: Response vs Throttle (Per-Band Transfer Function) ✅ (PR #205)
 
 **Files**: New `src/main/analysis/ThrottleTFAnalyzer.ts`
 
@@ -381,7 +381,7 @@ Map DC gain deficit to approximate steady-state error in `PIDRecommender` TF pat
 - Verify `analyzePropWash()` returns non-null on flash demo data
 - Verify `analyzeDTermEffectiveness()` returns non-null on flash demo data
 
-### Task 7: Update Tuning History Types and Archival
+### Task 7: Update Tuning History Types and Archival ✅ (PR #206)
 
 **Files**: `src/shared/types/tuning-history.types.ts`, `src/shared/utils/metricsExtract.ts`
 
@@ -401,7 +401,7 @@ All new fields optional — existing history records parse without issue.
 - Unit test: `metricsExtract.test.ts` — verify new fields extracted
 - Unit test: verify old records without new fields still load
 
-### Task 8: Update E2E Tests and History Generator
+### Task 8: Update E2E Tests and History Generator ✅ (PR #206)
 
 **Files**: `e2e/demo-quick-tune-cycle.spec.ts`, `e2e/demo-generate-history.spec.ts`
 
@@ -417,7 +417,7 @@ All new fields optional — existing history records parse without issue.
 
 **Regression**: Full E2E suite must pass.
 
-### Task 9: Update Documentation
+### Task 9: Update Documentation ✅ (PR #206)
 
 **Files to update**:
 

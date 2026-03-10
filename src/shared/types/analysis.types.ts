@@ -487,6 +487,7 @@ export interface PIDAnalysisResult {
       overshootPercent: number;
       settlingTimeMs: number;
       riseTimeMs: number;
+      dcGainDb?: number;
     };
     pitch: {
       bandwidthHz: number;
@@ -495,6 +496,7 @@ export interface PIDAnalysisResult {
       overshootPercent: number;
       settlingTimeMs: number;
       riseTimeMs: number;
+      dcGainDb?: number;
     };
     yaw: {
       bandwidthHz: number;
@@ -503,6 +505,7 @@ export interface PIDAnalysisResult {
       overshootPercent: number;
       settlingTimeMs: number;
       riseTimeMs: number;
+      dcGainDb?: number;
     };
   };
 }

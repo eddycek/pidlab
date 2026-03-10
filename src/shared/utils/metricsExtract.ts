@@ -219,6 +219,14 @@ interface TFMetricsInput {
   overshootPercent: number;
   settlingTimeMs: number;
   riseTimeMs: number;
+  dcGainDb?: number;
+}
+
+/** Throttle-band TF summary input (matches PIDAnalysisResult.throttleTF shape) */
+interface ThrottleTFInput {
+  bandsWithData: number;
+  metricsVariance: { bandwidthHz: number; overshootPercent: number; phaseMarginDeg: number };
+  tpaWarning?: string;
 }
 
 /**
@@ -227,11 +235,13 @@ interface TFMetricsInput {
  * @param metrics - Per-axis transfer function metrics
  * @param dataQuality - Optional data quality summary
  * @param syntheticStepResponse - Optional synthetic step response data to downsample for history
+ * @param throttleTF - Optional throttle-band TF summary for history storage
  */
 export function extractTransferFunctionMetrics(
   metrics: { roll: TFMetricsInput; pitch: TFMetricsInput; yaw: TFMetricsInput },
   dataQuality?: { overall: number; tier: string },
-  syntheticStepResponse?: SyntheticStepResponseInput
+  syntheticStepResponse?: SyntheticStepResponseInput,
+  throttleTF?: ThrottleTFInput
 ): TransferFunctionMetricsSummary {
   const extract = (m: TFMetricsInput) => ({
     bandwidthHz: round2(m.bandwidthHz),
@@ -242,6 +252,12 @@ export function extractTransferFunctionMetrics(
     riseTimeMs: round2(m.riseTimeMs),
   });
 
+  // Extract per-axis DC gain if available
+  const hasDcGain =
+    metrics.roll.dcGainDb !== undefined ||
+    metrics.pitch.dcGainDb !== undefined ||
+    metrics.yaw.dcGainDb !== undefined;
+
   return {
     roll: extract(metrics.roll),
     pitch: extract(metrics.pitch),
@@ -249,6 +265,28 @@ export function extractTransferFunctionMetrics(
     ...(dataQuality ? { dataQuality } : {}),
     ...(syntheticStepResponse
       ? { stepResponse: downsampleStepResponse(syntheticStepResponse) }
+      : {}),
+    ...(throttleTF
+      ? {
+          throttleBands: {
+            bandsWithData: throttleTF.bandsWithData,
+            metricsVariance: {
+              bandwidthHz: round2(throttleTF.metricsVariance.bandwidthHz),
+              overshootPercent: round2(throttleTF.metricsVariance.overshootPercent),
+              phaseMarginDeg: round2(throttleTF.metricsVariance.phaseMarginDeg),
+            },
+            ...(throttleTF.tpaWarning ? { tpaWarning: throttleTF.tpaWarning } : {}),
+          },
+        }
+      : {}),
+    ...(hasDcGain
+      ? {
+          dcGain: {
+            roll: round2(metrics.roll.dcGainDb ?? 0),
+            pitch: round2(metrics.pitch.dcGainDb ?? 0),
+            yaw: round2(metrics.yaw.dcGainDb ?? 0),
+          },
+        }
       : {}),
   };
 }
