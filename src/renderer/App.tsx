@@ -434,7 +434,8 @@ function AppContent() {
             verificationTFMetrics = extractTransferFunctionMetrics(
               tfResult.transferFunctionMetrics,
               undefined,
-              tfResult.transferFunction?.syntheticStepResponse
+              tfResult.transferFunction?.syntheticStepResponse,
+              tfResult.throttleTF
             );
           }
         } catch {

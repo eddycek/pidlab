@@ -97,7 +97,8 @@ export function TuningWizard({ logId, mode = 'full', onExit, onApplyComplete }: 
             ? extractTransferFunctionMetrics(
                 wizard.tfResult.transferFunctionMetrics,
                 undefined,
-                wizard.tfResult.transferFunction?.syntheticStepResponse
+                wizard.tfResult.transferFunction?.syntheticStepResponse,
+                wizard.tfResult.throttleTF
               )
             : undefined;
 

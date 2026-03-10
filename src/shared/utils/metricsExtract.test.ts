@@ -350,6 +350,81 @@ describe('extractTransferFunctionMetrics', () => {
     const metrics = extractTransferFunctionMetrics(makeTFMetrics());
     expect(metrics.stepResponse).toBeUndefined();
   });
+
+  it('includes throttleBands when throttleTF provided', () => {
+    const throttleTF = {
+      bandsWithData: 6,
+      metricsVariance: {
+        bandwidthHz: 12.3456,
+        overshootPercent: 3.7891,
+        phaseMarginDeg: 5.1234,
+      },
+      tpaWarning: 'TPA may be too aggressive',
+    };
+    const metrics = extractTransferFunctionMetrics(
+      makeTFMetrics(),
+      undefined,
+      undefined,
+      throttleTF
+    );
+    expect(metrics.throttleBands).toBeDefined();
+    expect(metrics.throttleBands!.bandsWithData).toBe(6);
+    expect(metrics.throttleBands!.metricsVariance.bandwidthHz).toBe(12.35);
+    expect(metrics.throttleBands!.metricsVariance.overshootPercent).toBe(3.79);
+    expect(metrics.throttleBands!.metricsVariance.phaseMarginDeg).toBe(5.12);
+    expect(metrics.throttleBands!.tpaWarning).toBe('TPA may be too aggressive');
+  });
+
+  it('omits tpaWarning from throttleBands when not present', () => {
+    const throttleTF = {
+      bandsWithData: 4,
+      metricsVariance: { bandwidthHz: 10, overshootPercent: 2, phaseMarginDeg: 4 },
+    };
+    const metrics = extractTransferFunctionMetrics(
+      makeTFMetrics(),
+      undefined,
+      undefined,
+      throttleTF
+    );
+    expect(metrics.throttleBands).toBeDefined();
+    expect(metrics.throttleBands!.tpaWarning).toBeUndefined();
+  });
+
+  it('omits throttleBands when throttleTF not provided', () => {
+    const metrics = extractTransferFunctionMetrics(makeTFMetrics());
+    expect(metrics.throttleBands).toBeUndefined();
+  });
+
+  it('includes dcGain when dcGainDb present on input metrics', () => {
+    const metricsWithDcGain = {
+      roll: { ...makeTFMetrics().roll, dcGainDb: -1.2345 },
+      pitch: { ...makeTFMetrics().pitch, dcGainDb: -0.5678 },
+      yaw: { ...makeTFMetrics().yaw, dcGainDb: -2.9012 },
+    };
+    const result = extractTransferFunctionMetrics(metricsWithDcGain);
+    expect(result.dcGain).toBeDefined();
+    expect(result.dcGain!.roll).toBe(-1.23);
+    expect(result.dcGain!.pitch).toBe(-0.57);
+    expect(result.dcGain!.yaw).toBe(-2.9);
+  });
+
+  it('omits dcGain when dcGainDb not present on any axis', () => {
+    const metrics = extractTransferFunctionMetrics(makeTFMetrics());
+    expect(metrics.dcGain).toBeUndefined();
+  });
+
+  it('defaults missing dcGainDb to 0 when at least one axis has it', () => {
+    const metricsPartial = {
+      roll: { ...makeTFMetrics().roll, dcGainDb: -1.5 },
+      pitch: makeTFMetrics().pitch, // no dcGainDb
+      yaw: makeTFMetrics().yaw, // no dcGainDb
+    };
+    const result = extractTransferFunctionMetrics(metricsPartial);
+    expect(result.dcGain).toBeDefined();
+    expect(result.dcGain!.roll).toBe(-1.5);
+    expect(result.dcGain!.pitch).toBe(0);
+    expect(result.dcGain!.yaw).toBe(0);
+  });
 });
 
 describe('downsampleStepResponse', () => {
