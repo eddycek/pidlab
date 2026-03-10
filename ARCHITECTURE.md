@@ -1,6 +1,6 @@
 # Architecture Overview
 
-**Last Updated:** March 9, 2026 | **Phase 4 Complete, Phase 6 Complete** | **2331 unit tests, 114 files + 23 Playwright E2E tests**
+**Last Updated:** March 10, 2026 | **Phase 4 Complete, Phase 6 Complete** | **2330 unit tests, 114 files + 26 Playwright E2E tests**
 
 ---
 
@@ -450,11 +450,17 @@ DroneProfile {
 ConfigurationSnapshot {
   id: string,
   timestamp: string,
-  label: string,                // "Baseline", "Pre-tuning (auto)", user-defined
+  label: string,                // "Baseline", "Pre-tuning #3 (Deep Tune)", user-defined
   type: 'baseline' | 'manual' | 'auto',
   fcInfo: FCInfo,
   configuration: { cliDiff: string },
-  metadata: { appVersion: string, createdBy: string }
+  metadata: {
+    appVersion: string,
+    createdBy: string,
+    tuningSessionNumber?: number,   // Session counter for contextual labels
+    tuningType?: 'guided' | 'quick', // Deep Tune or Flash Tune
+    snapshotRole?: 'pre-tuning' | 'post-tuning'  // Role badges (orange/green)
+  }
 }
 ```
 
@@ -474,7 +480,6 @@ TuningSession {
   pidLogId?: string,
   appliedPIDChanges?: AppliedChange[],
   verificationLogId?: string,
-  postFilterSnapshotId?: string,
   postTuningSnapshotId?: string,
   filterMetrics?: FilterMetricsSummary,
   pidMetrics?: PIDMetricsSummary,
@@ -520,7 +525,7 @@ TuningSession {
 
 ```
 Stage 1: Apply PID changes via MSP (MSP_SET_PID)    ← MUST be before CLI mode
-Stage 2: Create safety snapshot (enters CLI via exportCLIDiff)
+Stage 2: Enter CLI mode (via exportCLIDiff)
 Stage 3: Apply filter changes via CLI "set" commands
 Stage 4: CLI "save" → FC reboots
 
@@ -748,7 +753,7 @@ User clicks Download → BlackboxStatus → window.betaflight.downloadBlackboxLo
 User clicks Apply → ApplyConfirmationModal → useTuningWizard.confirmApply()
   → window.betaflight.applyRecommendations(input) → IPC handler:
   Stage 1: MSPClient.setPIDConfiguration() via MSP_SET_PID (before CLI)
-  Stage 2: SnapshotManager.createSnapshot() → enters CLI mode
+  Stage 2: Enter CLI mode (via exportCLIDiff)
   Stage 3: CLI "set" commands for each filter recommendation
   Stage 4: CLI "save" → FC reboots
   → Progress events → renderer progress bar
@@ -814,25 +819,25 @@ Hardware error (FC timeout, USB disconnect)
 
 ## Testing Strategy
 
-**2331 unit tests across 114 files + 23 Playwright E2E tests**. See [TESTING.md](./TESTING.md) for complete inventory.
+**2330 unit tests across 114 files + 26 Playwright E2E tests**. See [TESTING.md](./TESTING.md) for complete inventory.
 
 | Area | Files | Tests |
 |------|-------|-------|
 | Blackbox Parser | 9 | 245 |
 | FFT Analysis (+ Data Quality + Spectrogram + Delay) | 8 | 216 |
-| Step Response + PID + TF + CrossAxis + PropWash + DTerm + Bayesian | 10 | 285 |
+| Step Response + PID + TF + CrossAxis + PropWash + DTerm + Bayesian | 10 | 292 |
 | Header Validation + Constants | 2 | 31 |
 | MSP Protocol & Client | 4 | 173 |
 | MSC (Mass Storage) | 2 | 43 |
-| Storage Managers | 7 | 125 |
-| IPC Handlers | 1 | 113 |
-| UI Components + Charts + Contexts | 43 | 633 |
-| React Hooks + Utils | 13 | 149 |
-| Shared Constants & Utils | 4 | 64 |
+| Storage Managers | 7 | 127 |
+| IPC Handlers | 1 | 109 |
+| UI Components + Charts + Contexts | 43 | 654 |
+| React Hooks + Utils | 13 | 156 |
+| Shared Constants & Utils | 4 | 72 |
 | E2E Workflows (Vitest) | 1 | 30 |
-| Demo Mode (Vitest) | 2 | 69 |
-| **Playwright E2E** | **4** | **25** |
+| Demo Mode (Vitest) | 2 | 73 |
+| **Playwright E2E** | **5** | **26** |
 
 **Pre-commit hook** (husky + lint-staged) blocks commits when tests fail. All async UI tests use `waitFor()`. Mock layer: `src/renderer/test/setup.ts` mocks entire `window.betaflight` API.
 
-**Playwright E2E** (demo mode): Launches real Electron app with mock FC, clicks through full tuning workflow (Deep Tune and Flash Tune). Run via `npm run test:e2e` (22 tests) or `npm run demo:generate-history` (5-cycle generator). See `e2e/` directory and [docs/OFFLINE_UX_TESTING.md](./docs/OFFLINE_UX_TESTING.md).
+**Playwright E2E** (demo mode): Launches real Electron app with mock FC, clicks through full tuning workflow (Deep Tune and Flash Tune). Run via `npm run test:e2e` (22 tests) or `npm run demo:generate-history` (generators). 26 tests across 5 spec files. See `e2e/` directory and [docs/OFFLINE_UX_TESTING.md](./docs/OFFLINE_UX_TESTING.md).

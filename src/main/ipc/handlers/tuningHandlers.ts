@@ -7,7 +7,7 @@ import {
   IPCResponse,
 } from '@shared/types/ipc.types';
 import { TuningSession, TuningPhase, TuningType } from '@shared/types/tuning.types';
-import { TUNING_TYPE, TUNING_PHASE } from '@shared/constants';
+import { TUNING_TYPE, TUNING_PHASE, TUNING_TYPE_LABELS } from '@shared/constants';
 import {
   CompletedTuningRecord,
   FilterMetricsSummary,
@@ -90,33 +90,12 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
 
         sendProgress({ stage: 'pid', message: `Applied ${appliedPIDs} PID changes`, percent: 20 });
 
-        // Stage 2: Create pre-apply snapshot if requested (enters CLI via exportCLIDiff)
-        let snapshotId: string | undefined;
-        if (input.createSnapshot && snapshotManager) {
-          try {
-            sendProgress({
-              stage: 'snapshot',
-              message: 'Creating pre-apply snapshot...',
-              percent: 25,
-            });
-            const snapshot = await snapshotManager.createSnapshot('Pre-apply (auto)', 'auto');
-            snapshotId = snapshot.id;
-            logger.info(`Pre-apply snapshot created: ${snapshotId}`);
-          } catch (e) {
-            logger.warn('Could not create pre-apply snapshot (non-fatal):', e);
-          }
-        }
-
-        // Stage 3: Apply filter recommendations via CLI
+        // Stage 2: Apply filter recommendations via CLI
         let appliedFilters = 0;
         const needsCLI = input.filterRecommendations.length > 0 || ffRecs.length > 0;
         if (needsCLI) {
-          // createSnapshot() enters CLI via exportCLIDiff() and does NOT exit,
-          // so we may already be in CLI mode — only enter if not already there.
-          if (!mspClient.connection.isInCLI()) {
-            sendProgress({ stage: 'filter', message: 'Entering CLI mode...', percent: 50 });
-            await mspClient.connection.enterCLI();
-          }
+          sendProgress({ stage: 'filter', message: 'Entering CLI mode...', percent: 50 });
+          await mspClient.connection.enterCLI();
         }
 
         if (input.filterRecommendations.length > 0) {
@@ -167,7 +146,44 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
           percent: 85,
         });
 
-        // Stage 4: Save and reboot
+        // Stage 4: Create post-tuning snapshot (before save & reboot to avoid race)
+        // FC is in CLI mode from filter/FF apply (or snapshot will enter CLI).
+        // This is non-fatal — if it fails, we still save and reboot.
+        if (snapshotManager && profileManager && tuningSessionManager) {
+          try {
+            const profileId = profileManager.getCurrentProfileId();
+            if (profileId) {
+              const session = await tuningSessionManager.getSession(profileId);
+              if (session && !session.postTuningSnapshotId) {
+                let sessionNumber = 1;
+                if (tuningHistoryManager) {
+                  const history = await tuningHistoryManager.getHistory(profileId);
+                  sessionNumber = history.length + 1;
+                }
+                const tuningType = session.tuningType ?? 'guided';
+                const label = `Post-tuning #${sessionNumber} (${TUNING_TYPE_LABELS[tuningType]})`;
+                sendProgress({
+                  stage: 'save',
+                  message: 'Creating post-tuning snapshot...',
+                  percent: 88,
+                });
+                const snapshot = await snapshotManager.createSnapshot(label, 'auto', {
+                  tuningSessionNumber: sessionNumber,
+                  tuningType,
+                  snapshotRole: 'post-tuning',
+                });
+                await tuningSessionManager.updatePhase(profileId, session.phase, {
+                  postTuningSnapshotId: snapshot.id,
+                });
+                logger.info(`Post-tuning snapshot created: ${snapshot.id}`);
+              }
+            }
+          } catch (e) {
+            logger.warn('Could not create post-tuning snapshot (non-fatal):', e);
+          }
+        }
+
+        // Stage 5: Save and reboot
         sendProgress({ stage: 'save', message: 'Saving and rebooting FC...', percent: 90 });
         await mspClient.saveAndReboot();
 
@@ -175,7 +191,6 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
 
         const result: ApplyRecommendationsResult = {
           success: true,
-          snapshotId,
           appliedPIDs,
           appliedFilters,
           appliedFeedforward,
@@ -232,7 +247,18 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
         let baselineSnapshotId: string | undefined;
         if (snapshotManager && mspClient?.isConnected()) {
           try {
-            const snapshot = await snapshotManager.createSnapshot('Pre-tuning (auto)', 'auto');
+            // Compute session number from history (1-based)
+            let sessionNumber = 1;
+            if (tuningHistoryManager) {
+              const history = await tuningHistoryManager.getHistory(profileId);
+              sessionNumber = history.length + 1;
+            }
+            const label = `Pre-tuning #${sessionNumber} (${TUNING_TYPE_LABELS[resolvedType]})`;
+            const snapshot = await snapshotManager.createSnapshot(label, 'auto', {
+              tuningSessionNumber: sessionNumber,
+              tuningType: resolvedType,
+              snapshotRole: 'pre-tuning',
+            });
             baselineSnapshotId = snapshot.id;
             logger.info(`Pre-tuning backup created: ${snapshot.id}`);
           } catch (e) {

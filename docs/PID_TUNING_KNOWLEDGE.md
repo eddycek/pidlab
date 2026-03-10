@@ -1,258 +1,988 @@
 # PID Tuning Knowledge Base
 
-> Reference document for the PID Tuning Advisor agent. Covers FPV drone tuning theory,
-> Betaflight filter/PID architecture, and best practices used by PIDlab's analysis engine.
+> Comprehensive FPV drone tuning reference. Sections 1-5 and 8-15 reflect **community consensus**
+> from Betaflight docs, Oscar Liang, Joshua Bardwell, Plasmatree PID-Analyzer, PIDtoolbox, UAV Tech,
+> and FPVSIM. Sections 6-7 document **PIDlab-specific decision rules** and where they differ from
+> community defaults, with rationale.
+>
+> This document serves as the single source of truth. PIDlab's `constants.ts` should be validated
+> against the values documented here — not the other way around.
 
-## PID Control Theory for FPV
+---
+
+## 1. PID Control Theory for FPV
 
 ### P-term (Proportional)
-- Reacts to current error (setpoint − gyro)
+
+- Reacts to **current error** (setpoint - gyro)
 - Higher P = faster response, sharper stick feel, but can cause oscillation
-- Too high: high-frequency oscillation visible on bench, hot motors
-- Too low: mushy/sluggish feel, slow to follow stick inputs
-- Typical range: 30–100 (BF internal units)
+- Too high: high-frequency oscillation visible on bench, hot motors, audible buzz
+- Too low: mushy/sluggish feel, slow to follow stick inputs, "floaty" sensation
+- P is the primary "responsiveness" knob — most pilots notice P changes immediately
+
+**Community starting values (5" freestyle):**
+- Bardwell method: P=46 roll, P=50 pitch, P=65 yaw — then adjust by feel
+- BF defaults: typically P=42-50 for roll/pitch
+- FPVSIM: "35-45 should work for regular 5 inch"
+- General practical range: **30-100** (BF internal units, firmware allows 0-250)
 
 ### I-term (Integral)
-- Accumulates past error over time — eliminates steady-state offset
+
+- Accumulates **past error** over time — eliminates steady-state offset
 - Higher I = better hover stability, tighter attitude hold in wind
-- Too high: I-term windup → bounce-back after flips, slow wobble on hover
-- Too low: drift on hover, poor wind rejection, attitude offset after maneuvers
-- Typical range: 40–120
+- Too high: I-term windup → bounce-back after flips/rolls, slow low-frequency wobble on hover
+- Too low: drift on hover, poor wind rejection, attitude offset after aggressive maneuvers
+- I-term works on a longer timescale than P or D — changes feel subtle compared to P/D adjustments
 - Key metric: **steady-state error** — if gyro consistently undershoots setpoint by >3%, I is too low
 
+**Community values:**
+- BF defaults: I=45-50 for roll/pitch, I=45 for yaw
+- Bardwell: I=45-50 starting point
+- FPVSIM: "30-40 is good for normal 5 inch"
+- General practical range: **30-120** (firmware allows 0-250)
+
 ### D-term (Derivative)
-- Reacts to rate of change of error — dampens P oscillation
+
+- Reacts to **rate of change** of error — dampens P oscillation, resists rapid changes
 - Higher D = more damping, less overshoot, but amplifies high-frequency noise
-- Too high: hot motors (noise amplification), vibration, motor desync risk
-- Too low: overshoot after stick input, prop wash oscillation on descents
-- Typical range: 20–70
-- **Critical tradeoff**: D dampening vs noise amplification — measured by D-term effectiveness ratio
+- Too high: hot motors (noise amplification), vibration, potential motor desync
+- Too low: overshoot after stick input, prop wash oscillation on descents, bounce-back
+- D is the most noise-sensitive term: always ensure filters are properly tuned before raising D
+- **Critical tradeoff**: D dampening vs noise amplification — BF wiki: "D magnifies noise by 10x to 100x"
+
+**Community values:**
+- Bardwell: D=25-27 starting for 5" (roll/pitch), D=0 for yaw
+- BF defaults: D=25-35 for roll/pitch
+- General practical range: **20-70** (firmware allows 0-250)
+- Above ~60 typically only on very clean builds with RPM filter
 
 ### D/P Damping Ratio
-- Healthy range: 0.45–0.85 (D/P ratio)
-- Below 0.45: under-damped, expect overshoot and oscillation
-- Above 0.85: over-damped, sluggish response
-- PIDlab validates this ratio and auto-corrects when out of range
 
-### Feedforward
-- Predicts future error from stick movement speed (derivative of setpoint)
-- Improves tracking during fast moves without affecting hover stability
-- `feedforward_boost`: amplifies FF on fast stick inputs (0–50, default 15)
-- `feedforward_transition`: blends FF between roll/pitch and yaw (0–100)
-- **Gotcha**: High FF can look like P overshoot in step response — check FF energy ratio before reducing P
+- The ratio of D to P gain determines how damped the system is
+- **Community consensus**: D/P ≈ 0.5-0.65 is typical BF default range
+- FPVSIM recommends starting at D/P ≈ 0.6 for 5" quads
+- Below ~0.5: under-damped → overshoot, oscillation, bounce-back
+- Above ~0.8: over-damped → sluggish response, excessive noise amplification from D
+- Bardwell method: "Find the ideal damping slider value, then lock the P/D ratio"
+- Oscar Liang: "Maybe bump up P/D balance by 5-10% after finding ideal Damping value"
+- **Yaw exception**: Yaw D is often 0 in BF defaults — D/P ratio applies primarily to roll/pitch
 
-## Filter Architecture (Betaflight)
+### Feedforward (FF)
+
+- Predicts future error from **stick movement speed** (derivative of setpoint)
+- Improves tracking during fast moves without affecting hover stability (zero contribution at rest)
+- Unlike P/I/D which are reactive, FF is proactive — anticipates where the quad should be
+
+**Key FF Parameters (BF 4.3+):**
+- `feedforward_boost`: Amplifies FF on fast stick inputs (0-50, default 15)
+- `feedforward_transition`: Blends FF between roll/pitch and yaw (0-100)
+- `feedforward_smooth_factor`: Smooths FF to reduce jitter (0-75, default 25)
+- `feedforward_jitter_factor`: Attenuates FF on slow/noisy stick inputs (0-20, default 7)
+- `feedforward_averaging`: Averages consecutive stick deltas for smoother FF (0-4)
+
+**FF 2.0 (BF 4.3+):**
+- Replaced legacy `ff_interpolate_sp` with per-axis feedforward weight
+- Smart feedforward: only acts on genuine stick movement, rejects RC link jitter
+- `feedforward_jitter_factor` is the key anti-jitter control — higher values suppress more jitter but reduce response to subtle stick inputs
+
+**Community values:**
+- Bardwell starting: FF=100 all axes
+- BF defaults: FF=100-120 for roll/pitch
+
+**Gotcha**: High FF can look like P overshoot in step response analysis — check whether the leading-edge spike correlates with stick movement speed before reducing P.
+
+---
+
+## 2. Filter Architecture (Betaflight)
 
 ### Signal Chain
+
 ```
-Gyro sensor (8kHz)
-  → Gyro LPF1 (static or dynamic lowpass)
-  → Gyro LPF2 (static lowpass)
-  → Dynamic Notch filters (1-5 notches, auto-tracking)
-  → RPM Filter (motor harmonic notches, requires bidirectional DSHOT)
+Gyro sensor (8 kHz sample rate)
+  → RPM Filter (motor harmonic notches, 36 filters, requires bidirectional DSHOT)
+  → Dynamic Notch filters (1-5 notches per axis, SDFT-based auto-tracking)
+  → Gyro LPF1 (static or dynamic lowpass — main noise reduction)
+  → Gyro LPF2 (static lowpass — secondary cleanup)
   → PID controller
-    → D-term derivative
+    → D-term derivative computation
     → D-term LPF1 (static or dynamic lowpass)
     → D-term LPF2 (static lowpass)
-  → Motor output
+  → Motor output mixing
 ```
 
+**Note**: Filter order matters. RPM filter runs first (highest priority, removes known harmonics), then dynamic notch (tracks remaining peaks), then lowpass (catches everything else). This order maximizes noise removal while minimizing phase delay.
+
 ### Filter Types
-- **PT1**: First-order lowpass. -3dB at cutoff, -20dB/decade rolloff. Low group delay.
-- **Biquad (BiQuad LPF)**: Second-order. -6dB at cutoff, -40dB/decade. More filtering but more delay.
-- **Notch**: Band-reject filter. Removes narrow frequency band. Used for motor harmonics.
 
-### Key Filter Parameters
+| Type | Order | Rolloff | Delay | Use Case |
+|------|-------|---------|-------|----------|
+| **PT1** | 1st | -20 dB/decade | Lowest | Gyro/D-term LPF (default, preferred) |
+| **PT2** | 2nd | -40 dB/decade | Low | Gyro LPF (BF 4.3+ replacement for biquad) |
+| **PT3** | 3rd | -60 dB/decade | Medium | Aggressive noise situations |
+| **Biquad LPF** | 2nd | -40 dB/decade | Higher (resonant peak) | D-term LPF (alternative) |
+| **Notch (band-reject)** | 2nd | Narrow band | Low (away from center) | Motor harmonics, resonances |
 
-| Parameter | Default | What it does |
-|-----------|---------|-------------|
-| `gyro_lpf1_static_hz` | 250 | Main gyro lowpass cutoff |
+**PT1** (First-Order Lowpass):
+- Transfer function: H(s) = ωc / (s + ωc)
+- -3 dB at cutoff frequency, gentle rolloff
+- Minimal group delay — preferred for latency-sensitive paths
+
+**Biquad LPF** (Second-Order):
+- Transfer function: H(s) = ω₀² / (s² + (ω₀/Q)s + ω₀²)
+- -6 dB at cutoff, steeper rolloff than PT1
+- Can have slight gain peak near cutoff (depending on Q)
+- More delay than PT1 — use when stronger filtering is needed
+
+**Notch (Band-Reject)**:
+- Transfer function: H(s) = (s² + ω₀²) / (s² + (ω₀/Q)s + ω₀²)
+- Deep null at center frequency, passes everything else
+- Q controls width: higher Q = narrower notch = less signal distortion
+- Advantage over lowpass: less latency while giving strong reduction at target frequency (Oscar Liang)
+
+### Key Filter Parameters & BF Defaults
+
+| Parameter | BF Default | Description |
+|-----------|-----------|-------------|
+| `gyro_lpf1_static_hz` | 250 | Main gyro lowpass cutoff (0 = disabled) |
+| `gyro_lpf1_dyn_min_hz` | 250 | Dynamic lowpass minimum (0 = static mode) |
+| `gyro_lpf1_dyn_max_hz` | 500 | Dynamic lowpass maximum |
 | `gyro_lpf2_static_hz` | 500 | Second gyro lowpass cutoff |
 | `dterm_lpf1_static_hz` | 150 | Main D-term lowpass cutoff |
 | `dterm_lpf2_static_hz` | 150 | Second D-term lowpass cutoff |
-| `dyn_notch_min_hz` | 100 | Dynamic notch minimum frequency |
-| `dyn_notch_max_hz` | 600 | Dynamic notch maximum frequency |
-| `dyn_notch_count` | 3 | Number of dynamic notch filters |
-| `dyn_notch_q` | 300 | Dynamic notch Q factor (BF stores ×100) |
-| `rpm_filter_harmonics` | 3 | Number of motor harmonics to filter |
+| `dyn_notch_min_hz` | 100 | Dynamic notch minimum tracking freq |
+| `dyn_notch_max_hz` | 600 | Dynamic notch maximum tracking freq |
+| `dyn_notch_count` | 3 | Number of dynamic notch filters per axis |
+| `dyn_notch_q` | 300 | Dynamic notch Q factor (BF stores ×100 internally) |
+| `rpm_filter_harmonics` | 3 | Motor harmonics to filter (0 = disabled) |
 | `rpm_filter_min_hz` | 100 | Minimum RPM filter frequency |
 
+### BF Official Filter Recommendations
+
+From BF Tuning Guide and community consensus:
+
+| Scenario | Gyro LPF1 | D-term LPF1 | Source |
+|----------|-----------|-------------|--------|
+| **Default/optimal** | 100 Hz | 110 Hz | BF Tuning Guide |
+| **Slightly noisy** | 80 Hz | 100 Hz | BF Tuning Guide |
+| **Very noisy** | 50 Hz | 100 Hz | BF Tuning Guide |
+| **Clean + RPM filter** | 200-400 Hz | 150-200 Hz | Community consensus |
+
+**Safety rule of thumb**: "Avoid getting the filter's cutoff below 100 Hz" (BF wiki) — below this, phase delay significantly degrades prop wash handling.
+
+**D-term filter**: Oscar Liang notes "70-90 Hz may work, with 90 Hz offering best control and prop-wash handling at the cost of a little heat."
+
+### Dynamic Lowpass (Throttle-Tracking)
+
+- When `gyro_lpf1_dyn_min_hz > 0`, gyro LPF1 becomes dynamic
+- Cutoff frequency tracks throttle position: low throttle → min_hz, high throttle → max_hz
+- **Purpose**: At low throttle, motor noise is low-frequency — filter must track down. At high throttle, noise shifts up — filter can relax
+- BF dynamic ranges: Low 83-500 Hz, Medium 110-660 Hz, High 166-900 Hz
+- Useful for quads without RPM filter (no bidirectional DSHOT)
+
+### Dynamic Notch (SDFT-Based)
+
+- Uses Sliding Discrete Fourier Transform to track noise peaks in real-time
+- Up to 5 notches per axis, each independently tracking a noise peak
+- Responds to changing conditions (throttle, maneuvers) within ~50ms
+- **Without RPM filter**: Needs 3-5 notches to track motor harmonics + frame resonance
+- **With RPM filter**: Motor harmonics already handled → community recommends reducing to 1-2 notches, increasing Q (narrower, less signal distortion)
+
+### RPM Filter (Bidirectional DSHOT)
+
+- **Most effective filter** — removes exact motor harmonics with minimal latency
+- Requires bidirectional DSHOT protocol (ESC sends RPM telemetry back to FC)
+- **36 notches total**: 4 motors × 3 harmonics × 3 axes (roll/pitch/yaw)
+- Each notch precisely tracks actual motor RPM → zero frequency estimation error
+- With RPM filter active, other filters can be significantly relaxed (higher cutoffs, fewer notches)
+- `rpm_filter_harmonics`: 1-3 (default 3). BF 4.5+ allows dimmable harmonics (adjustable notch depth per harmonic)
+- `rpm_filter_min_hz`: Minimum frequency (100 Hz default) — prevents notches from tracking below useful range
+- **Motor poles config**: `motor_poles` must match actual motor (typically 14 for standard FPV motors). Wrong value = RPM filter tracks wrong frequencies
+
 ### Group Delay
+
 - Every filter adds latency (group delay) between stick input and motor response
-- More aggressive filtering = more delay = worse handling
-- Target: total gyro chain < 2ms, D-term chain < 3ms
-- If group delay warning fires, filters are too aggressive — raise cutoffs or reduce notch count
+- More aggressive filtering = more delay = worse handling feel
+- BF community: "Even one millisecond difference in latency can have a significant impact"
+- Normal D delay is about 5ms, motor time constant ~15ms (BF Tuning Notes)
+- **Goal**: Minimize total filter delay while keeping noise under control
+- PT1 < PT2 < Biquad in terms of delay at same cutoff frequency
+- Notch filters add delay primarily near their center frequency, minimal elsewhere
 
-### RPM Filter
-- Most effective filter — removes exact motor harmonics with minimal delay
-- Requires bidirectional DSHOT (motor protocol feedback)
-- Each motor × N harmonics = 4×N individual notch filters
-- When RPM filter is active, other filters can be more relaxed (higher cutoffs)
-- PIDlab detects RPM filter presence and widens safety bounds accordingly
+### BF Version Filter Changes
 
-## Noise Analysis
+- **BF 4.3**: Removed biquad option from gyro LPF (PT1/PT2/PT3 only), introduced slider system for filter tuning
+- **BF 4.5**: Dimmable RPM harmonics (per-harmonic notch depth), low-throttle TPA
+- **BF 4.6 (2025.12)**: DEBUG_GYRO_SCALED removed, chirp signal generator for transfer function analysis
 
-### Noise Sources (Frequency Bands)
-| Source | Frequency | Characteristics |
-|--------|-----------|----------------|
-| **Prop wash** | 20–90 Hz | Appears during descents/deceleration, broadband |
-| **Frame resonance** | 80–200 Hz | Fixed frequency, visible at all throttle levels |
-| **Motor noise** | 150–400 Hz | Tracks with throttle (RPM), harmonic pattern |
-| **Electrical noise** | >500 Hz | High frequency, often from ESC switching |
-| **Bearing noise** | Variable | Broadband, gets worse with worn bearings |
+---
 
-### Noise Floor
-- Background noise level across the spectrum (in dB)
+## 3. Noise Analysis
+
+### Noise Sources
+
+| Source | Frequency | Characteristics | Fix Strategy |
+|--------|-----------|----------------|--------------|
+| **Prop wash** | 20-90 Hz | Broadband burst during descents/deceleration | D-term, flying technique, I-term relax |
+| **Frame resonance** | 80-200 Hz | Fixed frequency, constant at all throttle levels | Notch filter, structural reinforcement |
+| **Motor noise** | 150-400 Hz | Tracks with throttle (RPM), harmonic pattern | RPM filter, lowpass cutoff |
+| **Electrical noise** | >500 Hz | High frequency, ESC switching noise | Lowpass filter, capacitors |
+| **Bearing noise** | Variable | Broadband, worsens with bearing wear | Replace bearings/motors |
+| **Gyro noise** | >1000 Hz | Sensor self-noise, aliased content | Hardware (better gyro chip) |
+
+Sources: BF wiki, Oscar Liang Filtering 101, UAV Tech
+
+### Motor Noise Fundamentals
+
+Motor noise frequency depends on RPM and magnet count:
+```
+fundamental_hz = (RPM / 60) × (motor_poles / 2)
+```
+For a typical 14-pole motor at 20,000 RPM: `(20000/60) × 7 = 2333 Hz` (mostly filtered by hardware anti-alias)
+
+At lower throttle (5,000 RPM): `(5000/60) × 7 = 583 Hz` — this is where motor noise matters for PID loop
+
+Harmonics appear at 2×, 3×, etc. of the fundamental — RPM filter places notches at each harmonic.
+
+### Noise Floor Measurement
+
+- Background noise level across the spectrum, measured in power spectral density (PSD)
 - Measured per axis (roll, pitch, yaw)
-- Lower = cleaner quad = can use less aggressive filters
-- Typical healthy: -30 to -20 dB
-- Problematic: above -15 dB
+- **Scale depends on tool and normalization** — different tools (BF Explorer, PIDtoolbox, BlackBox Mate) use different dB references
+- BlackBox Mate (BBM): default scale -40 to +10 dBm, uses `10 × log10(PSD)`
+- Oscar Liang: "For D-term, it's ideal to have the overall noise floor below -10 dB" (relative to D-term signal)
+- Lower noise floor = cleaner quad = can use less aggressive filtering
+
+**General noise floor interpretation** (qualitative, tool-independent):
+- **Very clean**: Flat spectrum, no visible peaks, filtering can be relaxed
+- **Normal**: Some motor harmonics visible, standard filtering adequate
+- **Noisy**: Prominent peaks, broadband elevation — lower cutoffs needed
+- **Very noisy**: High broadband noise, multiple resonances — aggressive filtering, check hardware
 
 ### Peak Detection
-- Prominent peaks above noise floor indicate specific noise sources
-- Peak frequency + throttle correlation → identifies source
-- Fixed frequency peaks = frame/prop resonance
-- Throttle-tracking peaks = motor harmonics
+
+- Peaks above noise floor indicate specific noise sources
+- Peak frequency + throttle correlation identifies source:
+  - **Fixed frequency** across throttle bands = frame/prop resonance
+  - **Throttle-tracking** frequency = motor harmonics
+  - **Multiple equally-spaced peaks** (≥3) = motor harmonic series
+- PIDtoolbox and BF Explorer both show peaks in spectral view
 
 ### Throttle Spectrogram
-- FFT computed per throttle band (10 bands, 0–100%)
-- Reveals how noise changes with throttle
-- Motor harmonics appear as lines sweeping upward with throttle
-- Frame resonance appears as vertical line (constant frequency)
 
-## Step Response Analysis
+- FFT computed per throttle band (typically 10 bands from 0-100%)
+- Reveals how noise changes with throttle position
+- Motor harmonics appear as diagonal lines (frequency increases with throttle)
+- Frame resonance appears as vertical line (constant frequency across all bands)
+- Community recommendation: 2 kHz logging rate for spectrum analysis (BF dev team, Oscar Liang)
 
-### What Good Looks Like
-- **Rise time**: 20–50ms (how fast gyro reaches setpoint)
-- **Overshoot**: 5–15% (brief peak above setpoint)
-- **Settling time**: 50–150ms (time to stay within ±5% of setpoint)
-- **Ringing**: < 2 oscillations after initial overshoot
-- **Latency**: < 20ms (delay before response starts)
+### Clean Spectrum Characteristics
+
+A well-tuned quad's noise spectrum shows:
+- Flat, low noise floor
+- No prominent peaks (or only small frame resonance handled by notch)
+- Minimal difference between axes (symmetric build)
+- Noise doesn't increase dramatically with throttle (good motor/prop balance)
+
+---
+
+## 4. Step Response Analysis
+
+### What Good Looks Like (Community Consensus)
+
+| Metric | Typical Good Range | Description | Source |
+|--------|-------------------|-------------|--------|
+| **Rise time** | 20-50 ms | Time from 10% to 90% of final value | PIDtoolbox, FPVSIM |
+| **Overshoot** | 5-15% | Peak above setpoint (% of step magnitude) | Oscar Liang, PIDtoolbox |
+| **Settling time** | 50-200 ms | Time to stay within tolerance band | BF: "FF makes 150-200ms normal" |
+| **Ringing** | < 2 oscillations | Oscillations after initial overshoot | BF wiki, PIDtoolbox |
+| **Latency** | < 20 ms | Delay before response starts | General control theory |
+
+**Note**: Exact "ideal" overshoot is debated. Oscar Liang suggests "a little overshoot (5-10%) might be acceptable or even favorable." PIDtoolbox emphasizes minimizing overshoot while maintaining fast rise time. FPVSIM focuses on visual P/D balance rather than specific percentages. Control theory standard for ≤10% maps to damping ratio ≥0.6.
+
+### Standard Definitions
+
+- **Rise time**: 10% to 90% of final value (standard control theory convention)
+- **Settling time**: Within ±2% (strict) or ±5% (relaxed) of steady-state value
+- **Overshoot**: `(peak - target) / |step_magnitude| × 100%`
+- **Ringing**: Number of oscillation cycles after initial overshoot
+- **Latency**: Time until response reaches 5% of step magnitude
+- **Steady-state error**: Mean |setpoint - gyro| after settling
 
 ### Problem Signatures
-| Symptom | Likely Cause | Fix |
-|---------|-------------|-----|
-| High overshoot (>20%) | P too high or D too low | Reduce P or increase D |
-| Slow rise time (>80ms) | P too low | Increase P |
-| Long settling (>200ms) | D too low, poor damping | Increase D |
-| Excessive ringing | D too low for the P level | Increase D, check D/P ratio |
-| Steady-state offset | I too low | Increase I |
-| Bounce-back after flips | I too high (windup) | Reduce I |
-| Asymmetric response | Mechanical issue (bent prop, loose motor) | Check hardware |
+
+| Symptom | Likely Cause | Primary Fix | Secondary Fix |
+|---------|-------------|-------------|---------------|
+| High overshoot (>20%) | P too high or D too low | Reduce P or increase D | Check D/P ratio |
+| Slow rise time (>80ms) | P too low | Increase P | Check FF settings |
+| Long settling (>200ms) | D too low, poor damping | Increase D | Check I-term |
+| Excessive ringing (>2) | D too low for P level | Increase D, check D/P ratio | Reduce P |
+| Steady-state offset (>5%) | I too low | Increase I | Check I-term relax |
+| Bounce-back after flips | I too high (windup) | Reduce I | Increase I-term relax |
+| Asymmetric response | Mechanical issue | Check hardware | Bent prop, loose motor |
+| Leading-edge spike | FF too high | Reduce feedforward_boost | Check FF energy ratio |
+
+Sources: BF PID Tuning Guide, Oscar Liang, Bardwell, PIDtoolbox
 
 ### Prop Wash
-- Oscillation during descents (quad flies through own turbulence)
-- Appears as 20–90 Hz noise burst after throttle-down events
-- Severity: mild (<3× noise floor) to severe (>5× noise floor)
-- Primary fix: increase D-term (dampens oscillation)
-- Secondary: adjust `iterm_relax` or flying style
-- PIDlab measures prop wash severity per axis and factors it into D recommendations
 
-## Transfer Function Analysis (Wiener Deconvolution)
+- Oscillation during descents (quad flies through own turbulence)
+- Appears as 20-90 Hz noise burst after throttle-down events
+- Primary fix: increase D-term (dampens oscillation)
+- Secondary: adjust `iterm_relax`, increase dynamic idle, adjust flying style
+- Severity varies: mild (barely noticeable) to severe (visible jello in video, audible oscillation)
+- Community consensus: "D is the primary tool against prop wash, but too much D amplifies noise"
+
+---
+
+## 5. Transfer Function Analysis (Wiener Deconvolution)
 
 ### Concept
-- Computes how the quad's control system transforms stick inputs into actual movement
-- H(f) = S_xy(f) / (S_xx(f) + ε) where S_xy = cross-spectral density, S_xx = input power spectrum
-- Works from any flight data (no dedicated maneuvers needed)
-- Equivalent to Plasmatree PID-Analyzer approach
 
-### Key Metrics
-- **Bandwidth (-3dB)**: Frequency where response drops to 70.7% — higher = more responsive
-- **Phase margin**: Phase difference from -180° at gain crossover — higher = more stable
-- **DC gain**: Response at 0 Hz — should be ~0 dB (1:1 tracking)
-- **Gain margin**: How much gain could increase before instability
+Computes the closed-loop transfer function H(f) from setpoint → gyro using frequency-domain deconvolution:
+```
+H(f) = S_xy(f) / (S_xx(f) + ε)
+```
+Where:
+- S_xy = cross-spectral density (setpoint × conjugate of gyro)
+- S_xx = input auto-spectral density (setpoint power)
+- ε = regularization term (prevents division by zero at low-energy frequencies)
 
-### Interpretation
-| Metric | Good | Warning | Critical |
-|--------|------|---------|----------|
-| Bandwidth | >30 Hz | 15–30 Hz | <15 Hz |
-| Phase margin | >45° | 30–45° | <30° |
-| DC gain | -0.5 to 0.5 dB | -1 to -0.5 dB | < -1 dB |
+Works from **any flight data** — no dedicated maneuvers needed. Pioneered by Plasmatree PID-Analyzer.
+
+### Methodology (Plasmatree)
+
+1. **Windowing**: Divide signal into overlapping windows (50% overlap, Hanning windowed)
+   - Plasmatree default: 2s windows at sample rate
+2. **FFT**: Compute complex spectra for setpoint (X) and gyro (Y)
+3. **Accumulate**: S_xy += Y × conj(X), S_xx += |X|²
+4. **Regularization**: Noise-floor-aware epsilon prevents division by zero
+5. **Transfer function**: H(f) = S_xy / (S_xx + ε)
+6. **Extract**: Magnitude (dB) and phase (degrees) from H(f)
+
+### Key Metrics (General Control Theory)
+
+**Bandwidth (-3 dB):**
+- Highest frequency where |H(f)| ≥ DC_gain - 3 dB
+- Higher bandwidth = more responsive system
+- Typical for well-tuned 5" quad: 30-80 Hz
+
+**Phase Margin:**
+- Phase difference from -180° at the gain crossover frequency (where |H(f)| = 0 dB)
+- Higher = more stable, lower = closer to oscillation
+- Phase margin = 180° + phase_at_crossover
+- General control theory: >45° = good stability, 30-45° = marginal, <30° = near instability
+
+**DC Gain:**
+- Magnitude at lowest frequency (≈0 Hz)
+- 0 dB = perfect 1:1 steady-state tracking
+- Negative DC gain indicates I-term may be too low
+
+**Gain Margin:**
+- How much gain could increase before instability
+- Measured at phase crossover frequency (where phase = -180°)
+- General control theory: >6 dB = good, 3-6 dB = marginal, <3 dB = near instability
 
 ### Synthetic Step Response
-- IFFT of transfer function → impulse response → cumulative sum → step response
+
+- IFFT of H(f) → impulse response → cumulative sum → step response
 - Allows step response estimation from any flight without dedicated stick snaps
 - Less accurate than direct step measurement but works universally
+- Plasmatree PID-Analyzer: "The step response should get to a value of 1 in lowest possible time"
+- Overshoot and settling extracted same as time-domain step analysis
 
-## Quad Archetypes & Typical Values
+---
+
+## 6. PIDlab Decision Rules
+
+> **This section documents PIDlab-specific algorithms and thresholds.** Where PIDlab values differ
+> from community defaults, the rationale is explained. These rules are implemented in
+> `src/main/analysis/` and thresholds live in `src/main/analysis/constants.ts`.
+
+### Noise Floor Scale (PIDlab-Specific)
+
+PIDlab uses its own dB scale based on raw FFT power spectral density, normalized per the analysis window. This is **not directly comparable** to BF Explorer or PIDtoolbox dB values — each tool normalizes differently.
+
+| PIDlab dB | Internal Classification | Mapping Rationale |
+|-----------|----------------------|-------------------|
+| < -50 dB | Very clean | Minimal filtering needed |
+| -50 to -30 dB | Normal | Standard filtering |
+| -30 to -20 dB | Noisy | Lower cutoffs needed |
+| > -20 dB | Very noisy | Aggressive filtering, check hardware |
+
+PIDlab's noise-to-cutoff interpolation range: **-70 dB (cleanest) to -10 dB (noisiest)**. These are internal scale endpoints, not community-standard values.
+
+### Peak Detection (PIDlab-Specific)
+
+- **Prominence threshold**: 6 dB above local noise floor (within ±50 frequency bins) — classifies a peak as "detected"
+- **Action threshold**: 12 dB above floor — triggers a filter recommendation
+- **Noise floor estimation**: Lower quartile (25th percentile) of power spectrum
+- These thresholds were tuned empirically against real-world BBL data
+
+### Filter Recommendation Rules
+
+5 sequential rules, deduplicated at the end:
+
+**Rule 1: Noise-Floor-Based Lowpass Adjustment**
+- Scope: Roll and pitch axes, skipped for medium noise levels
+- Linear interpolation from noise floor (dB) to cutoff (Hz):
+  ```
+  t = (noiseFloorDb - (-10)) / ((-70) - (-10))
+  target = minHz + t × (maxHz - minHz)
+  ```
+- **Safety bounds** (PIDlab-specific, tighter than BF firmware limits):
+
+  | Parameter | Without RPM | With RPM | BF Guide Reference |
+  |-----------|-------------|----------|-------------------|
+  | Gyro LPF1 min | 75 Hz | 75 Hz | 50 Hz (very noisy), 80 Hz (slightly noisy) |
+  | Gyro LPF1 max | 300 Hz | 500 Hz | 250 Hz default |
+  | D-term LPF1 min | 70 Hz | 70 Hz | 70-90 Hz range |
+  | D-term LPF1 max | 200 Hz | 300 Hz | 150 Hz default |
+
+  *Rationale*: Gyro LPF1 min of 75 Hz is between BF's "very noisy" (50) and "slightly noisy" (80) — a compromise that prevents excessive phase delay while still allowing aggressive filtering for noisy quads. With RPM filter, bounds widen because RPM handles motor harmonics.
+
+- **Deadzone**: 5 Hz minimum change to trigger recommendation (prevents trivial adjustments)
+- **Propwash safety floor**: If target gyro LPF1 < 100 Hz AND worst noise floor ≤ -15 dB, raise to 100 Hz. Matches BF community guidance: "avoid filter cutoffs below 100 Hz." Bypassed only when noise is extreme (> -15 dB) because filtering takes priority over propwash.
+
+**Rule 2: Resonance Peak Mitigation**
+- Collect peaks ≥12 dB above noise floor on roll and pitch
+- If significant peak below current cutoff or cutoff disabled:
+  - Target cutoff = lowest_peak_freq - 20 Hz, clamped to safety bounds
+  - Recommend lowering both gyro LPF1 and D-term LPF1
+
+**Rule 3: Dynamic Notch Range Validation**
+- Check if detected peaks fall outside dyn_notch_min/max range
+- Peaks below min: recommend `new_min = lowest_peak - 20`, clamped ≥50 Hz
+- Peaks above max: recommend `new_max = highest_peak + 20`, clamped ≤1000 Hz
+
+**Rule 4: RPM-Aware Dynamic Notch Simplification** (when RPM filter active)
+- If dyn_notch_count > 1: recommend reducing to 1 (frame resonance tracking only)
+- If dyn_notch_q < 500: recommend increasing to 500 (narrower notch, less signal distortion)
+- *Rationale*: With RPM handling motor harmonics, dynamic notch only needs to catch frame resonance — 1 narrow notch suffices. Community consensus supports this (UAV Tech, BF 4.3+ notes).
+
+**Rule 5: Motor Harmonic Diagnostic** (when RPM filter active)
+- If motor harmonics still detected at ≥12 dB: emit warning about possible `motor_poles` misconfiguration or ESC telemetry issues
+
+**Deduplication**: For overlapping recommendations on same parameter — keep more aggressive value, upgrade confidence if either was 'high'.
+
+### PID Recommendation Rules
+
+Per-axis rules anchored to **flight PIDs from BBL header** (convergent design — re-analyzing same flight after applying yields no further changes):
+
+**Rule 1: Severe Overshoot** (mean > overshootMax threshold)
+- Severity scale: `severity = meanOvershoot / threshold`
+- D increase: severity > 4 → +15, severity > 2 → +10, else → +5
+- P reduction (only if severity > 2 OR D already near max): severity > 4 → -10, else → -5
+- *Rationale for proportional steps*: Community (Oscar Liang, Bardwell) recommends "adjust by 5" increments. PIDlab scales up for severe cases to avoid multi-round convergence.
+
+**Rule 2: Moderate Overshoot** (between moderateOvershoot and overshootMax)
+- D increase by 5 only
+
+**Rule 3: Sluggish Response** (low overshoot + slow rise time)
+- Trigger: meanOvershoot < overshootIdeal AND meanRiseTime > sluggishRise threshold
+- P increase by 5 (per FPVSIM guidance: "if too sluggish, raise P")
+
+**Rule 4: Excessive Ringing** (maxRinging > ringingMax)
+- D increase by 5 (skipped if D already increased for overshoot)
+
+**Rule 5: Slow Settling** (meanSettlingTime > settlingMax, overshoot acceptable)
+- D increase by 5 (skipped if D already recommended)
+
+**Rule 6: I-Term Steady-State Tracking**
+- High error (> steadyStateErrorMax): I increase by +10 (if error > 2× threshold) or +5
+- Low error + slow settling + overshoot: I decrease by 5 (may be causing oscillation)
+
+**Yaw relaxation**: All overshoot/ringing thresholds × 1.5 for yaw axis (yaw is mechanically less responsive).
+
+### PID Post-Processing Rules
+
+**Damping Ratio Validation** (roll/pitch only):
+- PIDlab enforces D/P ratio within **0.45-0.85**
+- *Comparison to community*: BF defaults are ~0.55-0.65, FPVSIM recommends 0.6 start. PIDlab's 0.45 lower bound is intentionally liberal — it's a safety floor, not a target. It allows slightly under-damped tunes for pilots who prefer snappy response. The 0.85 upper bound prevents excessive D-noise.
+- 3 correction rules:
+  1. Under-damped (D/P < 0.45, no existing D rec): recommend D increase to P × 0.45
+  2. Over-damped after D increase (D/P > 0.85, D rec exists, no P rec): recommend P increase to D / 0.85
+  3. Over-damped with no recs (D/P > 0.85): recommend D decrease to P × 0.85
+- Deadzone: ≥3-point change required (prevents rounding noise)
+
+**D-Term Effectiveness Gating** (PIDlab-specific, 3 tiers):
+1. D effectiveness > 0.7: boost D-increase confidence to 'high' — D is clearly helping
+2. D effectiveness 0.3-0.7: allow D increase, annotate noise cost warning
+3. D effectiveness < 0.3: redirect to "improve filters first", confidence → 'low'
+- *Rationale*: Community says "D amplifies noise by 10-100x." If D isn't actually reducing overshoot (low effectiveness), raising it just adds noise. This gating prevents blind D increases.
+
+**Prop Wash Integration:**
+- Minimum 3 events for reliable analysis
+- Severe prop wash (severity ≥ 5×) + existing D rec → boost confidence to 'high'
+- Severe prop wash + no D rec → suggest D+5 on worst axis
+- Moderate prop wash (2-5×): annotate only
+
+**FF Domination Detection:**
+- If >50% of steps show FF-dominated leading edge on an axis: skip P/D rules, recommend reducing `feedforward_boost` instead
+- *Rationale*: What looks like P overshoot may be FF doing its job — misdiagnosing it would harm tune.
+
+### Transfer Function Rules (Flash Tune)
+
+**Rule TF-1: Low Phase Margin** (< 45°)
+- If < 30° (critical): D increase +10
+- If 30-45° (warning): D increase +5
+- *Maps to*: General control theory — 45° is standard stability margin
+
+**Rule TF-2: Synthetic Overshoot** (> overshootThreshold)
+- Same severity scale as time-domain Rule 1
+
+**Rule TF-3: Low Bandwidth** (< 40 Hz)
+- Only if overshoot is low (system just sluggish, not oscillating)
+- P increase by 5
+
+**Rule TF-4: DC Gain Deficit** (< -1.0 dB)
+- System doesn't fully track setpoint at steady state
+- If |dcGain| > 3 dB: I increase +10, else +5
+- Flash Tune equivalent of steady-state error detection (no direct step measurement available)
+
+### PID Safety Bounds
+
+| Parameter | PIDlab Bound | BF Firmware Limit | Rationale |
+|-----------|-------------|-------------------|-----------|
+| P min | 20 | 0 | Below 20 is non-functional for any quad size |
+| P max | 120 | 250 | Practical ceiling — only tiny whoops approach 100+. 120 gives headroom while preventing damage. |
+| D min | 15 | 0 | Below 15 provides negligible damping |
+| D max | 80 | 250 | Community: above ~60-70 only on very clean builds. 80 gives safety margin. |
+| I min | 30 | 0 | Below 30 gives insufficient hover stability |
+| I max | 120 | 250 | Community: rarely above 110. 120 gives headroom. |
+
+### Flight Style Thresholds (PIDlab-Specific)
+
+PIDlab adjusts all PID thresholds based on the pilot's declared flight style. These are PIDlab-specific values, not BF defaults:
+
+| Metric | Smooth | Balanced | Aggressive | Community Reference |
+|--------|--------|----------|-----------|-------------------|
+| Ideal overshoot | 3% | 10% | 18% | Oscar Liang: "5-10% bump OK" |
+| Max overshoot | 12% | 25% | 35% | BF: "bounce-back = problematic" |
+| Max settling | 250 ms | 200 ms | 150 ms | BF: "FF makes 150-200ms normal" |
+| Max ringing | 1 | 2 | 3 | PIDtoolbox: minimize |
+| Moderate overshoot | 8% | 15% | 25% | — |
+| Sluggish rise | 120 ms | 80 ms | 50 ms | FPVSIM: visual assessment |
+| Steady-state error max | 8% | 5% | 3% | — |
+| Steady-state error low | 2% | 1% | 1% | — |
+
+*Rationale*: **Balanced** maps to typical community targets (10% overshoot, 200ms settling). **Smooth** is for cinematic/long-range where stability trumps response. **Aggressive** is for racing where pilots accept more overshoot for faster rise times.
+
+### Step Detection (PIDlab-Specific)
+
+- Derivative threshold: 500 deg/s/s
+- Minimum magnitude: 100 deg/s
+- Hold validation: ≥50 ms at ±50% of step size
+- Cooldown between steps: 100 ms
+- Adaptive window: 2× median settling time, clamped [150, 500] ms
+- Two-pass detection: first at 500ms window, then adaptive
+
+### Cross-Axis Coupling Detection (PIDlab-Specific)
+
+- Pearson correlation (zero-lag) between step axis and non-step axes
+- Thresholds: < 0.15 = none, 0.15-0.40 = mild, ≥ 0.40 = significant
+- Identifies mechanical asymmetry, FC mounting angle, motor thrust differences
+
+### Prop Wash Detection (PIDlab-Specific)
+
+- Throttle-down detection: derivative < -0.3 (normalized) sustained ≥50 ms
+- Analysis window: 400 ms post-drop, FFT in 20-90 Hz band
+- Severity: energy ratio vs full-flight baseline
+  - < 2× = minimal, 2-5× = moderate, ≥ 5× = severe
+- Minimum 3 events for reliable analysis
+- Dominant frequency: grouped into 5 Hz buckets, most common = dominant
+
+### Group Delay Estimation (PIDlab-Specific)
+
+- Reference frequency: 80 Hz (typical control bandwidth)
+- Per-filter delay computation using analytical formulas (PT1, biquad, notch)
+- Dynamic notch Q handling: BF stores Q×100 internally → `actualQ = Q > 10 ? Q / 100 : Q`
+- **Warning threshold: 2.0 ms** gyro chain total at 80 Hz
+- *Rationale for 2ms*: BF notes "normal D delay is about 5ms, motor time constant ~15ms." Gyro filter delay beyond 2ms starts to meaningfully degrade PID response.
+
+---
+
+## 7. Data Quality & Flight Quality Scoring
+
+> **PIDlab-specific scoring system.** No direct community equivalent — most tools don't score data quality.
+
+### Filter Data Quality (0-100)
+
+Scored before generating filter recommendations:
+
+| Component | Weight | 0 Score | 100 Score |
+|-----------|--------|---------|-----------|
+| Segment count | 0.20 | 0 segments | 3+ segments |
+| Hover time | 0.35 | < 0.5s | 5+ seconds |
+| Throttle coverage | 0.25 | < 10% range | 40%+ range |
+| Segment type | 0.20 | Fallback only | Sweep segments present |
+
+**Warnings**: `few_segments` (<2), `short_hover_time` (<2s), `narrow_throttle_coverage` (<20%)
+
+### PID Data Quality (0-100)
+
+| Component | Weight | 0 Score | 100 Score |
+|-----------|--------|---------|-----------|
+| Step count | 0.30 | 0 steps | 15+ steps |
+| Axis coverage | 0.30 | 0 axes with 3+ steps | All 3 axes with 3+ |
+| Magnitude variety | 0.20 | CV < 0.05 | CV ≥ 0.3 |
+| Hold quality | 0.20 | No valid settling | All steps settled |
+
+**Warnings**: `few_steps` (<5), `missing_axis_coverage`, `few_steps_per_axis` (<3), `low_step_magnitude` (mean <200 deg/s)
+
+### Transfer Function Data Quality (0-100)
+
+| Component | Weight | 0 Score | 100 Score |
+|-----------|--------|---------|-----------|
+| Signal duration | 0.30 | < 2s | 10+ seconds |
+| Sample rate | 0.20 | < 1 kHz | 4 kHz |
+| Stick activity | 0.30 | 0 deg/s RMS | 50+ deg/s |
+| Axis coverage | 0.20 | 0 active axes | 3 active axes (coherence >0.3) |
+
+### Quality Tiers & Confidence Adjustment
+
+| Overall Score | Tier | Confidence Impact |
+|--------------|------|-------------------|
+| 80-100 | Excellent | No change |
+| 60-79 | Good | No change |
+| 40-59 | Fair | high → medium |
+| 0-39 | Poor | high → medium, medium → low |
+
+### Flight Quality Score (Post-Tuning)
+
+Composite 0-100 score computed after tuning session completes. Components vary by mode:
+
+| Component | Best Value | Worst Value | Available In |
+|-----------|-----------|-------------|--------------|
+| Noise floor | -60 dB | -20 dB | Both modes |
+| Tracking RMS | 0 | 0.5 deg/s | Deep Tune only |
+| Overshoot | 0% | 50% | Both modes |
+| Settling time | 50 ms | 500 ms | Deep Tune only |
+| Phase margin | 60° | 20° | Flash Tune only |
+| Bandwidth | 80 Hz | 20 Hz | Flash Tune only |
+| Noise delta | -10 dB (improvement) | +5 dB (regression) | When verification present |
+
+**Scoring**: 100 points redistributed evenly among available components. Each linearly interpolated. Sum = overall score.
+
+---
+
+## 8. Flight Style Descriptions
+
+> Community-sourced descriptions of tuning goals per flight style.
+
+**Smooth** (cinematic, long range):
+- Prioritizes stability over responsiveness. Tolerates slower rise times.
+- Pilots want jello-free video, gentle transitions, long straight-line stability.
+- Lower P, moderate D, higher I for cruise stability.
+- More filtering acceptable (latency less noticeable at cruise speeds).
+
+**Balanced** (freestyle, general flying):
+- Standard BF defaults. Good all-around response.
+- Most pilots start here. Most community tuning content targets this style.
+- Moderate P/D, standard I. Default filtering.
+
+**Aggressive** (racing, acro):
+- Demands fast response, tight settling. Lower tolerance for any sluggishness.
+- Pilots accept more overshoot for faster rise times. Minimal filtering for lowest latency.
+- Higher P, matched D, lower I (reduce bounce-back in rapid direction changes).
+- Oscar Liang: "For racing, tighter tune with less filtering for minimum delay."
+
+---
+
+## 9. Quad Archetypes & Typical Values
+
+> Community starting points. BF defaults and Bardwell/Oscar Liang recommendations.
 
 ### 5" Freestyle (650g, 2400KV, 4S)
-- P: 45–65, I: 80–100, D: 35–55
-- Gyro LPF1: 200–300 Hz, D-term LPF1: 120–170 Hz
-- Goal: balanced response, good prop wash handling, moderate filtering
 
-### 5" Race (400g, 2600KV, 6S)
-- P: 50–80, I: 70–90, D: 30–50
-- Gyro LPF1: 250–400 Hz (cleaner builds), D-term LPF1: 140–200 Hz
-- Goal: maximum response, minimal filtering, low latency
+- **PID starting point** (Bardwell): P=46, I=45, D=25, FF=100 (roll); P=50, I=50, D=27, FF=100 (pitch)
+- **Community PID range**: P 45-65, I 45-100, D 25-55
+- **Filters**: Gyro LPF1 200-300 Hz, D-term LPF1 120-170 Hz
+- **Goal**: Balanced response, good prop wash handling, moderate filtering
+- **Notes**: Most common setup, most tuning content applies to this archetype
 
-### 3" Cinewhoop (300g, 3600KV, 4S)
-- P: 55–85, I: 85–110, D: 40–65
-- Gyro LPF1: 180–250 Hz, D-term LPF1: 100–150 Hz
-- Goal: smooth video, good prop wash management, more filtering OK
+### 5" Race (580g, 2650KV, 6S)
 
-### 7" Long Range (800g, 1700KV, 6S)
-- P: 35–55, I: 70–90, D: 25–40
-- Gyro LPF1: 150–250 Hz, D-term LPF1: 100–140 Hz
-- Goal: efficiency, gentle response, cruise stability
+- **PID range**: P 50-80, I 40-90, D 25-50
+- **Filters**: Gyro LPF1 250-400 Hz (cleaner builds), D-term LPF1 140-200 Hz
+- **Goal**: Maximum response, minimal filtering, low latency
+- **Notes**: Lower weight + higher power = cleaner gyro signal. Can use less aggressive filters. Higher P for snap response. Lower I to reduce bounce-back in rapid direction changes.
+
+### 3" Cinewhoop (180g, 3000KV, 4S)
+
+- **PID range**: P 55-85, I 85-110, D 40-65
+- **Filters**: Gyro LPF1 180-250 Hz, D-term LPF1 100-150 Hz
+- **Goal**: Smooth video, good prop wash management, more filtering acceptable
+- **Notes**: Ducted props create more turbulence. Higher D helps smooth out prop wash. Higher I for stable hover during video shots.
+
+### 7" Long Range (900g, 1800KV, 6S)
+
+- **PID range**: P 35-55, I 70-90, D 25-40
+- **Filters**: Gyro LPF1 150-250 Hz, D-term LPF1 100-140 Hz
+- **Goal**: Efficiency, gentle response, cruise stability
+- **Notes**: Larger props = lower noise frequencies. More frame flex = potential lower-frequency resonances. Lower P/D for gentle handling.
 
 ### Tiny Whoop (25g, 19000KV, 1S)
-- P: 70–120, I: 80–110, D: 50–80
-- Gyro LPF1: 200–350 Hz, D-term LPF1: 130–180 Hz
-- Goal: aggressive for the size, high P needed for low-authority motors
 
-## Tuning Workflow Best Practices
+- **PID range**: P 70-120, I 80-110, D 50-80
+- **Filters**: Gyro LPF1 200-350 Hz, D-term LPF1 130-180 Hz
+- **Goal**: Aggressive for the size, high P needed for low-authority motors
+- **Notes**: Very high KV motors have less authority → needs higher PID gains. Lightweight means quick response but also quick upset from air disturbance.
+
+### 10" Ultra Long Range (1500g, 1400KV, 6S)
+
+- **PID range**: P 30-45, I 60-80, D 20-35
+- **Filters**: Gyro LPF1 120-200 Hz, D-term LPF1 80-120 Hz
+- **Goal**: Maximum efficiency, gentle handling, long flight times
+- **Notes**: Large props produce low-frequency noise. Frame flex is significant — may need structural notch filter. Very low PID gains to prevent oscillation.
+
+### Battery & Voltage Considerations
+
+- **1S (3.7V)**: Tiny whoops. Very limited power, high KV compensates. PID gains must be high.
+- **3S (11.1V)**: Toothpicks, micro quads. Moderate power, mid-range gains.
+- **4S (14.8V)**: Standard freestyle. Good power-to-weight for 5" quads.
+- **6S (22.2V)**: Race and long range. More headroom, potentially cleaner power delivery. BF TPA helps manage high-throttle gain.
+- **VBat sag compensation**: BF can scale PID output based on battery voltage to maintain consistent feel as battery depletes.
+
+---
+
+## 10. Advanced Betaflight Settings
+
+### TPA (Throttle PID Attenuation)
+
+- Reduces PID gains (primarily D) at high throttle to prevent noise amplification
+- At high throttle: motors spin faster → more noise → D amplifies it → hot motors
+- `tpa_rate`: Amount of attenuation (0-250, BF default 65 = 26%)
+- `tpa_breakpoint`: Throttle level where attenuation begins (1000-2000, default 1350)
+- BF Tuning Guide: TPA rate 0.6 (60% at full throttle), breakpoint 1250 (25% throttle)
+- **Low-throttle TPA (BF 4.5+)**: Also attenuates at very low throttle where motor response is non-linear
+- `tpa_low_rate`: Low-throttle attenuation (0-100, default 20)
+- `tpa_low_breakpoint`: Throttle level below which attenuation applies (default 1050)
+
+### Anti-Gravity
+
+- Boosts I-term temporarily during rapid throttle changes (punch-outs, drops)
+- Prevents "falling out of the sky" feeling during aggressive throttle maneuvers
+- `anti_gravity_gain`: Strength of I boost (BF Tuning Guide: 0-30 range, default 5000 in internal units)
+- Works by scaling I-term based on throttle derivative
+- Too high: I-term oscillation during throttle pumping. Too low: altitude instability during aggressive moves.
+
+### I-term Relax
+
+- Prevents I-term windup during fast stick movements (flips, rolls)
+- `iterm_relax`: Mode selection (OFF, RP for roll/pitch, RPY for all axes)
+- `iterm_relax_type`: GYRO (reacts to actual movement) or SETPOINT (reacts to stick input)
+- `iterm_relax_cutoff`: Frequency threshold (1-100, default 15)
+  - **Racing**: 20-30 (less relaxation, tighter tracking during fast direction changes)
+  - **Freestyle**: 10-15 (more relaxation, smoother flip/roll recovery)
+  - **Cinematic**: 5-10 (maximum relaxation, smoothest transitions)
+- Lower cutoff = more relaxation = less bounce-back but potentially worse tracking
+
+### D-Min / D-Max Architecture
+
+- BF 4.3+ uses D-Min/D-Max system instead of fixed D gain
+- `d_min_[roll/pitch/yaw]`: D value at rest/slow flight (lower = less noise)
+- `d_max_gain`: Maximum D during active flying (higher = more damping when needed)
+- `d_max_advance`: How quickly D ramps up during stick input (0-200)
+- **Concept**: Low D during hover (less noise), high D during maneuvers (more damping)
+
+### Dynamic Idle
+
+- Maintains minimum motor RPM regardless of throttle position
+- `dyn_idle_min_rpm`: Minimum motor RPM (0 to disable, typically 20-60)
+- Prevents motor desync on rapid throttle cuts (zero-crossing)
+- Improves prop wash handling (motors always spinning, faster recovery)
+- Helps RPM filter accuracy at low throttle (minimum trackable RPM)
+
+### VBat Sag Compensation
+
+- Scales PID output based on measured battery voltage vs nominal
+- `vbat_sag_compensation`: Amount (0-150, default 0 = off)
+- Maintains consistent feel as battery depletes
+- Recommended: 50-100 for freestyle, 0 for racing (predictable power curve preferred)
+
+### RC Smoothing
+
+- Smooths RC input signal to reduce jitter before PID computation
+- `rc_smoothing`: AUTO (default, recommended), OFF, or manual values
+- `rc_smoothing_auto_factor`: Auto-smoothing aggressiveness (1-250, default 30)
+- Higher values = smoother sticks but slightly more latency
+- Racing: lower values (10-20) for minimal latency
+- Freestyle/cinematic: default (30) or higher for smooth video
+
+### EzLanding (BF 4.5+)
+
+- Simplifies landing by reducing PID authority at zero throttle
+- `ez_landing_threshold`: Throttle below which EzLanding activates
+- `ez_landing_limit`: How much to reduce PID gains
+- Prevents tip-overs on landing (relaxes attitude hold)
+- Not needed for experienced pilots, helpful for beginners
+
+---
+
+## 11. Hardware Factors
+
+### Gyro Types
+
+| Gyro | Max Rate | Noise | Notes |
+|------|----------|-------|-------|
+| **MPU6000** | 8 kHz | Higher | Legacy, still common. SPI interface. Known higher noise floor. |
+| **BMI270** | 6.4 kHz | Medium | Bosch chip, common in budget FCs. Different noise profile. |
+| **ICM-42688-P** | 32 kHz | Lowest | TDK InvenSense, premium FCs. Best noise performance, hardware anti-alias. |
+| **ICM-20689** | 32 kHz | Low | Older InvenSense, still good. Found in mid-range FCs. |
+
+- Gyro choice affects baseline noise floor significantly
+- Some gyros have hardware lowpass (ICM-42688-P: programmable anti-alias at 1-4 kHz)
+- **Soft mounting**: FC mounted with grommets/dampeners. Reduces mechanical vibration coupling but adds latency. Modern consensus: hard mount + good software filtering preferred.
+
+### Motor Protocols
+
+| Protocol | Speed | Bidirectional | Latency | RPM Filter |
+|----------|-------|---------------|---------|------------|
+| **DSHOT150** | 150 kbit/s | Optional | ~107 μs | Yes (if bidir) |
+| **DSHOT300** | 300 kbit/s | Optional | ~53 μs | Yes (if bidir) |
+| **DSHOT600** | 600 kbit/s | Optional | ~27 μs | Yes (if bidir) |
+| **DSHOT1200** | 1200 kbit/s | No | ~13 μs | No |
+
+- **Bidirectional DSHOT**: Motor sends RPM telemetry back to FC on the same signal wire
+- Required for RPM filter (the single most effective filter)
+- DSHOT300 bidirectional is the most common and recommended protocol
+- DSHOT1200 doesn't support bidirectional (timing constraints)
+
+### ESC Firmware
+
+| Firmware | RPM Filter | PWM Freq | Notes |
+|----------|-----------|----------|-------|
+| **BLHeli_32** | Yes | 24-96 kHz | Commercial, most feature-complete. Bidirectional DSHOT native. |
+| **AM32** | Yes | 24-96 kHz | Open-source BLHeli_32 alternative for ARM-based ESCs. |
+| **Bluejay** | Yes | 24-96 kHz | Open-source for EFM8-based ESCs (Atmel/SiLabs). Good RPM telemetry. |
+| **JESC** | Yes | 24-48 kHz | Legacy open-source. First to support bidirectional DSHOT. |
+| **BLHeli_S** | No | 24 kHz | Legacy, no bidirectional support. Still common on budget builds. |
+
+- BF Tuning Guide: PWM frequency 48 kHz for freestyle, motor timing 22 (freestyle) / 25+ (racing)
+- ESC firmware quality affects RPM telemetry reliability → affects RPM filter effectiveness
+
+### Frame Design Impact
+
+- **Arm stiffness**: Stiffer arms = higher resonance frequency (easier to filter). Carbon fiber thickness matters.
+- **Resonance frequency**: Typically 80-200 Hz for 5" frames. Appears as fixed peak in noise spectrum.
+- **True-X vs Stretch-X**: Stretch-X has different roll/pitch moment of inertia → may need different R/P PID gains
+- **Standoff height**: Taller stack = more vibration leverage. Keep FC/gyro close to center of mass.
+- **Motor soft mount**: O-rings or rubber grommets between motor and arm. Reduces high-frequency vibration transmission.
+
+### Prop Balance & Maintenance
+
+- Unbalanced props create vibration at motor RPM (fundamental + harmonics)
+- Even small imbalance (0.1g) is significant at 20,000+ RPM
+- **Symptoms**: High noise floor on one motor, asymmetric axis noise
+- Prop damage (nicks, bends) changes aerodynamic balance → always replace after crashes
+- Motor bearing wear: increases broadband noise, eventually audible as grinding
+- **Rule of thumb**: If noise suddenly increases between flights → check props and bearings first
+
+---
+
+## 12. Tuning Workflow Best Practices
 
 ### Order of Operations
-1. **Always filters first, then PIDs** — PIDs can't work properly if noise is getting through
+
+1. **Always filters first, then PIDs** — PIDs can't work properly if noise is getting through unfiltered
 2. **Start with hover analysis** — stable throttle reveals noise spectrum cleanly
 3. **Then test with stick inputs** — step response needs deliberate stick movements
 4. **Iterate if needed** — one round usually sufficient, verify with a check flight
+5. **Alternative (Flash Tune)**: Single flight with mixed flying → transfer function analysis → combined filter + PID recommendations
 
-### Red Flags (Hardware, Not Software)
-- Asymmetric noise between axes → bent prop, loose motor mount
-- Very high noise floor on one axis only → damaged gyro or mounting issue
-- Noise that doesn't respond to filter changes → mechanical resonance (needs physical fix)
-- Sudden noise change between flights → prop damage, loose screw, bearing wear
+Source: UAV Tech systematic methodology, BF Tuning Guide, Oscar Liang
 
 ### When NOT to Tune
-- After a crash (check hardware first)
-- With damaged props (noise data meaningless)
-- On a brand new build (fly 5-10 packs first for break-in)
-- In very windy conditions (wind adds noise that isn't representative)
+
+- After a crash (check hardware first — props, arms, motors, bearings)
+- With damaged props (noise data is meaningless)
+- On a brand new build (fly 5-10 packs first for break-in: bearings seating, screws settling)
+- In very windy conditions (wind adds noise that isn't representative of the quad)
+- With an almost-dead battery (voltage sag changes motor behavior)
+- With loose components (camera, battery strap, antennas — add vibration)
+
+### Red Flags (Hardware, Not Software)
+
+- Asymmetric noise between axes → bent prop, loose motor mount, frame crack
+- Very high noise floor on one axis only → damaged gyro or FC mounting issue (Oscar Liang)
+- Noise that doesn't respond to filter changes → mechanical resonance (needs physical fix)
+- Sudden noise change between flights → prop damage, loose screw, bearing wear
+- Motors significantly hotter on one side → motor or ESC issue, check prop balance
 
 ### Convergence
+
 - Good tuning should converge: each iteration improves or maintains quality
 - If metrics oscillate between sessions → possible mechanical issue or edge case
-- PIDlab's quality score trend chart reveals convergence/divergence patterns
+- **Expected progression**: 1-2 rounds of filter+PID tuning typically sufficient
+- BF community: "If it flies well, stop tuning" — diminishing returns beyond "good enough"
 
-## PIDlab-Specific Analysis Rules
+### Logging Recommendations
 
-### Filter Recommendations
-- Noise-floor-based targeting: measure actual noise, set cutoffs to attenuate it
-- Propwash floor: never push gyro LPF1 below 100 Hz (preserves low-frequency control)
-- Bypass threshold: if noise is extremely low (<-15 dB), can bypass gyro LPF1 entirely
-- RPM filter awareness: with RPM active, allow higher cutoffs (less delay)
-- Safety bounds enforced on all recommendations
+| Sample Rate | Resolution | Use Case |
+|-------------|-----------|----------|
+| 1 kHz | Basic | Long flights, battery endurance testing |
+| 2 kHz | Good | Standard tuning — BF dev team recommended sweet spot |
+| 4 kHz | Best | Detailed noise analysis, resolves up to 2 kHz |
 
-### PID Recommendations
-- Flight-PID-anchored: reads current PIDs from BBL header, recommends deltas (not absolutes)
-- Proportional severity: D changes of +5/+10/+15 based on overshoot severity
-- D-term effectiveness gating: won't increase D if effectiveness ratio < 0.3 (noise too high)
-- Prop wash integration: severe prop wash boosts D-increase confidence
-- I-term rules: based on steady-state error with flight-style thresholds
-- Damping ratio validation: auto-corrects if D/P ratio falls outside 0.45–0.85
+- `blackbox_sample_rate`: BF setting (1/1 = full rate, 1/2 = half, etc.)
+- Logging rate = `8000 / pid_process_denom / 2^blackbox_sample_rate`
+- Higher rate = more data = better FFT resolution but fills flash faster
+- `debug_mode = GYRO_SCALED` required for noise analysis (shows unfiltered + filtered gyro)
 
-### Data Quality Scoring
-- 0–100 score rated before generating recommendations
-- Sub-scores: segment count, hover time, throttle coverage, step count, axis coverage
-- Poor data quality → confidence downgrade on all recommendations
-- Quality warnings shown in UI (few_segments, short_hover_time, etc.)
+---
 
-### Flight Quality Score
-- Composite 0–100 after tuning session completes
-- Components vary by mode:
-  - Deep Tune: noise floor, tracking RMS, overshoot, settling time
-  - Flash Tune: noise floor, overshoot, phase margin, bandwidth
-- Trend chart shows improvement across sessions
-- Target: score should increase or stabilize with each tuning iteration
+## 13. BF Version-Specific Notes
+
+### BF 4.3 (Minimum Supported by PIDlab)
+
+- Removed biquad from gyro lowpass options (PT1/PT2/PT3 only)
+- Introduced slider system for simplified filter tuning
+- FF 2.0: per-axis feedforward weight, smart feedforward with jitter reduction
+- `feedforward_*` CLI naming (replaced `ff_*` from 4.2)
+- MSP_FILTER_CONFIG 47-byte layout (stable through 4.5+)
+
+### BF 4.5 (Recommended)
+
+- Dimmable RPM filter harmonics (adjustable notch depth per harmonic)
+- Low-throttle TPA: attenuates PID gains at very low throttle (non-linear motor region)
+- EzLanding: simplified landing mode
+- Improved dynamic notch tracking (faster convergence)
+
+### BF 4.6 / 2025.12 (Latest Tested)
+
+- DEBUG_GYRO_SCALED debug mode removed — gyro data available through other means
+- Chirp signal generator for transfer function analysis (FC-generated test signal)
+
+---
+
+## 14. Community Tools & References
+
+### Analysis Tools
+
+| Tool | Purpose | Methodology |
+|------|---------|-------------|
+| **PIDlab** | Automated tuning (this app) | FFT + step response + Wiener deconvolution |
+| **Plasmatree PID-Analyzer** | Transfer function analysis | Wiener deconvolution, Bode plots |
+| **PIDtoolbox** | MATLAB-based BBL analysis | Step response, noise spectra, FFT |
+| **BF Blackbox Explorer** | Official log viewer | Time-domain traces, basic FFT |
+| **BlackBox Mate (BBM)** | Web-based log analysis | PSD plots, throttle spectrograms |
+| **FPVtune** | Mobile BBL analyzer | Neural network-based PID suggestions |
+
+### Methodology Sources
+
+- **Plasmatree PID-Analyzer**: Pioneer of frequency-domain PID analysis for FPV. PIDlab's transfer function analysis is inspired by this approach.
+- **PIDtoolbox** (Brian White, Queen's University): Established step response metric methodology. Standard reference for overshoot/settling analysis.
+- **FPVSIM**: Multi-rotor dynamics simulator. Step response visualization for P/D balance.
+- **UAV Tech (Mark Spatz)**: Systematic PID tuning methodology (RPM filter first, then lowpass, then PIDs).
+- **Oscar Liang**: Comprehensive FPV tuning guides. Filter architecture explanations, beginner-friendly tips.
+- **Joshua Bardwell**: Practical tuning approach ("start low, raise P until oscillation, back off 20%, match D").
+- **Betaflight Tuning Notes** (official wiki): Authoritative source for BF-specific settings, defaults, and version changes.
+
+### Key Community Principles
+
+1. **"Tune the quad, not the numbers"** — PIDs interact; don't optimize one term in isolation
+2. **"Filters are medicine, not vitamins"** — Only as much filtering as the noise requires
+3. **"If it flies well, stop tuning"** — Diminishing returns beyond "good enough"
+4. **"Noise is the enemy of D"** — D amplifies everything, including noise. Clean signal = higher D ceiling
+5. **"The best tune is hardware"** — No amount of software tuning fixes bad props, loose motors, or cracked frames
+6. **"The P:D ratio is more important than absolute values"** — Bardwell

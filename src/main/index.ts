@@ -23,7 +23,7 @@ import {
   consumePendingSettingsSnapshot,
 } from './ipc/handlers';
 import { logger } from './utils/logger';
-import { SNAPSHOT, PROFILE, TUNING_PHASE } from '@shared/constants';
+import { SNAPSHOT, PROFILE, TUNING_PHASE, TUNING_TYPE_LABELS } from '@shared/constants';
 import { MockMSPClient, DEMO_FC_SERIAL } from './demo/MockMSPClient';
 import { generateFilterDemoBBL } from './demo/DemoDataGenerator';
 import {
@@ -261,51 +261,8 @@ async function initialize(): Promise<void> {
               }
             }
 
-            // Create post-apply snapshot on first reconnect after tuning apply
-            if (
-              session.phase === TUNING_PHASE.FILTER_APPLIED ||
-              session.phase === TUNING_PHASE.PID_APPLIED ||
-              session.phase === TUNING_PHASE.QUICK_APPLIED
-            ) {
-              const snapshotField =
-                session.phase === TUNING_PHASE.FILTER_APPLIED
-                  ? 'postFilterSnapshotId'
-                  : 'postTuningSnapshotId';
-
-              // Dedup: skip if snapshot already created on a previous reconnect
-              const alreadyExists =
-                snapshotField === 'postFilterSnapshotId'
-                  ? session.postFilterSnapshotId
-                  : session.postTuningSnapshotId;
-
-              if (alreadyExists) {
-                logger.info(`Post-apply snapshot already exists (${snapshotField}), skipping`);
-              } else {
-                const label =
-                  session.phase === TUNING_PHASE.FILTER_APPLIED
-                    ? 'Post-filter (auto)'
-                    : 'Post-tuning (auto)';
-                logger.info(`Creating post-apply snapshot: ${label}`);
-                const snapshot = await snapshotManager.createSnapshot(label, 'auto');
-
-                // Save snapshot ID to tuning session for history tracking
-                const updated = await tuningSessionManager.updatePhase(
-                  existingProfile.id,
-                  session.phase, // same phase — just adding data
-                  { [snapshotField]: snapshot.id }
-                );
-                sendTuningSessionChanged(updated);
-
-                // Snapshot creation left FC in CLI mode (via exportCLIDiff).
-                // close() will send 'exit' (rebooting FC out of CLI).
-                // Set rebootPending so disconnect handler keeps the profile.
-                logger.info('Disconnecting to reboot FC out of CLI after post-apply snapshot');
-                mspClient.setRebootPending();
-                await mspClient.disconnect();
-                // FC will reconnect; dedup guard prevents infinite loop.
-                return;
-              }
-            }
+            // Post-tuning snapshot is now created during apply (before save & reboot)
+            // to avoid race conditions with UI phase transitions.
           }
         } catch (err) {
           logger.warn('Smart reconnect check failed (non-fatal):', err);
