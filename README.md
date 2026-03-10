@@ -8,7 +8,7 @@ PIDlab reads your Blackbox log, runs signal processing (FFT noise analysis, step
 - **Data-driven recommendations** — not just graphs, but computed filter cutoffs and PID values derived from measured flight data, ready to flash
 - **Two tuning modes** — Deep Tune (2 dedicated flights, direct step response measurement) or Flash Tune (any single flight, Wiener deconvolution à la [Plasmatree](https://github.com/Plasmatree/PID-Analyzer))
 - **Convergent by design** — re-analyzing the same log always produces the same result, no recommendation drift
-- **Safety-first** — every apply creates an automatic rollback snapshot, all values clamped to proven safe bounds
+- **Safety-first** — automatic pre-tuning and post-tuning snapshots with contextual labels, all values clamped to proven safe bounds
 - **Multi-quad profiles** — auto-detects each FC by serial number, stores configs and tuning history per quad
 - **Flight style adaptation** — Smooth (cinematic), Balanced (freestyle), Aggressive (racing) thresholds
 - **25 analysis modules** — FFT, step response, Wiener deconvolution, Bode plots, prop wash detection, D-term effectiveness, cross-axis coupling, throttle spectrograms, per-band transfer function, group delay estimation, feedforward analysis, slider mapping, dynamic lowpass, Bayesian PID optimizer, mechanical health, wind disturbance
@@ -267,7 +267,7 @@ npm run rebuild                      # Rebuild native modules (serialport)
 
 All UI changes must include tests. Tests automatically run before commits. Coverage thresholds enforced: 80% lines/functions/statements, 75% branches.
 
-**Unit tests:** 2331 tests across 114 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation.
+**Unit tests:** 2330 tests across 114 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation.
 
 **Playwright E2E:** 26 tests across 5 spec files — launches real Electron app in demo mode, walks through complete tuning cycles (Deep Tune, Flash Tune, and stress-test edge cases).
 
@@ -490,7 +490,7 @@ Click **Start Tuning Session** and select **Deep Tune**. The status banner at th
 5. **Analyze** — Click Analyze to open the filter wizard:
    - Auto-parses the log and runs FFT noise analysis
    - Shows noise spectrum, detected peaks, and filter recommendations
-   - Review recommendations, then click **Apply Filters** (creates safety snapshot + reboots FC)
+   - Review recommendations, then click **Apply Filters** (applies via CLI + reboots FC)
 
 #### Flight 2: PID Tuning
 6. **Erase Flash** — Clear flash for the PID test flight
@@ -539,8 +539,9 @@ Snapshots capture the FC's full CLI configuration at a point in time.
 
 - **Baseline** — Auto-created on first connection, cannot be deleted
 - **Manual** — Create anytime via "Create Snapshot" button with optional label
-- **Auto (safety)** — Created automatically before applying tuning changes
-- **Compare** — Click to see GitHub-style diff between snapshots
+- **Pre-tuning** — Auto-created when starting a tuning session (rollback safety net), labeled with session number and type
+- **Post-tuning** — Auto-created on reconnect after applying tuning changes, labeled with session number and type
+- **Compare** — Smart matching: auto-selects pre/post-tuning snapshots from the same session for comparison
 - **Restore** — Roll back to any snapshot (creates a safety backup first, sends CLI commands, reboots FC)
 - **Export** — Download as `.txt` file
 

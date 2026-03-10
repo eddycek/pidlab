@@ -366,7 +366,7 @@ Completed tuning sessions are archived with self-contained metrics for compariso
 
 **Apply Flow** (orchestrated in `TUNING_APPLY_RECOMMENDATIONS` IPC handler):
 1. Stage 1: Apply PID changes via MSP (must happen before CLI mode)
-2. Stage 2: Enter CLI mode (no snapshot — Pre-tuning (auto) from Start Tuning covers rollback)
+2. Stage 2: Enter CLI mode
 3. Stage 3: Apply filter changes via CLI `set` commands
 4. Stage 4: Save to EEPROM and reboot FC
 
@@ -395,10 +395,11 @@ Completed tuning sessions are archived with self-contained metrics for compariso
 
 **Important**: Stage ordering matters — MSP commands must execute before CLI mode, because FC only processes CLI input while in CLI mode (MSP timeouts).
 
-**Auto-Snapshot Strategy** (3 per tuning cycle):
-- `Pre-tuning (auto)` — created by Start Tuning (rollback safety net)
-- `Post-filter (auto)` — created on reconnect after filter apply (filter result / pre-PID state)
-- `Post-tuning (auto)` — created on reconnect after PID apply (final tuned result)
+**Auto-Snapshot Strategy** (2 per tuning cycle):
+- `Pre-tuning #N (Type)` — created by Start Tuning (rollback safety net)
+- `Post-tuning #N (Type)` — created on reconnect after PID/Quick apply (final tuned result)
+
+Snapshots carry tuning metadata (`tuningSessionNumber`, `tuningType`, `snapshotRole`) for contextual labels and smart Compare matching by session number. Role badges: pre-tuning (orange), post-tuning (green).
 
 **Snapshot Display**: Dynamic `#N` numbering (oldest=#1, newest=#N), adjusts on deletion.
 
@@ -491,7 +492,8 @@ await waitFor(() => {
 - **Restore safety backup** auto-creates "Pre-restore (auto)" snapshot before applying
 - **Server-side filtering** by current profile's snapshotIds
 - **Dynamic numbering** `#1` (oldest) through `#N` (newest) — recalculates on deletion
-- **Compare** shows diff between snapshot and previous one (or empty config for oldest). Uses `snapshotDiffUtils.ts` to parse CLI diff, compute changes, and group by command type. Displayed in `SnapshotDiffModal` with GitHub-style color coding (green=added, yellow=changed). Settings reverted to factory default show as "Changed to (default)".
+- **Tuning metadata** on auto snapshots: `tuningSessionNumber`, `tuningType` ('guided'/'quick'), `snapshotRole` ('pre-tuning'/'post-tuning'). Contextual labels like "Pre-tuning #3 (Deep Tune)". Role badges: pre-tuning (orange), post-tuning (green)
+- **Compare** smart matching: for tuning snapshots, auto-selects pre/post-tuning pair from the same session number. Falls back to comparing with previous snapshot (or empty config for oldest). Uses `snapshotDiffUtils.ts` to parse CLI diff, compute changes, and group by command type. Displayed in `SnapshotDiffModal` with GitHub-style color coding (green=added, yellow=changed). Settings reverted to factory default show as "Changed to (default)".
 
 ### BlackboxStatus Readonly Mode
 - When a tuning session is active, `BlackboxStatus` enters readonly mode (`readonly={!!tuning.session}`)

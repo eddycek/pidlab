@@ -328,7 +328,7 @@ Automated Playwright E2E tests that launch the real Electron app in demo mode (m
 - 7 Flash Tune cycle tests: single-flight Flash Tune cycle with parallel analysis, apply all, history check
 - 5-cycle history generator: `npm run demo:generate-history` for populating tuning history with progressive quality scores
 - `advancePastVerification()` fix: keeps mock FC flight type cycle in sync when verification is skipped across multiple cycles
-- Total: 25 Playwright E2E tests (22 in normal runs + 1 generator)
+- Total: 26 Playwright E2E tests across 5 spec files (22 in normal runs + generators/stress)
 
 #### 7b: Real FC E2E :x:
 Automated end-to-end tests running in CI pipeline against a real FC connected to a dedicated machine.
@@ -351,7 +351,7 @@ Automated end-to-end tests running in CI pipeline against a real FC connected to
 
 ## Progress Summary
 
-**Last Updated:** March 9, 2026 | **Tests:** 2331 unit tests across 114 files + 23 Playwright E2E tests | **PRs Merged:** #1–#206
+**Last Updated:** March 10, 2026 | **Tests:** 2330 unit tests across 114 files + 26 Playwright E2E tests | **PRs Merged:** #1–#215
 
 | Phase | Status | Notes |
 |-------|--------|-------|
@@ -362,7 +362,7 @@ Automated end-to-end tests running in CI pipeline against a real FC connected to
 | Phase 4: Two-Flight Workflow | **100%** :white_check_mark: | Session state machine, smart reconnect, status banner, verification flight, tuning history |
 | Phase 5: Manual Testing & UX Polish | **0%** :x: | Next up |
 | Phase 6: CI/CD & Releases | **100%** :white_check_mark: | CI pipeline, cross-platform releases, ESLint/Prettier, ErrorBoundary, handler split, data quality, flight quality score |
-| Phase 7a: Demo E2E (Playwright) | **100%** :white_check_mark: | 23 Playwright tests (demo mode, Deep Tune + Flash Tune) |
+| Phase 7a: Demo E2E (Playwright) | **100%** :white_check_mark: | 26 Playwright tests (demo mode, Deep Tune + Flash Tune + generators) |
 | Phase 7b: Real FC E2E | **0%** :x: | After Phase 5 |
 
 ### Remaining Spec Items (deferred to future iterations)
