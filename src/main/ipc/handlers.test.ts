@@ -1303,7 +1303,7 @@ describe('IPC Handlers', () => {
       mockTuningMgr.getSession.mockResolvedValue({
         profileId: 'prof-1',
         phase: TUNING_PHASE.PID_APPLIED,
-        tuningType: 'guided',
+        tuningType: 'filter',
         startedAt: '2026-01-01',
         updatedAt: '2026-01-01',
       });
@@ -1313,9 +1313,9 @@ describe('IPC Handlers', () => {
       expect(res.success).toBe(true);
       // Post-tuning snapshot created before save & reboot
       expect(mockSnapshotMgr.createSnapshot).toHaveBeenCalledWith(
-        'Post-tuning #1 (Deep Tune)',
+        'Post-tuning #1 (Filter Tune)',
         'auto',
-        { tuningSessionNumber: 1, tuningType: 'guided', snapshotRole: 'post-tuning' }
+        { tuningSessionNumber: 1, tuningType: 'filter', snapshotRole: 'post-tuning' }
       );
     });
 
@@ -1556,7 +1556,7 @@ describe('IPC Handlers', () => {
 
       const res = await invoke(IPCChannel.TUNING_START_SESSION);
       expect(res.success).toBe(true);
-      expect(mockTuningMgr.createSession).toHaveBeenCalledWith('prof-1', TUNING_TYPE.DEEP);
+      expect(mockTuningMgr.createSession).toHaveBeenCalledWith('prof-1', TUNING_TYPE.FILTER);
       expect(mockMainWindow.webContents.send).toHaveBeenCalledWith(
         IPCChannel.EVENT_TUNING_SESSION_CHANGED,
         expect.objectContaining({ phase: TUNING_PHASE.FILTER_FLIGHT_PENDING })
@@ -1566,9 +1566,9 @@ describe('IPC Handlers', () => {
     it('creates pre-tuning backup snapshot with session context', async () => {
       await invoke(IPCChannel.TUNING_START_SESSION);
       expect(mockSnapshotMgr.createSnapshot).toHaveBeenCalledWith(
-        'Pre-tuning #1 (Deep Tune)',
+        'Pre-tuning #1 (Filter Tune)',
         'auto',
-        { tuningSessionNumber: 1, tuningType: 'guided', snapshotRole: 'pre-tuning' }
+        { tuningSessionNumber: 1, tuningType: 'filter', snapshotRole: 'pre-tuning' }
       );
     });
 

@@ -54,6 +54,7 @@ const makeRecord = (
   },
   pidMetrics: null,
   verificationMetrics: null,
+  verificationPidMetrics: null,
   quickLogId: null,
   transferFunctionMetrics: null,
 });
@@ -161,7 +162,7 @@ describe('TuningHistoryPanel', () => {
     quick.tuningType = TUNING_TYPE.FLASH;
     render(<TuningHistoryPanel history={[guided, quick]} loading={false} />);
 
-    expect(screen.getByText('Deep Tune')).toBeInTheDocument();
+    expect(screen.getByText('Filter Tune')).toBeInTheDocument();
     expect(screen.getByText('Flash Tune')).toBeInTheDocument();
   });
 

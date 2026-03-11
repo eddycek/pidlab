@@ -161,7 +161,7 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
                   sessionNumber = history.length + 1;
                 }
                 const tuningType = (session.tuningType ??
-                  'guided') as keyof typeof TUNING_TYPE_LABELS;
+                  'filter') as keyof typeof TUNING_TYPE_LABELS;
                 const label = `Post-tuning #${sessionNumber} (${TUNING_TYPE_LABELS[tuningType]})`;
                 sendProgress({
                   stage: 'save',
@@ -234,7 +234,7 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
     IPCChannel.TUNING_START_SESSION,
     async (_event, tuningType?: TuningType): Promise<IPCResponse<TuningSession>> => {
       try {
-        const resolvedType: TuningType = tuningType ?? TUNING_TYPE.DEEP;
+        const resolvedType: TuningType = tuningType ?? TUNING_TYPE.FILTER;
 
         if (!tuningSessionManager || !profileManager) {
           return createResponse<TuningSession>(undefined, 'Tuning session manager not initialized');
@@ -271,8 +271,10 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
         if (deps.isDemoMode && mspClient instanceof MockMSPClient) {
           if (resolvedType === TUNING_TYPE.FLASH) {
             mspClient.setFlashTuneMode();
+          } else if (resolvedType === TUNING_TYPE.PID) {
+            mspClient.setPIDTuneMode();
           } else {
-            mspClient.setDeepTuneMode();
+            mspClient.setFilterTuneMode();
           }
         }
 
@@ -280,7 +282,9 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
         const initialPhase =
           resolvedType === TUNING_TYPE.FLASH
             ? TUNING_PHASE.QUICK_FLIGHT_PENDING
-            : TUNING_PHASE.FILTER_FLIGHT_PENDING;
+            : resolvedType === TUNING_TYPE.PID
+              ? TUNING_PHASE.PID_FLIGHT_PENDING
+              : TUNING_PHASE.FILTER_FLIGHT_PENDING;
         if (baselineSnapshotId) {
           await tuningSessionManager.updatePhase(profileId, initialPhase, {
             baselineSnapshotId,

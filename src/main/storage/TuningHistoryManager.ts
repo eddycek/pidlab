@@ -13,6 +13,7 @@ import { TUNING_PHASE } from '@shared/constants';
 import type {
   CompletedTuningRecord,
   FilterMetricsSummary,
+  PIDMetricsSummary,
   TransferFunctionMetricsSummary,
 } from '@shared/types/tuning-history.types';
 import { logger } from '../utils/logger';
@@ -59,6 +60,7 @@ export class TuningHistoryManager {
       filterMetrics: session.filterMetrics ?? null,
       pidMetrics: session.pidMetrics ?? null,
       verificationMetrics: session.verificationMetrics ?? null,
+      verificationPidMetrics: session.verificationPidMetrics ?? null,
       transferFunctionMetrics: session.transferFunctionMetrics ?? null,
     };
 
@@ -118,6 +120,26 @@ export class TuningHistoryManager {
     record.verificationMetrics = verificationMetrics;
     await this.saveRecords(profileId, records);
     logger.info(`Updated verification metrics on history record ${recordId}`);
+    return true;
+  }
+
+  /**
+   * Update PID verification metrics on the most recent history record.
+   * Used by PID Tune verification flow.
+   */
+  async updateLatestPidVerification(
+    profileId: string,
+    verificationPidMetrics: PIDMetricsSummary
+  ): Promise<boolean> {
+    const records = await this.loadRecords(profileId);
+    if (records.length === 0) return false;
+
+    const latest = records[records.length - 1];
+    latest.verificationPidMetrics = verificationPidMetrics;
+    await this.saveRecords(profileId, records);
+    logger.info(
+      `Updated PID verification metrics on latest history record for profile ${profileId}`
+    );
     return true;
   }
 

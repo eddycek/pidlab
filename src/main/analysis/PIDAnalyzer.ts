@@ -4,7 +4,7 @@
  * Unified pipeline: mode-specific extraction → shared post-processing.
  *
  * Two entry points:
- * - analyzePID(): Step response based (Deep Tune)
+ * - analyzePID(): Step response based (PID Tune)
  * - analyzeTransferFunction(): Wiener deconvolution based (Flash Tune)
  *
  * Both feed into analyzePIDCore() for identical post-processing:
@@ -328,7 +328,7 @@ async function analyzePIDCore(params: CoreParams): Promise<PIDAnalysisResult> {
       ? analyzeThrottleTF(flightData, flightData.sampleRateHz)
       : undefined;
 
-  // ── Analyses requiring step events (Deep Tune only, null for Flash) ──
+  // ── Analyses requiring step events (PID Tune only, null for Flash) ──
   const crossAxisCoupling =
     steps.length > 0 ? analyzeCrossAxisCoupling(steps, flightData) : undefined;
   const feedforwardAnalysis =
@@ -451,7 +451,7 @@ async function analyzePIDCore(params: CoreParams): Promise<PIDAnalysisResult> {
 // ── Public API (thin wrappers) ──
 
 /**
- * Run the full PID analysis pipeline on parsed flight data (Deep Tune).
+ * Run the full PID analysis pipeline on parsed flight data (PID Tune).
  *
  * Uses step detection → step response computation → shared post-processing.
  */

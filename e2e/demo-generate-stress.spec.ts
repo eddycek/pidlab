@@ -36,11 +36,11 @@ async function runDeepCycle(cycleNum: number): Promise<void> {
   const WAIT = 30_000;
   const ANALYSIS_WAIT = 60_000;
 
-  console.log(`\n=== Stress: Deep Tune cycle ${cycleNum} ===`);
+  console.log(`\n=== Stress: Filter Tune cycle ${cycleNum} ===`);
 
   await demo.clickButton('Start Tuning Session');
   const modal = page.locator('.start-tuning-overlay');
-  await modal.getByRole('button', { name: 'Deep Tune' }).click();
+  await modal.getByRole('button', { name: 'Filter Tune' }).click();
   await demo.waitForText('Erase Blackbox data', WAIT);
 
   // Filter phase
@@ -114,9 +114,9 @@ async function runDeepCycle(cycleNum: number): Promise<void> {
     .getByRole('button', { name: 'Skip & Complete' })
     .waitFor({ state: 'visible', timeout: WAIT });
   await demo.clickButton('Skip & Complete');
-  await demo.waitForText(/Deep Tune Complete/i, 15_000);
+  await demo.waitForText(/Filter Tune Complete/i, 15_000);
 
-  await demo.screenshot(`stress-cycle-${cycleNum}-deep-complete`);
+  await demo.screenshot(`stress-cycle-${cycleNum}-filter-complete`);
 
   const dismissBtn = page.getByRole('button', { name: 'Dismiss', exact: true });
   await dismissBtn.waitFor({ state: 'visible', timeout: 10_000 });
@@ -126,7 +126,7 @@ async function runDeepCycle(cycleNum: number): Promise<void> {
     .getByRole('button', { name: /start tuning/i })
     .waitFor({ state: 'visible', timeout: WAIT });
 
-  console.log(`  Cycle ${cycleNum}: Deep Tune complete and dismissed`);
+  console.log(`  Cycle ${cycleNum}: Filter Tune complete and dismissed`);
 }
 
 async function runFlashCycle(cycleNum: number): Promise<void> {
@@ -200,19 +200,19 @@ test('generate 5 stress sessions', async () => {
   // mechanical health issues, wind disturbance) based on the cycle's
   // noise characteristics.
 
-  // Session 1: Deep Tune (cycle 0 — very noisy baseline, low quality)
+  // Session 1: Filter Tune (cycle 0 — very noisy baseline, low quality)
   await runDeepCycle(1);
 
   // Session 2: Flash Tune (cycle 1 — first improvement)
   await runFlashCycle(2);
 
-  // Session 3: Deep Tune (cycle 2 — significant improvement)
+  // Session 3: Filter Tune (cycle 2 — significant improvement)
   await runDeepCycle(3);
 
   // Session 4: Flash Tune (cycle 3 — near-optimal)
   await runFlashCycle(4);
 
-  // Session 5: Deep Tune (cycle 4 — fully optimized)
+  // Session 5: Filter Tune (cycle 4 — fully optimized)
   await runDeepCycle(5);
 
   // Verify history is visible

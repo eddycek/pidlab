@@ -173,17 +173,8 @@ function AppContent() {
           setErasing(true);
           const currentPhase = tuning.session?.phase;
 
-          // filter_applied "Continue" → transition to pid_flight_pending before erase
-          if (currentPhase === TUNING_PHASE.FILTER_APPLIED) {
-            await tuning.updatePhase(TUNING_PHASE.PID_FLIGHT_PENDING);
-          }
-
           await window.betaflight.eraseBlackboxFlash();
-          // Re-read phase after potential transition above
-          const phaseForErase =
-            currentPhase === TUNING_PHASE.FILTER_APPLIED
-              ? TUNING_PHASE.PID_FLIGHT_PENDING
-              : (tuning.session?.phase ?? null);
+          const phaseForErase = tuning.session?.phase ?? null;
           setErasedForPhase(phaseForErase);
           setFlashUsedSize(0);
           setBbRefreshKey((k) => k + 1);
@@ -204,9 +195,7 @@ function AppContent() {
         break;
       case 'skip_erase': {
         const currentPhaseSkip = tuning.session?.phase;
-        if (currentPhaseSkip === TUNING_PHASE.FILTER_APPLIED) {
-          await tuning.updatePhase(TUNING_PHASE.PID_FLIGHT_PENDING, { eraseSkipped: true });
-        } else if (flashUsedSize != null && flashUsedSize > 0) {
+        if (flashUsedSize != null && flashUsedSize > 0) {
           // Flash has data — advance directly to log_ready (user wants to use existing data)
           const logReadyPhase =
             currentPhaseSkip === TUNING_PHASE.QUICK_FLIGHT_PENDING
@@ -237,8 +226,12 @@ function AppContent() {
             await tuning.updatePhase(TUNING_PHASE.PID_ANALYSIS, { pidLogId: imported.id });
           } else if (importPhase === TUNING_PHASE.QUICK_LOG_READY) {
             await tuning.updatePhase(TUNING_PHASE.QUICK_ANALYSIS, { quickLogId: imported.id });
-          } else if (importPhase === TUNING_PHASE.VERIFICATION_PENDING) {
-            await tuning.updatePhase(TUNING_PHASE.VERIFICATION_PENDING, {
+          } else if (
+            importPhase === TUNING_PHASE.VERIFICATION_PENDING ||
+            importPhase === TUNING_PHASE.FILTER_VERIFICATION_PENDING ||
+            importPhase === TUNING_PHASE.PID_VERIFICATION_PENDING
+          ) {
+            await tuning.updatePhase(importPhase, {
               verificationLogId: imported.id,
             });
           }
@@ -281,9 +274,13 @@ function AppContent() {
               quickLogId: metadata.id,
               eraseCompleted: undefined,
             });
-          } else if (phase === TUNING_PHASE.VERIFICATION_PENDING) {
+          } else if (
+            phase === TUNING_PHASE.VERIFICATION_PENDING ||
+            phase === TUNING_PHASE.FILTER_VERIFICATION_PENDING ||
+            phase === TUNING_PHASE.PID_VERIFICATION_PENDING
+          ) {
             // Save verification log ID without changing phase
-            await tuning.updatePhase(TUNING_PHASE.VERIFICATION_PENDING, {
+            await tuning.updatePhase(phase, {
               verificationLogId: metadata.id,
               eraseCompleted: undefined,
             });
@@ -345,13 +342,20 @@ function AppContent() {
       case 'prepare_verification':
         try {
           setErasing(true);
-          await tuning.updatePhase(TUNING_PHASE.VERIFICATION_PENDING);
+          // Choose verification phase based on tuning type
+          const verPhase =
+            tuning.session?.tuningType === TUNING_TYPE.FILTER
+              ? TUNING_PHASE.FILTER_VERIFICATION_PENDING
+              : tuning.session?.tuningType === TUNING_TYPE.PID
+                ? TUNING_PHASE.PID_VERIFICATION_PENDING
+                : TUNING_PHASE.VERIFICATION_PENDING;
+          await tuning.updatePhase(verPhase);
           await window.betaflight.eraseBlackboxFlash();
-          setErasedForPhase(TUNING_PHASE.VERIFICATION_PENDING);
+          setErasedForPhase(verPhase);
           setFlashUsedSize(0);
           setBbRefreshKey((k) => k + 1);
           // Persist eraseCompleted for SD card MSC disconnect survival
-          await tuning.updatePhase(TUNING_PHASE.VERIFICATION_PENDING, { eraseCompleted: true });
+          await tuning.updatePhase(verPhase, { eraseCompleted: true });
           toast.success(storageType === 'sdcard' ? 'Logs erased!' : 'Flash erased!');
         } catch (err) {
           toast.error(err instanceof Error ? err.message : 'Failed to prepare verification');

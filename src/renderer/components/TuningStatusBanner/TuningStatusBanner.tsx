@@ -50,22 +50,27 @@ interface PhaseUI {
   guideTip?: TuningMode;
 }
 
-const DEEP_STEP_LABELS = [
-  'Prepare',
-  'Filter Flight',
-  'Filter Tune',
-  'PID Flight',
-  'PID Tune',
-  'Verify',
-];
-const FLASH_STEP_LABELS = ['Prepare', 'Flight', 'Tune', 'Verify'];
+/** All 3 modes share the same 4-step structure */
+const STEP_LABELS = ['Prepare', 'Flight', 'Tune', 'Verify'];
 
 function getPhaseUI(
   isSDCard: boolean
-): Record<Exclude<TuningPhase, 'pid_applied' | 'verification_pending' | 'quick_applied'>, PhaseUI> {
+): Record<
+  Exclude<
+    TuningPhase,
+    | 'filter_applied'
+    | 'pid_applied'
+    | 'filter_verification_pending'
+    | 'pid_verification_pending'
+    | 'verification_pending'
+    | 'quick_applied'
+  >,
+  PhaseUI
+> {
   const eraseLabel = isSDCard ? 'Erase Logs' : 'Erase Flash';
   const storageName = isSDCard ? 'SD card' : 'flash';
   return {
+    // Filter Tune phases
     filter_flight_pending: {
       stepIndex: 0,
       text: `Erase Blackbox data from ${storageName}, then fly the filter test flight (hover + throttle sweeps).`,
@@ -85,32 +90,27 @@ function getPhaseUI(
       buttonLabel: 'Open Filter Wizard',
       action: 'open_filter_wizard',
     },
-    filter_applied: {
-      stepIndex: 2,
-      text: 'Filters applied! Prepare for the PID test flight.',
-      buttonLabel: 'Continue',
-      action: 'erase_flash',
-      guideTip: 'pid',
-    },
+    // PID Tune phases
     pid_flight_pending: {
-      stepIndex: 3,
+      stepIndex: 0,
       text: `Erase Blackbox data from ${storageName}, then fly the PID test flight (stick snaps on all axes).`,
       buttonLabel: eraseLabel,
       action: 'erase_flash',
       guideTip: 'pid',
     },
     pid_log_ready: {
-      stepIndex: 3,
+      stepIndex: 1,
       text: 'PID flight done! Download the Blackbox log to start analysis.',
       buttonLabel: 'Download Log',
       action: 'download_log',
     },
     pid_analysis: {
-      stepIndex: 4,
+      stepIndex: 2,
       text: 'Log downloaded. Run the PID Wizard to analyze step response and apply PID changes.',
       buttonLabel: 'Open PID Wizard',
       action: 'open_pid_wizard',
     },
+    // Flash Tune phases
     quick_flight_pending: {
       stepIndex: 0,
       text: `Erase Blackbox data from ${storageName}, then rip a pack — any flight style works.`,
@@ -131,7 +131,7 @@ function getPhaseUI(
       action: 'open_quick_wizard',
     },
     completed: {
-      stepIndex: 5,
+      stepIndex: 3,
       text: 'Tuning complete! Your drone is dialed in.',
       buttonLabel: 'Dismiss',
       action: 'dismiss',
@@ -139,17 +139,25 @@ function getPhaseUI(
   };
 }
 
-function getVerificationUI(session: TuningSession): { stepIndex: number; text: string } {
+function getVerificationText(session: TuningSession): string {
+  const isFilter = session.tuningType === TUNING_TYPE.FILTER;
   if (session.verificationLogId) {
-    return {
-      stepIndex: 5,
-      text: 'Verification log ready. Analyze to compare noise before and after tuning.',
-    };
+    return isFilter
+      ? 'Verification log ready. Analyze to compare noise before and after tuning.'
+      : 'Verification log ready. Analyze to compare step response before and after tuning.';
   }
-  return {
-    stepIndex: 5,
-    text: 'Download the verification hover log, or skip verification.',
-  };
+  return 'Download the verification log, or skip verification.';
+}
+
+function getAppliedText(session: TuningSession, isSDCard: boolean): string {
+  const verifyLabel = isSDCard ? 'Erase Logs & Verify' : 'Erase & Verify';
+  if (session.tuningType === TUNING_TYPE.FILTER) {
+    return `Filters applied! Fly another throttle sweep to verify, or skip. (${verifyLabel})`;
+  }
+  if (session.tuningType === TUNING_TYPE.PID) {
+    return `PIDs applied! Fly stick snaps again to verify, or skip. (${verifyLabel})`;
+  }
+  return 'All changes applied! Fly a short hover to verify noise improvement, or skip.';
 }
 
 export function TuningStatusBanner({
@@ -175,56 +183,63 @@ export function TuningStatusBanner({
     downloadProgress && downloadProgress > 0
       ? `Downloading... ${downloadProgress}%`
       : 'Downloading...';
+
+  const isFilterApplied = session.phase === TUNING_PHASE.FILTER_APPLIED;
   const isPidApplied = session.phase === TUNING_PHASE.PID_APPLIED;
   const isQuickApplied = session.phase === TUNING_PHASE.QUICK_APPLIED;
-  const isVerification = session.phase === TUNING_PHASE.VERIFICATION_PENDING;
+  const isApplied = isFilterApplied || isPidApplied || isQuickApplied;
+
+  const isFilterVerification = session.phase === TUNING_PHASE.FILTER_VERIFICATION_PENDING;
+  const isPidVerification = session.phase === TUNING_PHASE.PID_VERIFICATION_PENDING;
+  const isLegacyVerification = session.phase === TUNING_PHASE.VERIFICATION_PENDING;
+  const isVerification = isFilterVerification || isPidVerification || isLegacyVerification;
+
   const isFlightPending =
     session.phase === TUNING_PHASE.FILTER_FLIGHT_PENDING ||
     session.phase === TUNING_PHASE.PID_FLIGHT_PENDING ||
     session.phase === TUNING_PHASE.QUICK_FLIGHT_PENDING;
   const isFlashTune = session.tuningType === TUNING_TYPE.FLASH;
-  const stepLabels = isFlashTune ? FLASH_STEP_LABELS : DEEP_STEP_LABELS;
 
   // Determine step index and text
   let stepIndex: number;
   let text: string;
   let ui: PhaseUI | undefined;
 
-  if (isPidApplied || isQuickApplied) {
-    stepIndex = isQuickApplied ? 2 : 4;
-    text = isQuickApplied
-      ? 'All changes applied! Fly a short hover to verify noise improvement, or skip.'
-      : 'PIDs applied! Fly a short hover to verify noise improvement, or skip.';
+  if (isApplied) {
+    stepIndex = 2;
+    text = getAppliedText(session, isSDCard);
   } else if (isVerification) {
-    const vui = getVerificationUI(session);
-    stepIndex = isFlashTune ? 3 : vui.stepIndex;
-    text = vui.text;
+    stepIndex = 3;
+    text = getVerificationText(session);
   } else {
     ui =
       PHASE_UI[
         session.phase as Exclude<
           TuningPhase,
-          'pid_applied' | 'verification_pending' | 'quick_applied'
+          | 'filter_applied'
+          | 'pid_applied'
+          | 'filter_verification_pending'
+          | 'pid_verification_pending'
+          | 'verification_pending'
+          | 'quick_applied'
         >
       ];
     stepIndex = ui.stepIndex;
     text = ui.text;
   }
 
-  // For completed phase, use the last step index
   if (session.phase === TUNING_PHASE.COMPLETED) {
-    stepIndex = stepLabels.length - 1;
+    stepIndex = STEP_LABELS.length - 1;
   }
 
   const flashHasData = flashUsedSize != null && flashUsedSize > 0;
-  // For SD card: flashUsedSize is always > 0 (filesystem overhead), so rely on
-  // eraseCompleted (persisted in session) or eraseSkipped instead of flashUsedSize === 0.
   const showErasedState =
     ((isFlightPending || isVerification) &&
       !flashHasData &&
       (flashErased || flashUsedSize === 0)) ||
     (isFlightPending && !!session.eraseSkipped) ||
     ((isFlightPending || isVerification) && !!session.eraseCompleted);
+
   const flightType =
     session.phase === TUNING_PHASE.QUICK_FLIGHT_PENDING
       ? TUNING_TYPE_LABELS[TUNING_TYPE.FLASH]
@@ -236,13 +251,18 @@ export function TuningStatusBanner({
   const showBBWarning =
     isFlightPending && !showErasedState && bbSettingsOk === false && !isDemoMode;
 
+  const getVerificationGuideMode = (): FlightGuideMode => {
+    if (session.tuningType === TUNING_TYPE.FILTER) return 'filter_verification';
+    if (session.tuningType === TUNING_TYPE.PID) return 'pid_verification';
+    if (isFlashTune) return 'flash_verification';
+    return 'verification';
+  };
+
   const renderActions = () => {
     // Flash erased state for flight pending / verification phases — show flight guide
     if (showErasedState && (ui?.guideTip || isVerification)) {
       const guideMode: FlightGuideMode = isVerification
-        ? isFlashTune
-          ? 'flash_verification'
-          : 'verification'
+        ? getVerificationGuideMode()
         : ui!.guideTip!;
       return (
         <>
@@ -261,8 +281,8 @@ export function TuningStatusBanner({
       );
     }
 
-    // pid_applied / quick_applied: Prepare Verification + Skip
-    if (isPidApplied || isQuickApplied) {
+    // Applied phases: Prepare Verification + Skip
+    if (isApplied) {
       return (
         <>
           <button
@@ -292,7 +312,7 @@ export function TuningStatusBanner({
       );
     }
 
-    // verification_pending: dynamic based on verificationLogId
+    // Verification phases: dynamic based on verificationLogId
     if (isVerification) {
       if (session.verificationLogId) {
         return (
@@ -410,10 +430,12 @@ export function TuningStatusBanner({
   return (
     <div className="tuning-status-banner">
       <div className="tuning-status-steps">
-        <span className={`tuning-type-badge ${isFlashTune ? 'flash' : 'deep'}`}>
-          {TUNING_TYPE_LABELS[session.tuningType ?? TUNING_TYPE.DEEP]}
+        <span
+          className={`tuning-type-badge ${isFlashTune ? 'flash' : session.tuningType === TUNING_TYPE.PID ? 'pid' : 'filter'}`}
+        >
+          {TUNING_TYPE_LABELS[session.tuningType ?? TUNING_TYPE.FILTER]}
         </span>
-        {stepLabels.map((label, i) => {
+        {STEP_LABELS.map((label, i) => {
           const isDone = i < activeStepIndex;
           const isCurrent = i === activeStepIndex;
           const className = isDone ? 'done' : isCurrent ? 'current' : 'upcoming';
@@ -447,7 +469,7 @@ export function TuningStatusBanner({
         <p className="tuning-status-text">
           {showErasedState
             ? isVerification
-              ? `${isSDCard ? 'Logs erased' : 'Flash erased'}! Disconnect and fly a 30-60s hover to verify noise improvement.`
+              ? `${isSDCard ? 'Logs erased' : 'Flash erased'}! Disconnect and fly ${session.tuningType === TUNING_TYPE.FILTER ? 'throttle sweeps' : session.tuningType === TUNING_TYPE.PID ? 'stick snaps' : 'a 30-60s hover'} to verify improvement.`
               : `${isSDCard ? 'Logs erased' : 'Flash erased'}! Disconnect your drone and fly the ${flightType} test flight.`
             : text}
         </p>

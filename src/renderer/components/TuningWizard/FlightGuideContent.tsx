@@ -11,6 +11,10 @@ import {
   QUICK_FLIGHT_TIPS,
   VERIFICATION_FLIGHT_PHASES,
   VERIFICATION_FLIGHT_TIPS,
+  FILTER_VERIFICATION_FLIGHT_PHASES,
+  FILTER_VERIFICATION_FLIGHT_TIPS,
+  PID_VERIFICATION_FLIGHT_PHASES,
+  PID_VERIFICATION_FLIGHT_TIPS,
   FLASH_VERIFICATION_FLIGHT_PHASES,
   FLASH_VERIFICATION_FLIGHT_TIPS,
 } from '@shared/constants/flightGuide';
@@ -39,6 +43,10 @@ function getPhasesForMode(mode: FlightGuideMode) {
       return PID_FLIGHT_PHASES;
     case 'quick':
       return QUICK_FLIGHT_PHASES;
+    case 'filter_verification':
+      return FILTER_VERIFICATION_FLIGHT_PHASES;
+    case 'pid_verification':
+      return PID_VERIFICATION_FLIGHT_PHASES;
     case 'verification':
       return VERIFICATION_FLIGHT_PHASES;
     case 'flash_verification':
@@ -56,6 +64,10 @@ function getTipsForMode(mode: FlightGuideMode) {
       return PID_FLIGHT_TIPS;
     case 'quick':
       return QUICK_FLIGHT_TIPS;
+    case 'filter_verification':
+      return FILTER_VERIFICATION_FLIGHT_TIPS;
+    case 'pid_verification':
+      return PID_VERIFICATION_FLIGHT_TIPS;
     case 'verification':
       return VERIFICATION_FLIGHT_TIPS;
     case 'flash_verification':

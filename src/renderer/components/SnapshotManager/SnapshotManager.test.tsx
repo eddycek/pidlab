@@ -828,11 +828,11 @@ describe('SnapshotManager', () => {
         {
           ...mockSnapshots[0],
           id: 'snap-pre',
-          label: 'Pre-tuning #1 (Deep Tune)',
+          label: 'Pre-tuning #1 (Filter Tune)',
           type: 'auto',
           snapshotRole: 'pre-tuning',
           tuningSessionNumber: 1,
-          tuningType: 'guided',
+          tuningType: 'filter',
         },
       ];
       vi.mocked(window.betaflight.listSnapshots).mockResolvedValue(snapshotsWithRoles);
@@ -851,11 +851,11 @@ describe('SnapshotManager', () => {
         {
           ...mockSnapshots[0],
           id: 'snap-post',
-          label: 'Post-tuning #1 (Deep Tune)',
+          label: 'Post-tuning #1 (Filter Tune)',
           type: 'auto',
           snapshotRole: 'post-tuning',
           tuningSessionNumber: 1,
-          tuningType: 'guided',
+          tuningType: 'filter',
         },
       ];
       vi.mocked(window.betaflight.listSnapshots).mockResolvedValue(snapshotsWithRoles);
@@ -888,24 +888,24 @@ describe('SnapshotManager', () => {
         {
           id: 'snap-post-1',
           timestamp: new Date('2024-01-02').toISOString(),
-          label: 'Post-tuning #1 (Deep Tune)',
+          label: 'Post-tuning #1 (Filter Tune)',
           type: 'auto',
           sizeBytes: 2048,
           fcInfo: { variant: 'BTFL', version: '4.4.0', boardName: 'MATEKF405' },
           snapshotRole: 'post-tuning',
           tuningSessionNumber: 1,
-          tuningType: 'guided',
+          tuningType: 'filter',
         },
         {
           id: 'snap-pre-1',
           timestamp: new Date('2024-01-01').toISOString(),
-          label: 'Pre-tuning #1 (Deep Tune)',
+          label: 'Pre-tuning #1 (Filter Tune)',
           type: 'auto',
           sizeBytes: 2048,
           fcInfo: { variant: 'BTFL', version: '4.4.0', boardName: 'MATEKF405' },
           snapshotRole: 'pre-tuning',
           tuningSessionNumber: 1,
-          tuningType: 'guided',
+          tuningType: 'filter',
         },
       ];
       vi.mocked(window.betaflight.listSnapshots).mockResolvedValue(snapshotsWithRoles);
@@ -928,7 +928,7 @@ describe('SnapshotManager', () => {
       render(<SnapshotManager />);
 
       await waitFor(() => {
-        expect(screen.getByText('Post-tuning #1 (Deep Tune)')).toBeInTheDocument();
+        expect(screen.getByText('Post-tuning #1 (Filter Tune)')).toBeInTheDocument();
       });
 
       // Click compare on post-tuning (index 0) — should match pre-tuning from same session

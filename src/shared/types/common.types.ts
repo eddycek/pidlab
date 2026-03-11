@@ -51,7 +51,7 @@ export interface ConfigurationSnapshot {
     createdBy: 'user' | 'auto';
     notes?: string;
     tuningSessionNumber?: number;
-    tuningType?: 'guided' | 'quick';
+    tuningType?: 'filter' | 'pid' | 'quick';
     snapshotRole?: 'pre-tuning' | 'post-tuning';
   };
 }
@@ -68,7 +68,7 @@ export interface SnapshotMetadata {
     boardName: string;
   };
   tuningSessionNumber?: number;
-  tuningType?: 'guided' | 'quick';
+  tuningType?: 'filter' | 'pid' | 'quick';
   snapshotRole?: 'pre-tuning' | 'post-tuning';
 }
 

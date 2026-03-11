@@ -1,9 +1,10 @@
 /**
- * Types for the stateful iterative tuning workflow (Deep Tune + Flash Tune).
+ * Types for the stateful iterative tuning workflow.
  *
- * The tuning process is split into two flights:
- * 1. Filter flight (hover + throttle sweeps) → filter analysis → apply
- * 2. PID flight (stick snaps) → PID analysis → apply
+ * Three tuning modes:
+ * - Filter Tune: hover + throttle sweeps → filter analysis → apply → optional verification
+ * - PID Tune: stick snaps → PID analysis → apply → optional verification
+ * - Flash Tune: any flight → combined filter + PID via Wiener deconvolution → apply
  *
  * A persistent TuningSession tracks progress across connect/disconnect cycles.
  */
@@ -17,27 +18,38 @@ import type {
 /** Which analysis mode the wizard is operating in */
 export type TuningMode = 'filter' | 'pid' | 'full' | 'quick';
 
-/** Extended mode for flight guide (includes verification hover) */
-export type FlightGuideMode = TuningMode | 'verification' | 'flash_verification';
+/** Extended mode for flight guide (includes verification flights) */
+export type FlightGuideMode =
+  | TuningMode
+  | 'filter_verification'
+  | 'pid_verification'
+  | 'verification'
+  | 'flash_verification';
 
-/** Whether this is a guided (2-flight) or quick (1-flight) tuning session */
-export type TuningType = 'guided' | 'quick';
+/** Tuning session type: filter-only, pid-only, or flash (combined via Wiener deconvolution) */
+export type TuningType = 'filter' | 'pid' | 'quick';
 
 /** Phases of the tuning session state machine */
 export type TuningPhase =
+  // Filter Tune phases
   | 'filter_flight_pending' // Waiting for user to fly filter test flight
   | 'filter_log_ready' // FC reconnected, ready to download filter log
   | 'filter_analysis' // Filter log downloaded, analyzing
-  | 'filter_applied' // Filters applied, flash erased, ready for PID flight
+  | 'filter_applied' // Filters applied, ready for verification or PID flight
+  | 'filter_verification_pending' // Filter Tune: waiting for verification throttle sweep flight
+  // PID Tune phases
   | 'pid_flight_pending' // Waiting for user to fly PID test flight
   | 'pid_log_ready' // FC reconnected, ready to download PID log
   | 'pid_analysis' // PID log downloaded, analyzing
-  | 'pid_applied' // PIDs applied, flash erased, ready for verification
+  | 'pid_applied' // PIDs applied, ready for verification
+  | 'pid_verification_pending' // PID Tune: waiting for verification stick snap flight
+  // Flash Tune phases
   | 'quick_flight_pending' // Quick Tune: waiting for user to fly any flight
   | 'quick_log_ready' // Quick Tune: FC reconnected, ready to download log
   | 'quick_analysis' // Quick Tune: log downloaded, analyzing (filter + Wiener in parallel)
   | 'quick_applied' // Quick Tune: all changes applied, ready for verification
-  | 'verification_pending' // Waiting for verification flight
+  // Shared phases
+  | 'verification_pending' // DEPRECATED — only for legacy sessions
   | 'completed'; // Tuning done
 
 /** A single setting change applied during tuning */
@@ -55,7 +67,7 @@ export interface TuningSession {
   /** Current phase of the tuning process */
   phase: TuningPhase;
 
-  /** Guided (2-flight) or Quick (1-flight) tuning. Defaults to 'guided' for backward compat. */
+  /** Filter, PID, or Flash (quick) tuning. Defaults to 'filter' for backward compat. */
   tuningType?: TuningType;
 
   /** When the session was started (ISO string) */
@@ -100,8 +112,11 @@ export interface TuningSession {
   /** Compact PID analysis metrics (saved for history) */
   pidMetrics?: PIDMetricsSummary;
 
-  /** Compact verification flight metrics (saved for history) */
+  /** Compact verification flight filter metrics — Filter Tune spectrogram comparison */
   verificationMetrics?: FilterMetricsSummary;
+
+  /** Compact verification flight PID metrics — PID Tune step response comparison */
+  verificationPidMetrics?: PIDMetricsSummary;
 
   /** Compact transfer function metrics from Wiener deconvolution (Quick Tune only) */
   transferFunctionMetrics?: TransferFunctionMetricsSummary;

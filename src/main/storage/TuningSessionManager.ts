@@ -44,15 +44,26 @@ export class TuningSessionManager {
 
   async createSession(
     profileId: string,
-    tuningType: TuningType = TUNING_TYPE.DEEP
+    tuningType: TuningType = TUNING_TYPE.FILTER
   ): Promise<TuningSession> {
     const now = new Date().toISOString();
+
+    let initialPhase: TuningPhase;
+    switch (tuningType) {
+      case TUNING_TYPE.FLASH:
+        initialPhase = TUNING_PHASE.QUICK_FLIGHT_PENDING;
+        break;
+      case TUNING_TYPE.PID:
+        initialPhase = TUNING_PHASE.PID_FLIGHT_PENDING;
+        break;
+      default:
+        initialPhase = TUNING_PHASE.FILTER_FLIGHT_PENDING;
+        break;
+    }
+
     const session: TuningSession = {
       profileId,
-      phase:
-        tuningType === TUNING_TYPE.FLASH
-          ? TUNING_PHASE.QUICK_FLIGHT_PENDING
-          : TUNING_PHASE.FILTER_FLIGHT_PENDING,
+      phase: initialPhase,
       tuningType,
       startedAt: now,
       updatedAt: now,
