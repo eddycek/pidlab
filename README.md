@@ -286,7 +286,7 @@ All UI changes must include tests. Tests automatically run before commits. Cover
 
 **Unit tests:** 2421 tests across 118 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation.
 
-**Playwright E2E:** 26 tests across 5 spec files — launches real Electron app in demo mode, walks through complete tuning cycles (Filter Tune, Flash Tune, and stress-test edge cases).
+**Playwright E2E:** 29 tests across 6 spec files — launches real Electron app in demo mode, walks through complete tuning cycles (Filter Tune, PID Tune, Flash Tune, and stress-test edge cases).
 
 See [TESTING.md](./TESTING.md) for complete testing guidelines, test inventory, and best practices.
 
@@ -453,7 +453,8 @@ pidlab/
 ├── e2e/                         # Playwright E2E tests (demo mode)
 │   ├── electron-app.ts                # Shared fixture (launchDemoApp, helpers)
 │   ├── demo-smoke.spec.ts             # 4 smoke tests
-│   ├── demo-tuning-cycle.spec.ts      # 11 Filter Tune cycle tests
+│   ├── demo-tuning-cycle.spec.ts      # 7 Filter Tune cycle tests
+│   ├── demo-pid-tune-cycle.spec.ts   # 7 PID Tune cycle tests
 │   ├── demo-quick-tune-cycle.spec.ts  # 7 Flash Tune cycle tests
 │   ├── demo-generate-history.spec.ts  # Mixed history generator
 │   └── demo-generate-stress.spec.ts   # Stress test (edge cases)
@@ -917,7 +918,7 @@ The autotuning rules and thresholds are based on established FPV community pract
 - **Phase 4**: ✅ Stateful tuning workflow (Filter Tune, PID Tune, Flash Tune) with smart reconnect, verification, tuning history
 - **Phase 5**: ⬜ Complete manual testing & UX polish (real hardware validation)
 - **Phase 6**: ✅ CI/CD & cross-platform releases (macOS/Windows/Linux installers)
-- **Phase 7a**: ✅ Playwright E2E tests (demo mode, 26 tests across 5 spec files)
+- **Phase 7a**: ✅ Playwright E2E tests (demo mode, 29 tests across 6 spec files)
 - **Phase 7b**: ⬜ E2E tests on real FC in CI pipeline
 
 See [SPEC.md](./SPEC.md) for detailed requirements and phase tracking.

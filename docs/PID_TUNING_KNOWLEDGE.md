@@ -711,10 +711,10 @@ Composite 0-100 score computed after tuning session completes. Components vary b
 
 | Component | Best Value | Worst Value | Available In |
 |-----------|-----------|-------------|--------------|
-| Noise floor | -60 dB | -20 dB | Both modes |
-| Tracking RMS | 0 | 0.5 deg/s | Deep Tune only |
-| Overshoot | 0% | 50% | Both modes |
-| Settling time | 50 ms | 500 ms | Deep Tune only |
+| Noise floor | -60 dB | -20 dB | All modes |
+| Tracking RMS | 0 | 0.5 deg/s | PID Tune only |
+| Overshoot | 0% | 50% | All modes |
+| Settling time | 50 ms | 500 ms | PID Tune only |
 | Phase margin | 60° | 20° | Flash Tune only |
 | Bandwidth | 80 Hz | 20 Hz | Flash Tune only |
 | Noise delta | -10 dB (improvement) | +5 dB (regression) | When verification present |
