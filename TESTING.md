@@ -163,7 +163,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 
 ## Test Inventory
 
-**Total: 2421 unit tests across 118 files + 26 Playwright E2E tests across 5 spec files** (last verified: March 11, 2026)
+**Total: 2421 unit tests across 118 files + 29 Playwright E2E tests across 6 spec files** (last verified: March 11, 2026)
 
 ### UI Components
 
@@ -370,9 +370,10 @@ End-to-end tests that launch the real Electron app in demo mode and walk through
 | File | Tests | Description |
 |------|-------|-------------|
 | `e2e/demo-smoke.spec.ts` | 4 | App launch, auto-connect, dashboard elements (blackbox, start tuning, reset demo) |
-| `e2e/demo-tuning-cycle.spec.ts` | 11 | Full Filter Tune cycle: start → modal → erase → download → filter wizard → apply → skip verify → complete → dismiss → check history |
+| `e2e/demo-tuning-cycle.spec.ts` | 7 | Full Filter Tune cycle: start → modal → erase → download → filter wizard → apply → skip verify → complete → dismiss → check history |
+| `e2e/demo-pid-tune-cycle.spec.ts` | 7 | Full PID Tune cycle: start → modal → erase → download → PID wizard → apply → skip verify → complete → dismiss → check history |
 | `e2e/demo-quick-tune-cycle.spec.ts` | 7 | Full Flash Tune cycle: start → modal (Flash) → erase → download → flash wizard (auto-analysis) → apply all → skip verify → complete → dismiss → check history |
-| `e2e/demo-generate-history.spec.ts` | 3 | Generates completed tuning sessions in 3 modes: mixed, deep-only, flash-only (excluded from normal `test:e2e` runs, run via `npm run demo:generate-history`) |
+| `e2e/demo-generate-history.spec.ts` | 3 | Generates completed tuning sessions in 3 modes: mixed, filter-only, flash-only (excluded from normal `test:e2e` runs, run via `npm run demo:generate-history`) |
 | `e2e/demo-generate-stress.spec.ts` | 1 | Generates stress-test tuning sessions with edge-case scenarios (excluded from normal `test:e2e` runs, run via `npm run demo:generate-history:stress`) |
 
 **E2E infrastructure:**
