@@ -7,6 +7,8 @@ export type AxisSelection = Axis | 'all';
 interface AxisTabsProps {
   selected: AxisSelection;
   onChange: (axis: AxisSelection) => void;
+  /** Whether to show the "All" tab (default: true) */
+  showAll?: boolean;
 }
 
 const TABS: { key: AxisSelection; label: string }[] = [
@@ -16,10 +18,11 @@ const TABS: { key: AxisSelection; label: string }[] = [
   { key: 'all', label: 'All' },
 ];
 
-export function AxisTabs({ selected, onChange }: AxisTabsProps) {
+export function AxisTabs({ selected, onChange, showAll = true }: AxisTabsProps) {
+  const visibleTabs = showAll ? TABS : TABS.filter((t) => t.key !== 'all');
   return (
     <div className="axis-tabs" role="tablist">
-      {TABS.map(({ key, label }) => {
+      {visibleTabs.map(({ key, label }) => {
         const isActive = selected === key;
         const color = key !== 'all' ? AXIS_COLORS[key] : undefined;
         return (

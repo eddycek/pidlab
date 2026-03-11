@@ -3,6 +3,7 @@ import type { FilterAnalysisResult, PIDAnalysisResult } from '@shared/types/anal
 import type { AnalysisProgress } from '@shared/types/analysis.types';
 import { RecommendationCard } from './RecommendationCard';
 import { SpectrumChart } from './charts/SpectrumChart';
+import { ThrottleSpectrogramChart } from './charts/ThrottleSpectrogramChart';
 import { TFStepResponseChart } from './charts/TFStepResponseChart';
 import { BodePlot } from './charts/BodePlot';
 
@@ -40,6 +41,7 @@ export function QuickAnalysisStep({
 }: QuickAnalysisStepProps) {
   const autoRunRef = useRef(false);
   const [noiseDetailsOpen, setNoiseDetailsOpen] = useState(true);
+  const [spectrogramOpen, setSpectrogramOpen] = useState(false);
   const [bodeOpen, setBodeOpen] = useState(false);
 
   // Auto-run on mount
@@ -146,6 +148,23 @@ export function QuickAnalysisStep({
                   </div>
                 </div>
               )}
+
+              {filterResult.throttleSpectrogram &&
+                filterResult.throttleSpectrogram.bandsWithData > 0 && (
+                  <>
+                    <button
+                      className="noise-details-toggle"
+                      onClick={() => setSpectrogramOpen(!spectrogramOpen)}
+                    >
+                      {spectrogramOpen ? 'Hide throttle spectrogram' : 'Show throttle spectrogram'}
+                    </button>
+                    {spectrogramOpen && (
+                      <div className="noise-details">
+                        <ThrottleSpectrogramChart data={filterResult.throttleSpectrogram} />
+                      </div>
+                    )}
+                  </>
+                )}
 
               {filterRecs.length === 0 && (
                 <p className="analysis-no-recs">No filter changes recommended.</p>

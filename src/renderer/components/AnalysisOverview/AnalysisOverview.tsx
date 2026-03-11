@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAnalysisOverview } from '../../hooks/useAnalysisOverview';
 import { SpectrumChart } from '../TuningWizard/charts/SpectrumChart';
+import { ThrottleSpectrogramChart } from '../TuningWizard/charts/ThrottleSpectrogramChart';
 import { StepResponseChart } from '../TuningWizard/charts/StepResponseChart';
 import { TFStepResponseChart } from '../TuningWizard/charts/TFStepResponseChart';
 import { BodePlot } from '../TuningWizard/charts/BodePlot';
@@ -359,6 +360,17 @@ export function AnalysisOverview({ logId, logName, onExit }: AnalysisOverviewPro
               })}
             </div>
           </div>
+
+          {overview.filterResult.throttleSpectrogram &&
+            overview.filterResult.throttleSpectrogram.bandsWithData > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <p className="chart-description">
+                  Noise intensity across throttle levels. Bright spots indicate throttle-dependent
+                  noise sources.
+                </p>
+                <ThrottleSpectrogramChart data={overview.filterResult.throttleSpectrogram} />
+              </div>
+            )}
         </div>
       )}
 
