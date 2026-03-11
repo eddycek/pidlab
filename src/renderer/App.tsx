@@ -397,6 +397,37 @@ function AppContent() {
     transferFunctionMetrics?: TransferFunctionMetricsSummary;
   }) => {
     const phase = tuning.session?.phase;
+    const totalChanges =
+      (changes.filterChanges?.length ?? 0) +
+      (changes.pidChanges?.length ?? 0) +
+      (changes.feedforwardChanges?.length ?? 0);
+
+    // No changes applied → skip verification, go directly to completed
+    if (totalChanges === 0) {
+      if (phase === TUNING_PHASE.FILTER_ANALYSIS) {
+        await tuning.updatePhase(TUNING_PHASE.COMPLETED, {
+          appliedFilterChanges: [],
+          filterMetrics: changes.filterMetrics,
+        });
+      } else if (phase === TUNING_PHASE.PID_ANALYSIS) {
+        await tuning.updatePhase(TUNING_PHASE.COMPLETED, {
+          appliedPIDChanges: [],
+          appliedFeedforwardChanges: [],
+          pidMetrics: changes.pidMetrics,
+        });
+      } else if (phase === TUNING_PHASE.QUICK_ANALYSIS) {
+        await tuning.updatePhase(TUNING_PHASE.COMPLETED, {
+          appliedFilterChanges: [],
+          appliedPIDChanges: [],
+          appliedFeedforwardChanges: [],
+          filterMetrics: changes.filterMetrics,
+          pidMetrics: changes.pidMetrics,
+          transferFunctionMetrics: changes.transferFunctionMetrics,
+        });
+      }
+      return;
+    }
+
     if (phase === TUNING_PHASE.FILTER_ANALYSIS) {
       await tuning.updatePhase(TUNING_PHASE.FILTER_APPLIED, {
         appliedFilterChanges: changes.filterChanges,
