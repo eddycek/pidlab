@@ -1,0 +1,19 @@
+.spectrogram-chart {
+  margin-top: 16px;
+}
+
+.spectrogram-chart-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.spectrogram-svg {
+  width: 100%;
+  max-width: 800px;
+  min-width: 500px;
+  height: auto;
+}
+
+.spectrogram-svg rect {
+  shape-rendering: crispEdges;
+}

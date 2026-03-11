@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { RecommendationCard } from './RecommendationCard';
 import { SpectrumChart } from './charts/SpectrumChart';
+import { ThrottleSpectrogramChart } from './charts/ThrottleSpectrogramChart';
 import type { FilterAnalysisResult, AnalysisProgress } from '@shared/types/analysis.types';
 import type { TuningMode } from '@shared/types/tuning.types';
 import { TUNING_MODE } from '@shared/constants';
@@ -42,6 +43,7 @@ export function FilterAnalysisStep({
     mode === TUNING_MODE.FILTER ? 'Continue to Summary' : 'Continue to PID Analysis';
   const skipLabel = mode === TUNING_MODE.FILTER ? 'Skip to Summary' : 'Skip to PIDs';
   const [noiseDetailsOpen, setNoiseDetailsOpen] = useState(true);
+  const [spectrogramOpen, setSpectrogramOpen] = useState(false);
 
   if (filterAnalyzing) {
     return (
@@ -229,6 +231,27 @@ export function FilterAnalysisStep({
               })}
             </div>
           </div>
+        )}
+
+        {filterResult.throttleSpectrogram && filterResult.throttleSpectrogram.bandsWithData > 0 && (
+          <>
+            <button
+              className="noise-details-toggle"
+              onClick={() => setSpectrogramOpen(!spectrogramOpen)}
+            >
+              {spectrogramOpen ? 'Hide throttle spectrogram' : 'Show throttle spectrogram'}
+            </button>
+            {spectrogramOpen && (
+              <div className="noise-details">
+                <p className="chart-description">
+                  Noise spectrum across throttle levels. Bright spots indicate noise that changes
+                  with throttle &mdash; typically motor harmonics. Dark/uniform areas mean clean
+                  noise at that throttle range.
+                </p>
+                <ThrottleSpectrogramChart data={filterResult.throttleSpectrogram} />
+              </div>
+            )}
+          </>
         )}
 
         {filterResult.recommendations.length > 0 ? (
