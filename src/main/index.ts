@@ -244,17 +244,21 @@ async function initialize(): Promise<void> {
               }
             }
 
-            // Smart reconnect for verification_pending: if flash has data after erase,
+            // Smart reconnect for verification phases: if flash has data after erase,
             // user has flown — clear eraseCompleted so UI shows Download button
-            if (session.phase === TUNING_PHASE.VERIFICATION_PENDING && session.eraseCompleted) {
+            const isVerificationPhase =
+              session.phase === TUNING_PHASE.VERIFICATION_PENDING ||
+              session.phase === TUNING_PHASE.FILTER_VERIFICATION_PENDING ||
+              session.phase === TUNING_PHASE.PID_VERIFICATION_PENDING;
+            if (isVerificationPhase && session.eraseCompleted) {
               const bbInfo = await mspClient.getBlackboxInfo();
               if (bbInfo.storageType === 'flash' && bbInfo.hasLogs && bbInfo.usedSize > 0) {
                 logger.info(
-                  'Smart reconnect: verification_pending + flash has data — clearing eraseCompleted'
+                  `Smart reconnect: ${session.phase} + flash has data — clearing eraseCompleted`
                 );
                 const updated = await tuningSessionManager.updatePhase(
                   existingProfile.id,
-                  TUNING_PHASE.VERIFICATION_PENDING,
+                  session.phase,
                   { eraseCompleted: undefined }
                 );
                 sendTuningSessionChanged(updated);

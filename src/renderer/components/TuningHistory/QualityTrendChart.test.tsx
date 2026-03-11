@@ -19,7 +19,7 @@ function makeRecord(id: string, date: string, noiseFloorDb = -50): CompletedTuni
   return {
     id,
     profileId: 'p1',
-    tuningType: TUNING_TYPE.DEEP,
+    tuningType: TUNING_TYPE.FILTER,
     startedAt: '2026-01-01T00:00:00Z',
     completedAt: date,
     baselineSnapshotId: null,
@@ -70,6 +70,7 @@ function makeRecord(id: string, date: string, noiseFloorDb = -50): CompletedTuni
       summary: 'OK',
     },
     verificationMetrics: null,
+    verificationPidMetrics: null,
     quickLogId: null,
     transferFunctionMetrics: null,
   };
@@ -125,6 +126,7 @@ describe('QualityTrendChart', () => {
       filterMetrics: null,
       pidMetrics: null,
       verificationMetrics: null,
+      verificationPidMetrics: null,
       quickLogId: null,
       transferFunctionMetrics: null,
     };

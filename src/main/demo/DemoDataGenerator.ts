@@ -579,7 +579,7 @@ function buildDemoSession(config: DemoSessionConfig): Buffer {
       frame.push(...encodeSVB(Math.round(broadbandSetpoint[1][f])));
       frame.push(...encodeSVB(Math.round(broadbandSetpoint[2][f])));
     } else {
-      // Discrete step inputs (Deep Tune — specific maneuvers)
+      // Discrete step inputs (PID Tune — specific maneuvers)
       const setpoints = [0, 0, 0]; // roll, pitch, yaw
       const activeStep = steps.find((s) => f >= s.startFrame && f < s.endFrame);
       if (activeStep) {
@@ -691,7 +691,7 @@ export function generatePIDDemoBBL(cycle = 0): Buffer {
 }
 
 /**
- * Generate a demo BBL buffer for Deep Tune verification flight (post-all tuning).
+ * Generate a demo BBL buffer for Filter/PID Tune verification flight (post-all tuning).
  *
  * Contains one session with:
  * - ~10 seconds of hover data at 4000 Hz (I-frame only, iInterval=2)
@@ -726,7 +726,7 @@ export function generateVerificationDemoBBL(cycle = 0): Buffer {
 /**
  * Generate a demo BBL buffer for Flash Tune verification flight (post-tune).
  *
- * Unlike Deep Tune verification (hover-only), Flash Tune verification needs
+ * Unlike Filter/PID Tune verification (hover-only), Flash Tune verification needs
  * broadband setpoint excitation for Wiener deconvolution to produce meaningful
  * transfer function / step response results.
  *

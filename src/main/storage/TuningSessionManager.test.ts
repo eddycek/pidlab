@@ -152,16 +152,16 @@ describe('TuningSessionManager', () => {
       expect(session.tuningType).toBe(TUNING_TYPE.FLASH);
     });
 
-    it('creates guided session by default', async () => {
+    it('creates filter session by default', async () => {
       const session = await manager.createSession('profile-1');
       expect(session.phase).toBe(TUNING_PHASE.FILTER_FLIGHT_PENDING);
-      expect(session.tuningType).toBe(TUNING_TYPE.DEEP);
+      expect(session.tuningType).toBe(TUNING_TYPE.FILTER);
     });
 
-    it('creates guided session with explicit type', async () => {
-      const session = await manager.createSession('profile-1', TUNING_TYPE.DEEP);
+    it('creates filter session with explicit type', async () => {
+      const session = await manager.createSession('profile-1', TUNING_TYPE.FILTER);
       expect(session.phase).toBe(TUNING_PHASE.FILTER_FLIGHT_PENDING);
-      expect(session.tuningType).toBe(TUNING_TYPE.DEEP);
+      expect(session.tuningType).toBe(TUNING_TYPE.FILTER);
     });
 
     it('supports quick phase transitions', async () => {

@@ -27,6 +27,7 @@ describe('useTuningHistory', () => {
         filterMetrics: null,
         pidMetrics: null,
         verificationMetrics: null,
+        verificationPidMetrics: null,
         quickLogId: null,
         transferFunctionMetrics: null,
       },

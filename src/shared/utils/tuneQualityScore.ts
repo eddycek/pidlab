@@ -4,10 +4,10 @@
  * Up to 5 components, linear interpolation with clamp.
  * Missing components are redistributed evenly among available ones.
  *
- * Deep Tune (step response): Noise Floor, Tracking RMS, Overshoot, Settling Time, [Noise Delta]
+ * PID Tune (step response): Noise Floor, Tracking RMS, Overshoot, Settling Time, [Noise Delta]
  * Flash Tune (transfer function): Noise Floor, Overshoot (TF), Phase Margin, Bandwidth, [Noise Delta]
  *
- * Overshoot is a unified metric — Deep Tune sources it from step response measurements,
+ * Overshoot is a unified metric — PID Tune sources it from step response measurements,
  * Flash Tune sources it from the TF-derived synthetic step response. Both measure the
  * same physical property (how much the system overshoots a target), making scores comparable.
  */
@@ -73,7 +73,7 @@ const COMPONENTS: ComponentDef[] = [
   {
     label: 'Overshoot',
     getValue: (_filter, pid, _verification, tf) => {
-      // Deep Tune: step-based overshoot (preferred when available)
+      // PID Tune: step-based overshoot (preferred when available)
       if (pid && pid.stepsDetected > 0) {
         return (pid.roll.meanOvershoot + pid.pitch.meanOvershoot + pid.yaw.meanOvershoot) / 3;
       }

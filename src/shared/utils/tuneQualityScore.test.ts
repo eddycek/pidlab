@@ -511,9 +511,9 @@ describe('computeTuneQualityScore', () => {
       expect(result!.tier).toBe('poor');
     });
 
-    it('Flash Tune scores are comparable to Deep Tune scores', () => {
-      // Perfect Deep Tune: 4 components × 25 pts = 100
-      const deepScore = computeTuneQualityScore({
+    it('Flash Tune scores are comparable to PID Tune scores', () => {
+      // Perfect PID Tune: 4 components × 25 pts = 100
+      const pidScore = computeTuneQualityScore({
         filterMetrics: perfectFilter,
         pidMetrics: perfectPID,
       });
@@ -523,7 +523,7 @@ describe('computeTuneQualityScore', () => {
         pidMetrics: { ...perfectPID, stepsDetected: 0 },
         transferFunctionMetrics: perfectTF,
       });
-      expect(deepScore).not.toBeNull();
+      expect(pidScore).not.toBeNull();
       expect(flashScore).not.toBeNull();
       // Both perfect → both 100
       expect(flashScore!.overall).toBe(100);
@@ -577,14 +577,14 @@ describe('computeTuneQualityScore', () => {
       expect(result!.overall).toBe(47);
     });
 
-    it('does not use TF overshoot when step data is available (Deep Tune)', () => {
+    it('does not use TF overshoot when step data is available (PID Tune)', () => {
       const result = computeTuneQualityScore({
         filterMetrics: perfectFilter,
         pidMetrics: perfectPID,
         transferFunctionMetrics: null,
       });
       expect(result).not.toBeNull();
-      // Standard 4 Deep Tune components (Overshoot from step response, not TF)
+      // Standard 4 PID Tune components (Overshoot from step response, not TF)
       expect(result!.components).toHaveLength(4);
     });
 
@@ -597,7 +597,7 @@ describe('computeTuneQualityScore', () => {
       });
       expect(result).not.toBeNull();
       // Overshoot uses step data (pid.stepsDetected > 0), TF overshoot ignored
-      // 6 components: Deep Tune 4 (Noise Floor, Tracking RMS, Overshoot, Settling Time) + TF 2 (Phase Margin, Bandwidth)
+      // 6 components: PID Tune 4 (Noise Floor, Tracking RMS, Overshoot, Settling Time) + TF 2 (Phase Margin, Bandwidth)
       expect(result!.components).toHaveLength(6);
       const overshootComponent = result!.components.find((c) => c.label === 'Overshoot')!;
       // Step-based overshoot: perfectPID.roll.meanOvershoot = 0 → perfect score

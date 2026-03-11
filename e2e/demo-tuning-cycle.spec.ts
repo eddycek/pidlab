@@ -26,8 +26,8 @@ test.describe.serial('single tuning cycle', () => {
   test('start tuning session', async () => {
     await demo.clickButton('Start Tuning Session');
 
-    // StartTuningModal opens — select Deep Tune
-    await demo.clickButton('Deep Tune');
+    // StartTuningModal opens — select Filter Tune
+    await demo.clickButton('Filter Tune');
 
     // Should show filter_flight_pending phase
     await demo.waitForText('Erase Blackbox data');
@@ -172,8 +172,8 @@ test.describe.serial('single tuning cycle', () => {
 
     await demo.clickButton('Skip & Complete');
 
-    // Session should be completed — TuningCompletionSummary shows "Deep Tune Complete"
-    await demo.waitForText(/Deep Tune Complete/i, 15_000);
+    // Session should be completed — TuningCompletionSummary shows "Filter Tune Complete"
+    await demo.waitForText(/Filter Tune Complete/i, 15_000);
     await demo.screenshot('12-tuning-complete');
   });
 

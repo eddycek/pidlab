@@ -98,7 +98,7 @@ function flightCount(session: TuningSession): number {
 }
 
 function completionTitle(session: TuningSession): string {
-  const label = TUNING_TYPE_LABELS[session.tuningType ?? TUNING_TYPE.DEEP];
+  const label = TUNING_TYPE_LABELS[session.tuningType ?? TUNING_TYPE.FILTER];
   return `${label} Complete`;
 }
 

@@ -123,14 +123,14 @@ describe('SnapshotManager', () => {
       battery: '4S',
     });
 
-    const snap = await manager.createSnapshot('Pre-tuning #1 (Deep Tune)', 'auto', {
+    const snap = await manager.createSnapshot('Pre-tuning #1 (Filter Tune)', 'auto', {
       tuningSessionNumber: 1,
-      tuningType: 'guided',
+      tuningType: 'filter',
       snapshotRole: 'pre-tuning',
     });
 
     expect(snap.metadata.tuningSessionNumber).toBe(1);
-    expect(snap.metadata.tuningType).toBe('guided');
+    expect(snap.metadata.tuningType).toBe('filter');
     expect(snap.metadata.snapshotRole).toBe('pre-tuning');
   });
 

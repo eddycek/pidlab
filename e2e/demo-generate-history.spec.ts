@@ -36,13 +36,13 @@ async function runGuidedCycle(cycleNum: number): Promise<void> {
   const WAIT = 30_000;
   const ANALYSIS_WAIT = 60_000;
 
-  console.log(`\n=== Starting Deep Tune cycle ${cycleNum} ===`);
+  console.log(`\n=== Starting Filter Tune cycle ${cycleNum} ===`);
 
-  // 1. Start Tuning Session (modal → Deep Tune)
+  // 1. Start Tuning Session (modal → Filter Tune)
   await demo.clickButton('Start Tuning Session');
   // Use modal-scoped locator to avoid strict mode violation when history has "Flash Tune" text
   const modal = page.locator('.start-tuning-overlay');
-  await modal.getByRole('button', { name: 'Deep Tune' }).click();
+  await modal.getByRole('button', { name: 'Filter Tune' }).click();
   await demo.waitForText('Erase Blackbox data', WAIT);
 
   // 2. Filter flight: erase → auto-flight → download → analysis → apply
@@ -123,9 +123,9 @@ async function runGuidedCycle(cycleNum: number): Promise<void> {
     .getByRole('button', { name: 'Skip & Complete' })
     .waitFor({ state: 'visible', timeout: WAIT });
   await demo.clickButton('Skip & Complete');
-  await demo.waitForText(/Deep Tune Complete/i, 15_000);
+  await demo.waitForText(/Filter Tune Complete/i, 15_000);
 
-  await demo.screenshot(`history-cycle-${cycleNum}-deep-complete`);
+  await demo.screenshot(`history-cycle-${cycleNum}-filter-complete`);
 
   const dismissBtn = page.getByRole('button', { name: 'Dismiss', exact: true });
   await dismissBtn.waitFor({ state: 'visible', timeout: 10_000 });
@@ -135,7 +135,7 @@ async function runGuidedCycle(cycleNum: number): Promise<void> {
     .getByRole('button', { name: /start tuning/i })
     .waitFor({ state: 'visible', timeout: WAIT });
 
-  console.log(`  Cycle ${cycleNum}: Deep Tune complete and dismissed`);
+  console.log(`  Cycle ${cycleNum}: Filter Tune complete and dismissed`);
 }
 
 async function runQuickCycle(cycleNum: number): Promise<void> {

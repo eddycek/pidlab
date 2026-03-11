@@ -577,22 +577,22 @@ describe('useTuningWizard', () => {
     });
   });
 
-  it('confirmApply filters out diagnostic recommendations (currentValue === recommendedValue)', async () => {
-    const filterWithDiagnostic: FilterAnalysisResult = {
+  it('confirmApply filters out no-change recommendations (currentValue === recommendedValue)', async () => {
+    const filterWithNoChange: FilterAnalysisResult = {
       ...mockFilterResult,
       recommendations: [
         ...mockFilterResult.recommendations,
         {
-          setting: 'rpm_filter_diagnostic',
-          currentValue: 0,
-          recommendedValue: 0,
-          reason: 'Motor harmonic noise detected despite RPM filter.',
+          setting: 'gyro_lpf2_static_hz',
+          currentValue: 250,
+          recommendedValue: 250,
+          reason: 'Current setting is already optimal.',
           impact: 'noise',
           confidence: 'medium',
         },
       ],
     };
-    vi.mocked(window.betaflight.analyzeFilters).mockResolvedValue(filterWithDiagnostic);
+    vi.mocked(window.betaflight.analyzeFilters).mockResolvedValue(filterWithNoChange);
     vi.mocked(window.betaflight.applyRecommendations).mockResolvedValue({
       success: true,
       appliedPIDs: 0,
@@ -610,7 +610,7 @@ describe('useTuningWizard', () => {
       await result.current.confirmApply();
     });
 
-    // Diagnostic (0 → 0) should be filtered out, only real change sent
+    // No-change (250 → 250) should be filtered out, only real change sent
     expect(window.betaflight.applyRecommendations).toHaveBeenCalledWith({
       filterRecommendations: mockFilterResult.recommendations,
       pidRecommendations: [],

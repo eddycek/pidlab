@@ -80,6 +80,17 @@
   color: #4caf50;
 }
 
+.start-tuning-option-recommended {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: #2a3a1b;
+  color: #8bc34a;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .start-tuning-option-desc {
   margin: 0;
   font-size: 12px;

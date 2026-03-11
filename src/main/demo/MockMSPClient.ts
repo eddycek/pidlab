@@ -198,7 +198,7 @@ export class MockMSPClient extends EventEmitter {
   /** Which BBL type the next auto-flight will generate (exposed for testing) */
   _nextFlightType: DemoFlightPhase = DEMO_FLIGHT.FILTER;
   /** Last tuning session type — determines what `advancePastVerification` resets to */
-  _lastSessionType: TuningType = TUNING_TYPE.DEEP;
+  _lastSessionType: TuningType = TUNING_TYPE.FILTER;
   /** Current tuning cycle (0-based). Increments each time a new session starts.
    *  Used for progressive noise reduction in demo data generation. */
   _tuningCycle = 0;
@@ -294,7 +294,7 @@ export class MockMSPClient extends EventEmitter {
     this.cancelAutoFlight();
     this._tuningCycle = 0;
     this._nextFlightType = DEMO_FLIGHT.FILTER;
-    this._lastSessionType = TUNING_TYPE.DEEP;
+    this._lastSessionType = TUNING_TYPE.FILTER;
     this.connection.appliedSettings.clear();
     this._flashHasData = false;
     this._demoBBLData = null;
@@ -310,8 +310,13 @@ export class MockMSPClient extends EventEmitter {
   advancePastVerification(): void {
     if (this._nextFlightType === DEMO_FLIGHT.VERIFICATION) {
       this._tuningCycle++;
-      this._nextFlightType =
-        this._lastSessionType === TUNING_TYPE.FLASH ? DEMO_FLIGHT.FLASH : DEMO_FLIGHT.FILTER;
+      if (this._lastSessionType === TUNING_TYPE.FLASH) {
+        this._nextFlightType = DEMO_FLIGHT.FLASH;
+      } else if (this._lastSessionType === TUNING_TYPE.PID) {
+        this._nextFlightType = DEMO_FLIGHT.PID;
+      } else {
+        this._nextFlightType = DEMO_FLIGHT.FILTER;
+      }
       logger.info(
         `[DEMO] Skipped verification — advanced to cycle ${this._tuningCycle}, next flight: ${this._nextFlightType}`
       );
@@ -329,14 +334,22 @@ export class MockMSPClient extends EventEmitter {
   }
 
   /**
-   * Set the next flight type for Deep Tune sessions.
-   * Called when a Deep Tune (guided) tuning session is started.
+   * Set the next flight type for Filter Tune sessions.
    * Ensures correct flight cycling after a previous Flash Tune session.
    */
-  setDeepTuneMode(): void {
+  setFilterTuneMode(): void {
     this._nextFlightType = DEMO_FLIGHT.FILTER;
-    this._lastSessionType = TUNING_TYPE.DEEP;
-    logger.info('[DEMO] Deep Tune mode set — next flight: filter');
+    this._lastSessionType = TUNING_TYPE.FILTER;
+    logger.info('[DEMO] Filter Tune mode set — next flight: filter');
+  }
+
+  /**
+   * Set the next flight type for PID Tune sessions.
+   */
+  setPIDTuneMode(): void {
+    this._nextFlightType = DEMO_FLIGHT.PID;
+    this._lastSessionType = TUNING_TYPE.PID;
+    logger.info('[DEMO] PID Tune mode set — next flight: pid');
   }
 
   /**
@@ -622,7 +635,7 @@ export class MockMSPClient extends EventEmitter {
           [DEMO_FLIGHT.PID]: generatePIDDemoBBL,
           [DEMO_FLIGHT.FLASH]: generateFlashDemoBBL,
           // Flash Tune verification needs broadband setpoint for Wiener deconvolution;
-          // Deep Tune verification uses hover-only (no setpoint needed)
+          // Filter/PID Tune verification uses hover-only (no setpoint needed)
           [DEMO_FLIGHT.VERIFICATION]:
             this._lastSessionType === TUNING_TYPE.FLASH
               ? generateFlashVerificationDemoBBL
@@ -636,7 +649,11 @@ export class MockMSPClient extends EventEmitter {
         [DEMO_FLIGHT.PID]: DEMO_FLIGHT.VERIFICATION,
         [DEMO_FLIGHT.FLASH]: DEMO_FLIGHT.VERIFICATION,
         [DEMO_FLIGHT.VERIFICATION]:
-          this._lastSessionType === TUNING_TYPE.FLASH ? DEMO_FLIGHT.FLASH : DEMO_FLIGHT.FILTER,
+          this._lastSessionType === TUNING_TYPE.FLASH
+            ? DEMO_FLIGHT.FLASH
+            : this._lastSessionType === TUNING_TYPE.PID
+              ? DEMO_FLIGHT.PID
+              : DEMO_FLIGHT.FILTER,
       };
       // After verification completes a full cycle — increment for next round
       if (this._nextFlightType === DEMO_FLIGHT.VERIFICATION) {

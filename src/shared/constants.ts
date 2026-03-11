@@ -50,11 +50,13 @@ export const SIZE_DEFAULTS = {
 
 /**
  * Tuning session type constants.
- * Names use user-facing terminology; values are serialized strings (cannot change).
+ * Names use user-facing terminology; values are serialized strings.
  */
 export const TUNING_TYPE = {
-  /** Deep Tune — 2-flight guided session (filter flight + PID flight) */
-  DEEP: 'guided' as const,
+  /** Filter Tune — filter-only session (hover + throttle sweeps) */
+  FILTER: 'filter' as const,
+  /** PID Tune — PID-only session (stick snaps) */
+  PID: 'pid' as const,
   /** Flash Tune — 1-flight session via Wiener deconvolution */
   FLASH: 'quick' as const,
 };
@@ -73,18 +75,21 @@ export const TUNING_MODE = {
 
 /**
  * Tuning phase constants — state machine phases for tuning sessions.
- * Deep Tune phases (filter_* → pid_*) and Flash Tune phases (quick_*).
+ * Filter Tune (filter_*), PID Tune (pid_*), and Flash Tune (quick_*).
  */
 export const TUNING_PHASE = {
-  // Deep Tune phases
+  // Filter Tune phases
   FILTER_FLIGHT_PENDING: 'filter_flight_pending' as const,
   FILTER_LOG_READY: 'filter_log_ready' as const,
   FILTER_ANALYSIS: 'filter_analysis' as const,
   FILTER_APPLIED: 'filter_applied' as const,
+  FILTER_VERIFICATION_PENDING: 'filter_verification_pending' as const,
+  // PID Tune phases
   PID_FLIGHT_PENDING: 'pid_flight_pending' as const,
   PID_LOG_READY: 'pid_log_ready' as const,
   PID_ANALYSIS: 'pid_analysis' as const,
   PID_APPLIED: 'pid_applied' as const,
+  PID_VERIFICATION_PENDING: 'pid_verification_pending' as const,
   // Flash Tune phases
   QUICK_FLIGHT_PENDING: 'quick_flight_pending' as const,
   QUICK_LOG_READY: 'quick_log_ready' as const,
@@ -96,10 +101,11 @@ export const TUNING_PHASE = {
 };
 
 /** Display labels for tuning types — single source of truth */
-export const TUNING_TYPE_LABELS = {
-  [TUNING_TYPE.DEEP]: 'Deep Tune',
+export const TUNING_TYPE_LABELS: Record<string, string> = {
+  [TUNING_TYPE.FILTER]: 'Filter Tune',
+  [TUNING_TYPE.PID]: 'PID Tune',
   [TUNING_TYPE.FLASH]: 'Flash Tune',
-} as const;
+};
 
 // Helper to build preset from SIZE_DEFAULTS with overrides
 import type { DroneSize, FlightStyle } from './types/profile.types';

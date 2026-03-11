@@ -157,7 +157,7 @@ export interface CompletedTuningRecord {
   /** When the tuning session was completed (ISO string) */
   completedAt: string;
 
-  /** Guided (2-flight) or Quick (1-flight). Defaults to 'guided' for old records. */
+  /** Filter, PID, or Flash (quick). Defaults to 'filter' for old records. */
   tuningType?: TuningType;
 
   /** Snapshot IDs (nullable — may not exist if skipped or deleted) */
@@ -180,6 +180,7 @@ export interface CompletedTuningRecord {
   filterMetrics: FilterMetricsSummary | null;
   pidMetrics: PIDMetricsSummary | null;
   verificationMetrics: FilterMetricsSummary | null;
+  verificationPidMetrics: PIDMetricsSummary | null;
 
   /** Transfer function metrics from Wiener deconvolution (Quick Tune only) */
   transferFunctionMetrics: TransferFunctionMetricsSummary | null;

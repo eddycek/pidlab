@@ -16,16 +16,28 @@ export function StartTuningModal({ onStart, onCancel }: StartTuningModalProps) {
         <p className="start-tuning-subtitle">Select how you want to tune your drone.</p>
 
         <div className="start-tuning-options">
-          <button className="start-tuning-option" onClick={() => onStart(TUNING_TYPE.DEEP)}>
+          <button className="start-tuning-option" onClick={() => onStart(TUNING_TYPE.FILTER)}>
             <div className="start-tuning-option-header">
               <span className="start-tuning-option-title">
-                {TUNING_TYPE_LABELS[TUNING_TYPE.DEEP]}
+                {TUNING_TYPE_LABELS[TUNING_TYPE.FILTER]}
               </span>
-              <span className="start-tuning-option-badge">2 flights</span>
+              <span className="start-tuning-option-badge">1-2 flights</span>
+              <span className="start-tuning-option-recommended">Start here</span>
             </div>
             <p className="start-tuning-option-desc">
-              Separate filter and PID flights for maximum precision. Hover + throttle sweeps for
-              filters, then stick snaps for PIDs. Best for first tune or building a clean baseline.
+              Hover + throttle sweeps. Optimize gyro and D-term filters for clean noise baseline.
+            </p>
+          </button>
+
+          <button className="start-tuning-option" onClick={() => onStart(TUNING_TYPE.PID)}>
+            <div className="start-tuning-option-header">
+              <span className="start-tuning-option-title">
+                {TUNING_TYPE_LABELS[TUNING_TYPE.PID]}
+              </span>
+              <span className="start-tuning-option-badge">1-2 flights</span>
+            </div>
+            <p className="start-tuning-option-desc">
+              Stick snaps on all axes. Tune P, I, D gains. Best after clean filter baseline.
             </p>
           </button>
 

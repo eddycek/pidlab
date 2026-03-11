@@ -153,6 +153,79 @@ export const VERIFICATION_FLIGHT_TIPS: string[] = [
   'If noise improved, you are done. If not, consider another tuning cycle',
 ];
 
+// ---- Filter Verification Guide (throttle sweep to compare spectrogram before/after) ----
+
+export const FILTER_VERIFICATION_FLIGHT_PHASES: FlightPhase[] = [
+  {
+    title: 'Take off & Hover',
+    duration: '10–15 sec',
+    description: 'Hover steadily at mid-throttle. Same conditions as your filter analysis flight.',
+  },
+  {
+    title: 'Throttle Sweep',
+    duration: '2–3 times',
+    description:
+      'Slowly sweep throttle from hover to full power and back. Same pattern as before — this allows direct spectrogram comparison.',
+  },
+  {
+    title: 'Final Hover',
+    duration: '5–10 sec',
+    description: 'Hold a steady hover for additional data.',
+  },
+  {
+    title: 'Land',
+    duration: '',
+    description: 'Done! Total flight: 30–45 seconds. Reconnect and download the log.',
+  },
+];
+
+export const FILTER_VERIFICATION_FLIGHT_TIPS: string[] = [
+  'Fly the same throttle sweep pattern as the original filter flight',
+  'Stay at the same altitude (2–5 meters) for comparable data',
+  'Keep movements gentle — this is a noise measurement, not acro',
+  'After downloading, the app shows side-by-side spectrogram comparison',
+  'If noise reduced, consider starting PID Tune next',
+];
+
+// ---- PID Verification Guide (stick snaps to compare step response before/after) ----
+
+export const PID_VERIFICATION_FLIGHT_PHASES: FlightPhase[] = [
+  {
+    title: 'Take off & Hover',
+    duration: '5 sec',
+    description: 'Brief hover to stabilize.',
+  },
+  {
+    title: 'Roll Snaps',
+    duration: '5–8 times',
+    description:
+      'Same roll snap pattern as your PID analysis flight. Mix half-stick and full-stick.',
+  },
+  {
+    title: 'Pitch Snaps',
+    duration: '5–8 times',
+    description: 'Same with pitch — forward, center, back, center.',
+  },
+  {
+    title: 'Yaw Snaps',
+    duration: '3–5 times',
+    description: 'Quick yaw movements left and right.',
+  },
+  {
+    title: 'Land',
+    duration: '',
+    description: 'Done! Total flight: 20–40 seconds. Reconnect and download the log.',
+  },
+];
+
+export const PID_VERIFICATION_FLIGHT_TIPS: string[] = [
+  'Fly the same stick snap pattern as the original PID flight',
+  'Mix half-stick and full-stick snaps for consistent comparison',
+  'Stay at 2–5 meters altitude',
+  'After downloading, the app compares overshoot, rise time, and settling time',
+  'If step response improved, your PIDs are dialed in',
+];
+
 // ---- Flash Tune Verification Guide (normal flight to compare filters + PIDs) ----
 
 export const FLASH_VERIFICATION_FLIGHT_PHASES: FlightPhase[] = [
@@ -223,7 +296,7 @@ export const FLIGHT_TIPS: string[] = [
   'Make sure Blackbox logging is enabled before you fly',
 ];
 
-// ---- Tuning Workflow (Deep Tune step labels) ----
+// ---- Tuning Workflow (Filter + PID Tune step labels) ----
 
 export const TUNING_WORKFLOW: WorkflowStep[] = [
   { title: 'Connect your drone', description: 'Plug in via USB and wait for connection.' },

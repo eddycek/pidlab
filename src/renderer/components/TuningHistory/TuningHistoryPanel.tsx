@@ -89,9 +89,10 @@ export function TuningHistoryPanel({
                 </div>
                 <div className="tuning-history-card-right">
                   <span
-                    className={`tuning-type-badge tuning-type-${record.tuningType === TUNING_TYPE.FLASH ? 'flash' : 'deep'}`}
+                    className={`tuning-type-badge tuning-type-${record.tuningType === TUNING_TYPE.FLASH ? 'flash' : record.tuningType === TUNING_TYPE.PID ? 'pid' : 'filter'}`}
                   >
-                    {TUNING_TYPE_LABELS[record.tuningType ?? TUNING_TYPE.DEEP]}
+                    {TUNING_TYPE_LABELS[record.tuningType ?? TUNING_TYPE.FILTER] ??
+                      record.tuningType}
                   </span>
                   {score && (
                     <span className={`quality-score-badge quality-score-${score.tier}`}>
