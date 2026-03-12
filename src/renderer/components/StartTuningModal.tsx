@@ -13,7 +13,9 @@ export function StartTuningModal({ onStart, onCancel }: StartTuningModalProps) {
     <div className="start-tuning-overlay" onClick={onCancel}>
       <div className="start-tuning-modal" onClick={(e) => e.stopPropagation()}>
         <h2>Choose Tuning Mode</h2>
-        <p className="start-tuning-subtitle">Select how you want to tune your drone.</p>
+        <p className="start-tuning-subtitle">
+          Each mode uses a dedicated test flight + a verification flight to confirm results.
+        </p>
 
         <div className="start-tuning-options">
           <button className="start-tuning-option" onClick={() => onStart(TUNING_TYPE.FILTER)}>
@@ -21,11 +23,12 @@ export function StartTuningModal({ onStart, onCancel }: StartTuningModalProps) {
               <span className="start-tuning-option-title">
                 {TUNING_TYPE_LABELS[TUNING_TYPE.FILTER]}
               </span>
-              <span className="start-tuning-option-badge">1-2 flights</span>
+              <span className="start-tuning-option-badge">2 flights</span>
               <span className="start-tuning-option-recommended">Start here</span>
             </div>
             <p className="start-tuning-option-desc">
-              Hover + throttle sweeps. Optimize gyro and D-term filters for clean noise baseline.
+              Dedicated hover + throttle sweeps (~30 sec). FFT noise analysis optimizes gyro and
+              D-term filter cutoffs. Best accuracy for filter tuning.
             </p>
           </button>
 
@@ -34,26 +37,25 @@ export function StartTuningModal({ onStart, onCancel }: StartTuningModalProps) {
               <span className="start-tuning-option-title">
                 {TUNING_TYPE_LABELS[TUNING_TYPE.PID]}
               </span>
-              <span className="start-tuning-option-badge">1-2 flights</span>
+              <span className="start-tuning-option-badge">2 flights</span>
             </div>
             <p className="start-tuning-option-desc">
-              Stick snaps on all axes. Tune P, I, D gains. Best after clean filter baseline.
+              Dedicated stick snaps on all axes (~30 sec). Step response analysis tunes P, I, D
+              gains. Run after Filter Tune for best results.
             </p>
           </button>
 
-          <button
-            className="start-tuning-option start-tuning-option-quick"
-            onClick={() => onStart(TUNING_TYPE.FLASH)}
-          >
+          <button className="start-tuning-option" onClick={() => onStart(TUNING_TYPE.FLASH)}>
             <div className="start-tuning-option-header">
               <span className="start-tuning-option-title">
                 {TUNING_TYPE_LABELS[TUNING_TYPE.FLASH]}
               </span>
-              <span className="start-tuning-option-badge start-tuning-badge-quick">1 flight</span>
+              <span className="start-tuning-option-badge">2 flights</span>
             </div>
             <p className="start-tuning-option-desc">
-              Rip a pack, land, tune. Analyzes filters and PIDs from any flight — freestyle, racing,
-              cruising. Perfect for iterating on an existing tune.
+              Fly any style — freestyle, racing, cruising. Estimates filters and PIDs from normal
+              flight data via Wiener deconvolution. Faster and easier, but less precise than
+              dedicated test flights.
             </p>
           </button>
         </div>

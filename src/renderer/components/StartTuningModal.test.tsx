@@ -12,8 +12,7 @@ describe('StartTuningModal', () => {
     expect(screen.getByText('Filter Tune')).toBeInTheDocument();
     expect(screen.getByText('PID Tune')).toBeInTheDocument();
     expect(screen.getByText('Flash Tune')).toBeInTheDocument();
-    expect(screen.getAllByText('1-2 flights')).toHaveLength(2);
-    expect(screen.getByText('1 flight')).toBeInTheDocument();
+    expect(screen.getAllByText('2 flights')).toHaveLength(3);
   });
 
   it('shows "Start here" badge on Filter Tune', () => {

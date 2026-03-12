@@ -75,7 +75,7 @@ describe('TuningWorkflowModal', () => {
     expect(screen.queryByText('Filter Test Flight')).not.toBeInTheDocument();
 
     // Flash Tune content should be visible
-    expect(screen.getByText(/Rip a pack, land, tune/)).toBeInTheDocument();
+    expect(screen.getByText(/Wiener deconvolution/)).toBeInTheDocument();
   });
 
   it('switches back to Filter Tune tab', async () => {
