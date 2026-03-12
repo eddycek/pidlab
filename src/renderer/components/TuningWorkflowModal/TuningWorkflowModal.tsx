@@ -72,6 +72,18 @@ function FilterTuneContent({
     <>
       <p className="workflow-tab-subtitle">{getSubtitle(TUNING_MODE.FILTER)}</p>
 
+      <div className="workflow-info-box">
+        <div className="workflow-info-title">How it works</div>
+        <p className="workflow-info-text">
+          A dedicated hover + throttle sweep flight produces clean gyro noise data. PIDlab runs{' '}
+          <strong>FFT analysis</strong> (Welch&apos;s method) to measure the noise spectrum, detect
+          resonance peaks, and compute optimal gyro and D-term filter cutoffs.
+        </p>
+        <p className="workflow-info-text workflow-info-hint">
+          Best accuracy for filter tuning. Recommended as the first tuning step.
+        </p>
+      </div>
+
       <div className="workflow-steps">
         {steps.map((step, i) => (
           <div key={i} className="workflow-step">
@@ -99,6 +111,18 @@ function PIDTuneContent({ fcVersion }: { fcVersion?: string }) {
     <>
       <p className="workflow-tab-subtitle">{getSubtitle(TUNING_MODE.PID)}</p>
 
+      <div className="workflow-info-box">
+        <div className="workflow-info-title">How it works</div>
+        <p className="workflow-info-text">
+          Dedicated stick snaps produce clear step inputs on each axis. PIDlab measures{' '}
+          <strong>step response</strong> (overshoot, rise time, settling time) and computes optimal
+          P, I, D gains. Cross-axis coupling and prop wash are also detected.
+        </p>
+        <p className="workflow-info-text workflow-info-hint">
+          Run after Filter Tune for best results &mdash; clean filters reduce noise in PID data.
+        </p>
+      </div>
+
       <div className="workflow-steps">
         {steps.map((step, i) => (
           <div key={i} className="workflow-step">
@@ -122,8 +146,28 @@ function FlashTuneContent({ fcVersion }: { fcVersion?: string }) {
   return (
     <>
       <p className="workflow-tab-subtitle">
-        Rip a pack, land, tune. Any flight works — no special maneuvers needed.
+        Fly any style, land, tune. No special maneuvers needed — just a normal flight.
       </p>
+
+      <div className="workflow-info-box">
+        <div className="workflow-info-title">How it works</div>
+        <p className="workflow-info-text">
+          Flash Tune uses <strong>Wiener deconvolution</strong> to estimate the system transfer
+          function (setpoint &rarr; gyro) from any flight data. It extracts both filter and PID
+          recommendations in one pass.
+        </p>
+        <p className="workflow-info-text">
+          Filter Tune and PID Tune use dedicated test flights (throttle sweeps, stick snaps) that
+          produce cleaner, more targeted data &mdash; giving more precise recommendations. Flash
+          Tune trades that precision for convenience: any flight works, but the estimates are
+          approximations.
+        </p>
+        <p className="workflow-info-text workflow-info-hint">
+          Best for: iterating on an existing tune, quick adjustments after prop or motor changes, or
+          when you don&apos;t want to fly a specific test pattern.
+        </p>
+      </div>
+
       <FlightGuideContent mode="quick" fcVersion={fcVersion} />
     </>
   );
@@ -177,21 +221,21 @@ export function TuningWorkflowModal({ onClose, mode }: TuningWorkflowModalProps)
                 onClick={() => setActiveTab('filter')}
               >
                 {TUNING_TYPE_LABELS[TUNING_TYPE.FILTER]}
-                <span className="workflow-tab-meta">1-2 flights</span>
+                <span className="workflow-tab-meta">2 flights</span>
               </button>
               <button
                 className={`workflow-tab ${activeTab === 'pid' ? 'active' : ''}`}
                 onClick={() => setActiveTab('pid')}
               >
                 {TUNING_TYPE_LABELS[TUNING_TYPE.PID]}
-                <span className="workflow-tab-meta">1-2 flights</span>
+                <span className="workflow-tab-meta">2 flights</span>
               </button>
               <button
                 className={`workflow-tab ${activeTab === 'flash' ? 'active' : ''}`}
                 onClick={() => setActiveTab('flash')}
               >
                 {TUNING_TYPE_LABELS[TUNING_TYPE.FLASH]}
-                <span className="workflow-tab-meta">1 flight</span>
+                <span className="workflow-tab-meta">2 flights</span>
               </button>
             </div>
 
