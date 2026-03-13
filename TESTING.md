@@ -167,7 +167,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 
 ## Test Inventory
 
-**Total: 2447 unit tests across 118 files + 30 Playwright E2E tests across 6 spec files** (last verified: March 12, 2026)
+**Total: 2475 unit tests across 122 files + 30 Playwright E2E tests across 6 spec files** (last verified: March 13, 2026)
 
 ### UI Components
 
@@ -215,6 +215,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 | `PresetSelector.test.tsx` | 11 | Preset dropdown rendering, selection callback, flight style mapping |
 | `ErrorBoundary.test.tsx` | 6 | Error catch, fallback UI, try again reset, custom fallback, normal render |
 | `App.test.tsx` | 10 | App render, title, version, BF compat badge, help button, ErrorBoundary integration, start tuning modal |
+| `TelemetrySettings/TelemetrySettingsModal.test.tsx` | 7 | Telemetry settings modal, toggle switch, send now, installation ID display, close/overlay dismiss |
 
 ### Charts
 
@@ -247,6 +248,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 | `hooks/useToast.test.tsx` | 5 | Toast helper methods, context requirement |
 | `hooks/useBlackboxInfo.test.ts` | 8 | Auto-load, refresh, concurrent request prevention |
 | `hooks/useBlackboxLogs.test.ts` | 9 | Log list, profile change subscription, delete, openFolder |
+| `hooks/useTelemetrySettings.test.ts` | 4 | Telemetry settings hook, toggle enabled, send now, load failure handling |
 | `hooks/useDemoMode.test.ts` | 3 | Demo mode detection, reset demo |
 | `utils/bbSettingsUtils.test.ts` | 18 | BB settings status computation, version-aware debug mode, fix/reset commands |
 | `utils/spectrogramUtils.test.ts` | 15 | Spectrogram data transformation, color mapping, frequency/throttle axis utilities, compact data heatmap preparation |
@@ -256,6 +258,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 | File | Tests | Description |
 |------|-------|-------------|
 | `ipc/handlers.test.ts` | 109 | All 51 IPC handler channels: connection, FC info, profiles, snapshots, blackbox, PID config, analysis (filter+PID+TF), tuning apply (PID+filter+FF), snapshot restore, tuning session, BB settings fix, BF PID profile selection, handler registration |
+| `ipc/handlers/telemetryHandlers.test.ts` | 4 | Telemetry IPC handlers: get settings, set enabled, send now, error when manager null |
 
 ### MSP Protocol & Client
 
@@ -284,6 +287,12 @@ npm run test:ui           # Visual interface with DOM snapshots
 | `storage/BlackboxManager.test.ts` | 15 | Log save/list/get/delete/export, profile filtering, soft delete, initialization |
 | `storage/TuningSessionManager.test.ts` | 20 | Session CRUD, phase transitions, per-profile persistence, Flash Tune phases |
 | `storage/TuningHistoryManager.test.ts` | 25 | History archive, retrieval ordering, corrupted data handling, per-profile isolation, delete, updateLatestVerification, updateRecordVerification, tuningType field |
+
+### Telemetry
+
+| File | Tests | Description |
+|------|-------|-------------|
+| `telemetry/TelemetryManager.test.ts` | 13 | Telemetry manager initialization, settings persistence, bundle assembly, upload via net.fetch, demo mode skip, error handling |
 
 ### Blackbox Parser
 

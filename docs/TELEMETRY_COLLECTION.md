@@ -1,6 +1,6 @@
 # Telemetry Collection System
 
-> **Status**: Active (Tasks 1-2 complete, Tasks 3-6 pending — see `infrastructure/`)
+> **Status**: Complete (PRs #261–#262) — code ready, deploy with `wrangler deploy`
 
 ## Problem
 
@@ -276,28 +276,28 @@ curl -s -H "$KEY" "$API/quality" | jq .
 - [x] Installation ID display (for support/data deletion requests)
 - [x] IPC handlers: `TELEMETRY_GET_SETTINGS`, `TELEMETRY_SET_ENABLED`, `TELEMETRY_SEND_NOW`
 
-### Task 3: CF Worker — Upload Endpoint
-- [ ] `POST /telemetry/upload` handler
-- [ ] Installation ID validation (UUID format)
-- [ ] Rate limiting (1/hour per installation, check R2 metadata timestamp)
-- [ ] Payload validation (schema, max 10 MB)
-- [ ] R2 write (`latest.json` + `metadata.json`)
+### Task 3: CF Worker — Upload Endpoint — DONE
+- [x] `POST /v1/collect` handler (`infrastructure/telemetry-worker/src/upload.ts`)
+- [x] Installation ID validation (UUID format)
+- [x] Rate limiting (1/hour per installation, check R2 metadata timestamp)
+- [x] Payload validation (schema, max 10 MB)
+- [x] R2 write (`latest.json` + `metadata.json`)
 
-### Task 4: CF Worker — Admin Stats Endpoints
-- [ ] `GET /admin/stats` — aggregate summary
-- [ ] `GET /admin/stats/versions` — BF version distribution
-- [ ] `GET /admin/stats/drones` — drone size distribution
-- [ ] `GET /admin/stats/quality` — quality score histogram
-- [ ] `X-Admin-Key` authentication
+### Task 4: CF Worker — Admin Stats Endpoints — DONE
+- [x] `GET /admin/stats` — aggregate summary (`infrastructure/telemetry-worker/src/admin.ts`)
+- [x] `GET /admin/stats/versions` — BF version distribution
+- [x] `GET /admin/stats/drones` — drone size distribution
+- [x] `GET /admin/stats/quality` — quality score histogram
+- [x] `X-Admin-Key` constant-time authentication
 
-### Task 5: Daily Email Report
-- [ ] CF Worker Cron Trigger (07:00 UTC daily)
-- [ ] R2 data aggregation
-- [ ] Resend email formatting and delivery
+### Task 5: Daily Email Report — DONE
+- [x] CF Worker Cron Trigger (07:00 UTC daily) (`infrastructure/telemetry-worker/src/cron.ts`)
+- [x] R2 data aggregation
+- [x] Resend email formatting and delivery
 
-### Task 6: Shell Scripts
-- [ ] `scripts/telemetry-stats.sh`
-- [ ] `scripts/telemetry-report.sh`
+### Task 6: Shell Scripts — DONE
+- [x] `scripts/telemetry-stats.sh`
+- [x] `scripts/telemetry-report.sh`
 
 ## Future: Paid Backup Extension
 

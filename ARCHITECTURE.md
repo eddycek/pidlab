@@ -1,6 +1,6 @@
 # Architecture Overview
 
-**Last Updated:** March 12, 2026 | **Phase 4 Complete, Phase 6 Complete** | **2447 unit tests, 118 files + 30 Playwright E2E tests**
+**Last Updated:** March 13, 2026 | **Phase 4 Complete, Phase 6 Complete** | **2475 unit tests, 122 files + 30 Playwright E2E tests**
 
 ---
 
@@ -35,15 +35,15 @@
 │  └───────────────────────────────┼──────────────────────────────────────┘  │
 │                                  │                                         │
 │  ┌───────────────────────────────┼──────────────────────────────────────┐  │
-│  │              Preload Script (contextBridge, 527 lines)              │  │
+│  │              Preload Script (contextBridge, 689 lines)              │  │
 │  └───────────────────────────────┼──────────────────────────────────────┘  │
-│                                  │ IPC (51 channels, 14 event types)        │
+│                                  │ IPC (54 channels, 14 event types)        │
 │                                  │                                         │
 │  ┌───────────────────────────────┼──────────────────────────────────────┐  │
 │  │                     Main Process (Node.js)                          │  │
 │  │                                                                      │  │
 │  │  ┌────────────────────────────┴─────────────────────────────────┐   │  │
-│  │  │                    IPC Handlers (2329 lines, 11 modules)      │   │  │
+│  │  │                    IPC Handlers (2385 lines, 12 modules)      │   │  │
 │  │  │  connection:* | fc:* | snapshot:* | profile:* | blackbox:*  │   │  │
 │  │  │  analysis:* | tuning:* | pid:*                              │   │  │
 │  │  └───┬──────────┬──────────┬────────────┬──────────┬───────────┘   │  │
@@ -84,9 +84,9 @@
 
 ## Main Process (`src/main/`)
 
-### Entry Point (`index.ts`, 440 lines)
+### Entry Point (`index.ts`, 424 lines)
 
-Creates and wires six managers + optional debug server:
+Creates and wires seven managers + optional debug server:
 
 ```typescript
 const mspClient = new MSPClient();
@@ -95,6 +95,7 @@ const snapshotManager = new SnapshotManager(`${userData}/data/snapshots`, mspCli
 const blackboxManager = new BlackboxManager();                    // {userData}/data/blackbox-logs
 const tuningSessionManager = new TuningSessionManager(`${userData}/data`); // {userData}/data/tuning
 const tuningHistoryManager = new TuningHistoryManager(`${userData}/data`); // {userData}/data/tuning-history
+const telemetryManager = new TelemetryManager(`${userData}/data`);         // {userData}/data/telemetry-settings.json
 ```
 
 **Event wiring (MSPClient → Main Window):**
@@ -420,6 +421,7 @@ Checks before analysis:
 | `BlackboxManager` | `{userData}/data/blackbox-logs/` | `blackbox_{timestamp}.bbl` + `logs.json` index |
 | `TuningSessionManager` | `{userData}/data/tuning/` | `{profileId}.json` per session |
 | `TuningHistoryManager` | `{userData}/data/tuning-history/` | `{profileId}.json` per profile (archived records) |
+| `TelemetryManager` | `{userData}/data/` | `telemetry-settings.json` (opt-in settings + installation ID) |
 
 **User data path:** `~/Library/Application Support/pidlab/` (macOS) | `%APPDATA%/pidlab/` (Windows) | `~/.config/pidlab/` (Linux)
 
@@ -498,7 +500,7 @@ TuningSession {
 
 ### IPC Layer (`src/main/ipc/`)
 
-**51 IPC channels** organized by domain:
+**54 IPC channels** organized by domain:
 
 | Domain | Channels | Key Operations |
 |--------|----------|---------------|
@@ -510,6 +512,7 @@ TuningSession {
 | Analysis (3) | `run_filter`, `run_pid`, `run_transfer_function` | FFT + step response + Wiener deconvolution |
 | Tuning (8) | `apply_recommendations`, `get_session`, `start_session`, `update_phase`, `reset_session`, `get_history`, `update_verification`, `update_history_verification` | Apply + session state + history + verification |
 | PID (3) | `get_config`, `update_config`, `save_config` | MSP PID read/write |
+| Telemetry (3) | `get_settings`, `set_enabled`, `send_now` | Anonymous usage telemetry settings + manual upload |
 
 **14 Event types** (Main → Renderer):
 
@@ -637,10 +640,11 @@ App (ToastProvider wrapper)
 │   │
 │   ├── ProfileWizard (modal, on new FC detection)
 │   ├── TuningWorkflowModal (help modal)
+│   ├── TelemetrySettingsModal (telemetry opt-in/out, send now)
 │   └── ToastContainer
 ```
 
-### React Hooks (12 hooks)
+### React Hooks (13 hooks)
 
 | Hook | Key Returns | Purpose |
 |------|-------------|---------|
@@ -655,6 +659,7 @@ App (ToastProvider wrapper)
 | `useTuningHistory` | `{history, loading, reload}` | Tuning history loading + auto-reload |
 | `useAnalysisOverview` | `{parseResult, filterResult, pidResult, ...}` | Auto-parse + dual analysis |
 | `useDemoMode` | `{isDemoMode, resetDemo}` | Demo mode detection + reset |
+| `useTelemetrySettings` | `{settings, loading, toggleEnabled, sendNow, sending}` | Telemetry settings + manual upload |
 | `useToast` | `{success, error, warning, info}` | Toast notifications |
 
 ### Interactive Charts (`TuningWizard/charts/`)
@@ -799,7 +804,7 @@ Hardware error (FC timeout, USB disconnect)
 
 ---
 
-## Shared Types (`src/shared/types/`, 9 files)
+## Shared Types (`src/shared/types/`, 10 files)
 
 | File | Key Types |
 |------|-----------|
@@ -811,6 +816,7 @@ Hardware error (FC timeout, USB disconnect)
 | `tuning.types.ts` | `TuningPhase` (14 values), `TuningType` (`'filter' | 'pid' | 'quick'`), `TuningSession`, `TuningMode`, `AppliedChange` |
 | `tuning-history.types.ts` | `CompactSpectrum`, `CompactThrottleSpectrogram`, `CompactThrottleBand`, `FilterMetricsSummary`, `PIDMetricsSummary`, `CompletedTuningRecord` |
 | `ipc.types.ts` | `ApplyRecommendationsInput/Progress/Result`, `SnapshotRestoreProgress/Result`, `BetaflightAPI` (complete API interface) |
+| `telemetry.types.ts` | `TelemetrySettings`, `TelemetryBundle` |
 | `toast.types.ts` | `ToastType`, `Toast` |
 
 ## Shared Utilities (`src/shared/utils/`)
@@ -823,7 +829,7 @@ Hardware error (FC timeout, USB disconnect)
 
 ## Testing Strategy
 
-**2447 unit tests across 118 files + 30 Playwright E2E tests**. See [TESTING.md](./TESTING.md) for complete inventory.
+**2475 unit tests across 122 files + 30 Playwright E2E tests**. See [TESTING.md](./TESTING.md) for complete inventory.
 
 | Area | Files | Tests |
 |------|-------|-------|
@@ -834,9 +840,10 @@ Hardware error (FC timeout, USB disconnect)
 | MSP Protocol & Client | 4 | 184 |
 | MSC (Mass Storage) | 2 | 45 |
 | Storage Managers | 7 | 127 |
-| IPC Handlers | 1 | 109 |
-| UI Components + Charts + Contexts | 47 | 707 |
-| React Hooks + Utils | 14 | 165 |
+| IPC Handlers | 2 | 113 |
+| Telemetry | 1 | 13 |
+| UI Components + Charts + Contexts | 48 | 714 |
+| React Hooks + Utils | 15 | 169 |
 | Shared Constants & Utils | 4 | 85 |
 | E2E Workflows (Vitest) | 1 | 20 |
 | Demo Mode (Vitest) | 2 | 79 |
