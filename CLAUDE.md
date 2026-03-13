@@ -80,12 +80,13 @@ npm run rebuild
 
 **Main Process** (`src/main/`)
 - Entry point: `src/main/index.ts`
-- Manages MSPClient, ProfileManager, SnapshotManager, BlackboxManager, TuningSessionManager
+- Manages MSPClient, ProfileManager, SnapshotManager, BlackboxManager, TuningSessionManager, TelemetryManager
 - Handles IPC communication via `src/main/ipc/handlers.ts`
 - Event-driven architecture: MSPClient emits events → IPC sends to renderer
 - Blackbox parsing: `src/main/blackbox/` (BBL binary log parser)
 - FFT analysis: `src/main/analysis/` (noise analysis & filter tuning)
 - Step response analysis: `src/main/analysis/` (PID tuning via step metrics)
+- Telemetry: `src/main/telemetry/TelemetryManager.ts` (opt-in anonymous usage data collection + upload)
 - Debug server: `src/main/debug/DebugServer.ts` (HTTP endpoints for tooling, port 9300)
 
 **Preload Script** (`src/preload/index.ts`)
@@ -168,6 +169,7 @@ IPC handlers are split into domain modules under `src/main/ipc/handlers/`:
 | `blackboxHandlers.ts` | 9 | Info, download, list, delete, erase, folder, test, parse, import |
 | `analysisHandlers.ts` | 3 | Filter, PID, and transfer function analysis |
 | `tuningHandlers.ts` | 8 | Apply, session CRUD (filter + pid + flash), history, update verification, update history verification |
+| `telemetryHandlers.ts` | 3 | Telemetry settings get/set, manual upload trigger |
 | `index.ts` | — | DI container, `registerIPCHandlers()` |
 
 **Request-Response Pattern**:
@@ -214,6 +216,16 @@ window.betaflight.onConnectionChanged((status) => {
 - Compact metrics: `FilterMetricsSummary` (noise floor, peaks, 128-bin spectrum, throttle spectrogram), `PIDMetricsSummary` (step response), `TransferFunctionMetricsSummary` (bandwidth, phase margin, dcGain, throttleBands)
 - Spectrum downsampling: `downsampleSpectrum()`, `extractThrottleSpectrogram()` in `src/shared/utils/metricsExtract.ts`
 - Design doc: `docs/TUNING_HISTORY_AND_COMPARISON.md`
+
+**Telemetry Storage** (`TelemetryManager.ts`):
+- Location: `{userData}/data/telemetry-settings.json`
+- Settings: `{ enabled: boolean, installationId: string, lastUploadAt: string | null }`
+- Opt-in only (disabled by default), anonymous UUID v4 installation ID
+- Bundle assembly aggregates data from ProfileManager, TuningHistoryManager, BlackboxManager, SnapshotManager
+- Upload via Electron `net.fetch()` to CF Worker endpoint (gzipped JSON)
+- Skipped in demo mode
+- IPC: `TELEMETRY_GET_SETTINGS`, `TELEMETRY_SET_ENABLED`, `TELEMETRY_SEND_NOW`
+- Design doc: `docs/TELEMETRY_COLLECTION.md`
 
 ### Blackbox Parser (`src/main/blackbox/`)
 

@@ -13,6 +13,7 @@ PIDlab reads your Blackbox log, analyzes the data (FFT noise spectrum, step resp
 - **Flight style adaptation** — Smooth (cinematic), Balanced (freestyle), Aggressive (racing) thresholds
 - **24 analysis modules** — FFT, step response, Wiener deconvolution, prop wash, D-term effectiveness, cross-axis coupling, throttle spectrograms, group delay, feedforward, dynamic lowpass, Bayesian optimizer, and more
 - **Works offline** — demo mode with simulated FC for testing without hardware
+- **Anonymous telemetry** — opt-in usage telemetry (tuning mode usage, drone sizes, quality scores; no flight data or PIDs ever sent)
 
 **How it works:** Connect FC via USB → Erase flash → Fly → Download log → PIDlab analyzes and applies optimized settings → Done.
 
@@ -468,6 +469,9 @@ pidlab/
 │   ├── demo-generate-history.spec.ts  # Mixed history generator
 │   └── demo-generate-stress.spec.ts   # Stress test (edge cases)
 │
+├── infrastructure/              # Cloud infrastructure (Cloudflare Workers, R2, D1)
+│   └── README.md                      # Infrastructure overview
+│
 ├── .claude/                     # Claude Code configuration
 │   ├── settings.json                    # Permissions + PostToolUse hook registration
 │   ├── skills/tuning-advisor/SKILL.md   # /tuning-advisor skill (4 modes: consult, review, audit, analyze)
@@ -662,6 +666,7 @@ Subdirectories:
 - `blackbox/` — Downloaded Blackbox log files (`.bbl`)
 - `tuning/` — Tuning session state files (per profile)
 - `tuning-history/` — Archived tuning records (per profile)
+- `telemetry-settings.json` — Telemetry opt-in settings and anonymous installation ID
 
 ## How Autotuning Works
 
