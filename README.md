@@ -288,7 +288,7 @@ npm run rebuild                      # Rebuild native modules (serialport)
 
 All UI changes must include tests. Tests automatically run before commits. Coverage thresholds enforced: 80% lines/functions/statements, 75% branches.
 
-**Unit tests:** 2447 tests across 118 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation.
+**Unit tests:** 2475 tests across 122 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation, telemetry.
 
 **Playwright E2E:** 30 tests across 6 spec files — launches real Electron app in demo mode, walks through complete tuning cycles (Filter Tune, PID Tune, Flash Tune, and stress-test edge cases).
 
@@ -370,22 +370,25 @@ pidlab/
 │   │   │   └── driveDetector.ts       # Cross-platform drive mount detection
 │   │   ├── debug/              # Debug HTTP server (dev-only, port 9300)
 │   │   │   └── DebugServer.ts         # 10 endpoints: /state, /screenshot, /logs, /console, /msp, /tuning-history, /tuning-session, /snapshots, /blackbox-logs, /health
+│   │   ├── telemetry/           # Anonymous usage telemetry
+│   │   │   └── TelemetryManager.ts    # Opt-in telemetry collection + upload
 │   │   ├── demo/               # Demo mode (offline UX testing)
 │   │   │   ├── MockMSPClient.ts       # Simulated FC (47 tests)
 │   │   │   └── DemoDataGenerator.ts   # Realistic BBL generation (26 tests)
-│   │   ├── ipc/                 # IPC handlers (50 handlers across 8 modules)
+│   │   ├── ipc/                 # IPC handlers (54 handlers across 9 modules)
 │   │   │   ├── handlers/       # Domain-split handler modules
 │   │   │   │   ├── index.ts            # DI container, registerIPCHandlers
 │   │   │   │   ├── types.ts            # HandlerDependencies interface
 │   │   │   │   ├── events.ts           # Event broadcast functions
 │   │   │   │   ├── connectionHandlers.ts   # 6 handlers
-│   │   │   │   ├── fcInfoHandlers.ts       # 5 handlers
+│   │   │   │   ├── fcInfoHandlers.ts       # 6 handlers
 │   │   │   │   ├── snapshotHandlers.ts     # 6 handlers
 │   │   │   │   ├── profileHandlers.ts      # 10 handlers
 │   │   │   │   ├── pidHandlers.ts          # 3 handlers
 │   │   │   │   ├── blackboxHandlers.ts     # 9 handlers
 │   │   │   │   ├── analysisHandlers.ts     # 3 handlers
-│   │   │   │   └── tuningHandlers.ts       # 8 handlers
+│   │   │   │   ├── tuningHandlers.ts       # 8 handlers
+│   │   │   │   └── telemetryHandlers.ts    # 3 handlers
 │   │   │   └── channels.ts     # Channel definitions
 │   │   └── utils/               # Logger, error types
 │   │
@@ -419,6 +422,7 @@ pidlab/
 │   │   │   │   └── AppliedChangesTable      # Setting changes with % diff
 │   │   │   ├── TuningWorkflowModal/   # 3-tab workflow help (Filter, PID, Flash)
 │   │   │   ├── StartTuningModal.tsx   # Filter Tune / PID Tune / Flash Tune mode selector
+│   │   │   ├── TelemetrySettings/     # Telemetry opt-in/out settings modal
 │   │   │   ├── Toast/                 # Toast notification system
 │   │   │   ├── ProfileWizard.tsx      # New FC profile creation wizard
 │   │   │   ├── PresetSelector.tsx     # Preset profile picker
@@ -427,7 +431,7 @@ pidlab/
 │   │   │   ├── ProfileCard.tsx        # Individual profile display
 │   │   │   ├── ProfileEditModal.tsx   # Profile editing dialog
 │   │   │   └── ProfileDeleteModal.tsx # Profile deletion confirmation
-│   │   ├── hooks/               # React hooks (13)
+│   │   ├── hooks/               # React hooks (14)
 │   │   │   ├── useConnection.ts       # Connection state management
 │   │   │   ├── useProfiles.ts         # Profile CRUD operations
 │   │   │   ├── useSnapshots.ts        # Snapshot management
@@ -438,6 +442,7 @@ pidlab/
 │   │   │   ├── useBlackboxInfo.ts     # BB flash info
 │   │   │   ├── useBlackboxLogs.ts     # BB log list
 │   │   │   ├── useFCInfo.ts           # FC info polling
+│   │   │   ├── useTelemetrySettings.ts # Telemetry settings + manual upload
 │   │   │   ├── useDemoMode.ts         # Demo mode detection
 │   │   │   └── useToast.ts            # Toast context consumer
 │   │   ├── utils/               # Renderer utilities
@@ -448,7 +453,7 @@ pidlab/
 │   │       └── setup.ts         # window.betaflight mock
 │   │
 │   └── shared/                  # Shared types & constants
-│       ├── types/               # TypeScript interfaces (10 type files)
+│       ├── types/               # TypeScript interfaces (11 type files)
 │       ├── utils/               # Shared utilities
 │       │   ├── metricsExtract.ts      # Metrics extraction, spectrum downsampling
 │       │   └── tuneQualityScore.ts    # Composite flight quality score (0-100)

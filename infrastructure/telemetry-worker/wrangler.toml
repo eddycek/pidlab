@@ -1,0 +1,20 @@
+name = "pidlab-telemetry"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+
+# Custom domain (set up in Cloudflare DNS)
+# routes = [{ pattern = "telemetry.pidlab.app/*", zone_name = "pidlab.app" }]
+
+# R2 bucket binding
+[[r2_buckets]]
+binding = "TELEMETRY_BUCKET"
+bucket_name = "pidlab-telemetry"
+
+# Daily report cron trigger (07:00 UTC)
+[triggers]
+crons = ["0 7 * * *"]
+
+# Environment variables (set via `wrangler secret put`)
+# ADMIN_KEY — required for /admin/* endpoints
+# RESEND_API_KEY — required for daily email reports
+# REPORT_EMAIL — recipient for daily reports
