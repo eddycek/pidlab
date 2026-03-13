@@ -1,0 +1,141 @@
+.telemetry-modal {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 12px;
+  width: 480px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.telemetry-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #333;
+}
+
+.telemetry-modal-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.telemetry-modal-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.telemetry-modal-close:hover {
+  color: #fff;
+}
+
+.telemetry-modal-body {
+  padding: 20px;
+}
+
+.telemetry-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.telemetry-toggle-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e0e0e0;
+}
+
+.telemetry-toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  border: none;
+  background: #444;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+  padding: 0;
+}
+
+.telemetry-toggle-on {
+  background: #2563eb;
+}
+
+.telemetry-toggle-thumb {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s;
+}
+
+.telemetry-toggle-on .telemetry-toggle-thumb {
+  transform: translateX(20px);
+}
+
+.telemetry-description {
+  color: #888;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.telemetry-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-top: 1px solid #2a2a2a;
+}
+
+.telemetry-info-label {
+  font-size: 13px;
+  color: #888;
+}
+
+.telemetry-info-value {
+  font-size: 13px;
+  color: #ccc;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.telemetry-info-value code {
+  font-family: monospace;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.telemetry-copy-btn {
+  background: none;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #aaa;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.telemetry-copy-btn:hover {
+  border-color: #888;
+  color: #fff;
+}
+
+.telemetry-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}

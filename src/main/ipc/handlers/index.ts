@@ -17,6 +17,7 @@ import { registerPIDHandlers } from './pidHandlers';
 import { registerBlackboxHandlers } from './blackboxHandlers';
 import { registerAnalysisHandlers } from './analysisHandlers';
 import { registerTuningHandlers } from './tuningHandlers';
+import { registerTelemetryHandlers } from './telemetryHandlers';
 
 // Re-export events for use in src/main/index.ts
 export {
@@ -44,6 +45,7 @@ const deps: HandlerDependencies = {
   isDownloadingBlackbox: false,
   pendingSettingsSnapshot: false,
   isDemoMode: false,
+  telemetryManager: null,
 };
 
 // ── Setter functions (called from src/main/index.ts) ─────────────────
@@ -76,6 +78,10 @@ export function setDemoMode(value: boolean): void {
   deps.isDemoMode = value;
 }
 
+export function setTelemetryManager(manager: any): void {
+  deps.telemetryManager = manager;
+}
+
 /** Returns true if a settings fix/reset was applied and a clean snapshot is needed on reconnect. */
 export function consumePendingSettingsSnapshot(): boolean {
   if (deps.pendingSettingsSnapshot) {
@@ -95,4 +101,5 @@ export function registerIPCHandlers(): void {
   registerBlackboxHandlers(deps);
   registerAnalysisHandlers(deps);
   registerTuningHandlers(deps);
+  registerTelemetryHandlers(deps);
 }

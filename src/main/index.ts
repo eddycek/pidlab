@@ -15,6 +15,7 @@ import {
   setBlackboxManager,
   setTuningSessionManager,
   setTuningHistoryManager,
+  setTelemetryManager,
   setDemoMode,
   sendConnectionChanged,
   sendProfileChanged,
@@ -22,6 +23,7 @@ import {
   sendTuningSessionChanged,
   consumePendingSettingsSnapshot,
 } from './ipc/handlers';
+import { TelemetryManager } from './telemetry/TelemetryManager';
 import { logger } from './utils/logger';
 import { SNAPSHOT, PROFILE, TUNING_PHASE } from '@shared/constants';
 import { MockMSPClient, DEMO_FC_SERIAL } from './demo/MockMSPClient';
@@ -46,6 +48,7 @@ let profileManager: ProfileManager;
 let blackboxManager: BlackboxManager;
 let tuningSessionManager: TuningSessionManager;
 let tuningHistoryManager: TuningHistoryManager;
+let telemetryManager: TelemetryManager;
 
 async function initialize(): Promise<void> {
   // Create MSP client (real or mock depending on demo mode)
@@ -99,6 +102,15 @@ async function initialize(): Promise<void> {
   tuningHistoryManager = new TuningHistoryManager(dataPath);
   await tuningHistoryManager.initialize();
 
+  // Create Telemetry manager
+  telemetryManager = new TelemetryManager(app.getPath('userData'));
+  telemetryManager.setProfileManager(profileManager);
+  telemetryManager.setTuningHistoryManager(tuningHistoryManager);
+  telemetryManager.setBlackboxManager(blackboxManager);
+  telemetryManager.setSnapshotManager(snapshotManager);
+  telemetryManager.setDemoMode(isDemoMode);
+  await telemetryManager.initialize();
+
   // Set up IPC handlers
   setMSPClient(mspClient);
   setSnapshotManager(snapshotManager);
@@ -106,6 +118,7 @@ async function initialize(): Promise<void> {
   setBlackboxManager(blackboxManager);
   setTuningSessionManager(tuningSessionManager);
   setTuningHistoryManager(tuningHistoryManager);
+  setTelemetryManager(telemetryManager);
   setDemoMode(isDemoMode);
   registerIPCHandlers();
 

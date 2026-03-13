@@ -1,6 +1,6 @@
 # Telemetry Collection System
 
-> **Status**: Proposed
+> **Status**: Active (Tasks 1-2 complete, Tasks 3-6 pending — see `infrastructure/`)
 
 ## Problem
 
@@ -260,21 +260,21 @@ curl -s -H "$KEY" "$API/quality" | jq .
 
 ## Implementation Tasks
 
-### Task 1: TelemetryManager (Main Process)
-- [ ] `src/main/telemetry/TelemetryManager.ts`
-- [ ] Settings persistence (`telemetry-settings.json`)
-- [ ] Installation ID generation (UUID v4)
-- [ ] Bundle assembly from ProfileManager, SnapshotManager, TuningHistoryManager, BlackboxManager
-- [ ] Anonymization (SHA-256 FC serial hashing)
-- [ ] gzip compression
-- [ ] Upload with retry logic
-- [ ] Trigger scheduling (post-session, daily, stale data)
+### Task 1: TelemetryManager (Main Process) — DONE
+- [x] `src/main/telemetry/TelemetryManager.ts`
+- [x] Settings persistence (`telemetry-settings.json`)
+- [x] Installation ID generation (UUID v4)
+- [x] Bundle assembly from ProfileManager, SnapshotManager, TuningHistoryManager, BlackboxManager
+- [x] Anonymization (SHA-256 FC serial hashing)
+- [x] gzip compression
+- [x] Upload with retry logic
+- [x] Trigger scheduling (post-session, daily, stale data)
 
-### Task 2: Settings UI
-- [ ] Telemetry toggle in Settings panel
-- [ ] "Send telemetry now" button
-- [ ] Installation ID display (for support/data deletion requests)
-- [ ] IPC handlers: `TELEMETRY_GET_SETTINGS`, `TELEMETRY_SET_ENABLED`, `TELEMETRY_SEND_NOW`
+### Task 2: Settings UI — DONE
+- [x] Telemetry toggle in Settings panel (gear icon in header → TelemetrySettingsModal)
+- [x] "Send telemetry now" button
+- [x] Installation ID display (for support/data deletion requests)
+- [x] IPC handlers: `TELEMETRY_GET_SETTINGS`, `TELEMETRY_SET_ENABLED`, `TELEMETRY_SEND_NOW`
 
 ### Task 3: CF Worker — Upload Endpoint
 - [ ] `POST /telemetry/upload` handler
