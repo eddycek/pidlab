@@ -393,6 +393,7 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
             );
             await tuningHistoryManager.archiveSession(completedSession);
             logger.info(`Tuning session archived to history for profile ${profileId}`);
+            deps.telemetryManager?.onTuningSessionCompleted().catch(() => {});
             sendTuningSessionChanged(completedSession);
             return createResponse<TuningSession>(completedSession);
           } catch (archiveError) {

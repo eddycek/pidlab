@@ -107,6 +107,17 @@ export const TUNING_TYPE_LABELS: Record<string, string> = {
   [TUNING_TYPE.FLASH]: 'Flash Tune',
 };
 
+export const TELEMETRY = {
+  /** Cloud endpoint for telemetry uploads (CF Worker — not yet deployed) */
+  UPLOAD_URL: 'https://telemetry.pidlab.app/v1/collect',
+  /** Retry delays in ms for failed uploads */
+  RETRY_DELAYS: [1000, 2000, 4000] as readonly number[],
+  /** Minimum interval between automatic uploads (24 hours) */
+  HEARTBEAT_INTERVAL_MS: 24 * 60 * 60 * 1000,
+  /** Stale threshold — skip upload if last one was within this window */
+  STALE_THRESHOLD_MS: 23 * 60 * 60 * 1000,
+} as const;
+
 // Helper to build preset from SIZE_DEFAULTS with overrides
 import type { DroneSize, FlightStyle } from './types/profile.types';
 

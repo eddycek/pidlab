@@ -43,6 +43,7 @@ import type {
   PIDMetricsSummary,
   TransferFunctionMetricsSummary,
 } from '@shared/types/tuning-history.types';
+import type { TelemetrySettings } from '@shared/types/telemetry.types';
 
 const betaflightAPI: BetaflightAPI = {
   // App
@@ -616,6 +617,30 @@ const betaflightAPI: BetaflightAPI = {
     return () => {
       ipcRenderer.removeListener(IPCChannel.EVENT_TUNING_SESSION_CHANGED, listener);
     };
+  },
+
+  // Telemetry
+  async getTelemetrySettings(): Promise<TelemetrySettings> {
+    const response = await ipcRenderer.invoke(IPCChannel.TELEMETRY_GET_SETTINGS);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to get telemetry settings');
+    }
+    return response.data;
+  },
+
+  async setTelemetryEnabled(enabled: boolean): Promise<TelemetrySettings> {
+    const response = await ipcRenderer.invoke(IPCChannel.TELEMETRY_SET_ENABLED, enabled);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to set telemetry enabled');
+    }
+    return response.data;
+  },
+
+  async sendTelemetryNow(): Promise<void> {
+    const response = await ipcRenderer.invoke(IPCChannel.TELEMETRY_SEND_NOW);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to send telemetry');
+    }
   },
 
   // Tuning History

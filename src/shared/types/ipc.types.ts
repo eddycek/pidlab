@@ -34,6 +34,7 @@ import type {
   PIDMetricsSummary,
   TransferFunctionMetricsSummary,
 } from './tuning-history.types';
+import type { TelemetrySettings } from './telemetry.types';
 
 /** Progress during snapshot restore */
 export interface SnapshotRestoreProgress {
@@ -156,6 +157,11 @@ export enum IPCChannel {
   TUNING_GET_HISTORY = 'tuning:get-history',
   TUNING_UPDATE_VERIFICATION = 'tuning:update-verification',
   TUNING_UPDATE_HISTORY_VERIFICATION = 'tuning:update-history-verification',
+
+  // Telemetry
+  TELEMETRY_GET_SETTINGS = 'telemetry:get-settings',
+  TELEMETRY_SET_ENABLED = 'telemetry:set-enabled',
+  TELEMETRY_SEND_NOW = 'telemetry:send-now',
 
   // Events (main -> renderer)
   EVENT_CONNECTION_CHANGED = 'event:connection-changed',
@@ -284,6 +290,11 @@ export interface BetaflightAPI {
     verificationMetrics?: FilterMetricsSummary,
     verificationPidMetrics?: PIDMetricsSummary
   ): Promise<void>;
+
+  // Telemetry
+  getTelemetrySettings(): Promise<TelemetrySettings>;
+  setTelemetryEnabled(enabled: boolean): Promise<TelemetrySettings>;
+  sendTelemetryNow(): Promise<void>;
 
   // Events
   onError(callback: (error: string) => void): () => void;

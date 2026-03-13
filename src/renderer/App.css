@@ -67,6 +67,27 @@
   cursor: not-allowed;
 }
 
+.app-settings-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.app-settings-button:hover {
+  border-color: #666;
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .app-help-button {
   padding: 7px 16px;
   border-radius: 6px;

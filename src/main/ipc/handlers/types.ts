@@ -19,6 +19,8 @@ export interface HandlerDependencies {
   pendingSettingsSnapshot: boolean;
   /** Whether the app is running in demo mode */
   isDemoMode: boolean;
+  /** Telemetry manager for anonymous usage data */
+  telemetryManager: any;
 }
 
 export function createResponse<T>(data: T | undefined, error?: string): IPCResponse<T> {
