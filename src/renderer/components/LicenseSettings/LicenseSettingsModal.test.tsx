@@ -25,6 +25,11 @@ describe('LicenseSettingsModal', () => {
     // Comparison table shows both tiers
     expect(screen.getByText('1 drone profile')).toBeInTheDocument();
     expect(screen.getByText('Unlimited drone profiles')).toBeInTheDocument();
+
+    // Pro pitch text
+    expect(screen.getByText(/lifetime access/)).toBeInTheDocument();
+    expect(screen.getByText(/support the development/)).toBeInTheDocument();
+
     expect(screen.getByText('Already have a license key?')).toBeInTheDocument();
 
     expect(screen.getByPlaceholderText('PIDLAB-XXXX-XXXX-XXXX')).toBeInTheDocument();

@@ -158,6 +158,22 @@
   color: #10b981 !important;
 }
 
+.license-pitch {
+  margin-bottom: 14px;
+}
+
+.license-pitch p {
+  color: #999;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.license-pitch strong {
+  color: #ccc;
+  font-weight: 600;
+}
+
 .license-activate-section {
   border-top: 1px solid #333;
   padding-top: 14px;

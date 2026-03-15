@@ -137,6 +137,15 @@ export function LicenseSettingsModal({ onClose }: LicenseSettingsModalProps) {
                   </div>
                 </div>
 
+                <div className="license-pitch">
+                  <p>
+                    With a Pro license you get <strong>lifetime access</strong> to all current and
+                    future features. We don't guarantee that all functionality will remain in the
+                    free version as PIDlab evolves. By upgrading you also directly support the
+                    development of this project.
+                  </p>
+                </div>
+
                 {/* Buy button — hidden until Stripe integration is ready
                 <div className="license-buy-row">
                   <a
