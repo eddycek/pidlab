@@ -4,6 +4,7 @@ import type { ConnectionStatus, FCInfo } from '@shared/types/common.types';
 import type { DroneProfile } from '@shared/types/profile.types';
 import type { PIDConfiguration } from '@shared/types/pid.types';
 import type { TuningSession } from '@shared/types/tuning.types';
+import type { LicenseInfo } from '@shared/types/license.types';
 import { getMainWindow } from '../../window';
 
 export function sendConnectionChanged(window: BrowserWindow, status: ConnectionStatus): void {
@@ -35,4 +36,8 @@ export function sendTuningSessionChanged(session: TuningSession | null): void {
   if (window) {
     window.webContents.send(IPCChannel.EVENT_TUNING_SESSION_CHANGED, session);
   }
+}
+
+export function sendLicenseChanged(window: BrowserWindow, info: LicenseInfo): void {
+  window.webContents.send(IPCChannel.EVENT_LICENSE_CHANGED, info);
 }

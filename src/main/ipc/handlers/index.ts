@@ -18,6 +18,7 @@ import { registerBlackboxHandlers } from './blackboxHandlers';
 import { registerAnalysisHandlers } from './analysisHandlers';
 import { registerTuningHandlers } from './tuningHandlers';
 import { registerTelemetryHandlers } from './telemetryHandlers';
+import { registerLicenseHandlers } from './licenseHandlers';
 
 // Re-export events for use in src/main/index.ts
 export {
@@ -28,6 +29,7 @@ export {
   sendNewFCDetected,
   sendPIDChanged,
   sendTuningSessionChanged,
+  sendLicenseChanged,
 } from './events';
 
 // Re-export types
@@ -46,6 +48,7 @@ const deps: HandlerDependencies = {
   pendingSettingsSnapshot: false,
   isDemoMode: false,
   telemetryManager: null,
+  licenseManager: null,
 };
 
 // ── Setter functions (called from src/main/index.ts) ─────────────────
@@ -82,6 +85,10 @@ export function setTelemetryManager(manager: any): void {
   deps.telemetryManager = manager;
 }
 
+export function setLicenseManager(manager: any): void {
+  deps.licenseManager = manager;
+}
+
 /** Returns true if a settings fix/reset was applied and a clean snapshot is needed on reconnect. */
 export function consumePendingSettingsSnapshot(): boolean {
   if (deps.pendingSettingsSnapshot) {
@@ -102,4 +109,5 @@ export function registerIPCHandlers(): void {
   registerAnalysisHandlers(deps);
   registerTuningHandlers(deps);
   registerTelemetryHandlers(deps);
+  registerLicenseHandlers(deps);
 }

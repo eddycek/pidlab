@@ -16,6 +16,7 @@ import {
   setTuningSessionManager,
   setTuningHistoryManager,
   setTelemetryManager,
+  setLicenseManager,
   setDemoMode,
   sendConnectionChanged,
   sendProfileChanged,
@@ -24,6 +25,7 @@ import {
   consumePendingSettingsSnapshot,
 } from './ipc/handlers';
 import { TelemetryManager } from './telemetry/TelemetryManager';
+import { LicenseManager } from './license/LicenseManager';
 import { logger } from './utils/logger';
 import { SNAPSHOT, PROFILE, TUNING_PHASE } from '@shared/constants';
 import { MockMSPClient, DEMO_FC_SERIAL } from './demo/MockMSPClient';
@@ -49,6 +51,7 @@ let blackboxManager: BlackboxManager;
 let tuningSessionManager: TuningSessionManager;
 let tuningHistoryManager: TuningHistoryManager;
 let telemetryManager: TelemetryManager;
+let licenseManager: LicenseManager;
 
 async function initialize(): Promise<void> {
   // Create MSP client (real or mock depending on demo mode)
@@ -111,6 +114,12 @@ async function initialize(): Promise<void> {
   telemetryManager.setDemoMode(isDemoMode);
   await telemetryManager.initialize();
 
+  // Create License manager
+  licenseManager = new LicenseManager(app.getPath('userData'));
+  licenseManager.setDemoMode(isDemoMode);
+  licenseManager.setInstallationIdProvider(() => telemetryManager.getSettings().installationId);
+  await licenseManager.initialize();
+
   // Set up IPC handlers
   setMSPClient(mspClient);
   setSnapshotManager(snapshotManager);
@@ -119,6 +128,7 @@ async function initialize(): Promise<void> {
   setTuningSessionManager(tuningSessionManager);
   setTuningHistoryManager(tuningHistoryManager);
   setTelemetryManager(telemetryManager);
+  setLicenseManager(licenseManager);
   setDemoMode(isDemoMode);
   registerIPCHandlers();
 

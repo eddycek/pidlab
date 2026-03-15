@@ -6,21 +6,24 @@ on:
     paths:
       - 'infrastructure/terraform/**'
       - 'infrastructure/telemetry-worker/src/**'
+      - 'infrastructure/license-worker/src/**'
       - '.github/workflows/infrastructure.yml'
   pull_request:
     paths:
       - 'infrastructure/terraform/**'
       - 'infrastructure/telemetry-worker/src/**'
+      - 'infrastructure/license-worker/src/**'
       - '.github/workflows/infrastructure.yml'
 
 env:
   TF_DIR: infrastructure/terraform
   WORKER_DIR: infrastructure/telemetry-worker
+  LICENSE_WORKER_DIR: infrastructure/license-worker
 
 jobs:
-  # ── Build Worker bundle ──────────────────────────────────────────
+  # ── Build Telemetry Worker bundle ────────────────────────────────
   build-worker:
-    name: Build Worker
+    name: Build Telemetry Worker
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,10 +45,34 @@ jobs:
           name: worker-bundle
           path: ${{ env.TF_DIR }}/worker-bundle.js
 
+  # ── Build License Worker bundle ────────────────────────────────
+  build-license-worker:
+    name: Build License Worker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install worker dependencies
+        working-directory: ${{ env.LICENSE_WORKER_DIR }}
+        run: npm install
+
+      - name: Build bundle
+        working-directory: ${{ env.LICENSE_WORKER_DIR }}
+        run: npx esbuild src/index.ts --bundle --format=esm --outfile=../terraform/license-worker-bundle.js
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: license-worker-bundle
+          path: ${{ env.TF_DIR }}/license-worker-bundle.js
+
   # ── Terraform Plan (PR only) ────────────────────────────────────
   plan:
     name: Plan (${{ matrix.environment }})
-    needs: build-worker
+    needs: [build-worker, build-license-worker]
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     strategy:
@@ -57,6 +84,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: worker-bundle
+          path: ${{ env.TF_DIR }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: license-worker-bundle
           path: ${{ env.TF_DIR }}
 
       - uses: hashicorp/setup-terraform@v3
@@ -78,12 +110,15 @@ jobs:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_PROVISIONING }}
           TF_VAR_admin_key: ${{ secrets.TELEMETRY_ADMIN_KEY_DEV }}
           TF_VAR_resend_api_key: ${{ secrets.RESEND_API_KEY }}
+          TF_VAR_license_admin_key: ${{ secrets.LICENSE_ADMIN_KEY_DEV }}
+          TF_VAR_ed25519_private_key: ${{ secrets.ED25519_PRIVATE_KEY }}
+          TF_VAR_ed25519_public_key: ${{ secrets.ED25519_PUBLIC_KEY }}
         run: terraform plan -var-file=${{ matrix.environment }}.tfvars -no-color
 
   # ── Terraform Apply (push to main) ──────────────────────────────
   deploy-dev:
     name: Deploy dev
-    needs: build-worker
+    needs: [build-worker, build-license-worker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: dev
@@ -93,6 +128,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: worker-bundle
+          path: ${{ env.TF_DIR }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: license-worker-bundle
           path: ${{ env.TF_DIR }}
 
       - uses: hashicorp/setup-terraform@v3
@@ -114,11 +154,14 @@ jobs:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_PROVISIONING }}
           TF_VAR_admin_key: ${{ secrets.TELEMETRY_ADMIN_KEY_DEV }}
           TF_VAR_resend_api_key: ${{ secrets.RESEND_API_KEY }}
+          TF_VAR_license_admin_key: ${{ secrets.LICENSE_ADMIN_KEY_DEV }}
+          TF_VAR_ed25519_private_key: ${{ secrets.ED25519_PRIVATE_KEY }}
+          TF_VAR_ed25519_public_key: ${{ secrets.ED25519_PUBLIC_KEY }}
         run: terraform apply -var-file=dev.tfvars -auto-approve
 
   deploy-prod:
     name: Deploy prod
-    needs: [build-worker, deploy-dev]
+    needs: [build-worker, build-license-worker, deploy-dev]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: prod
@@ -128,6 +171,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: worker-bundle
+          path: ${{ env.TF_DIR }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: license-worker-bundle
           path: ${{ env.TF_DIR }}
 
       - uses: hashicorp/setup-terraform@v3
@@ -149,4 +197,7 @@ jobs:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_PROVISIONING }}
           TF_VAR_admin_key: ${{ secrets.TELEMETRY_ADMIN_KEY_PROD }}
           TF_VAR_resend_api_key: ${{ secrets.RESEND_API_KEY }}
+          TF_VAR_license_admin_key: ${{ secrets.LICENSE_ADMIN_KEY_PROD }}
+          TF_VAR_ed25519_private_key: ${{ secrets.ED25519_PRIVATE_KEY }}
+          TF_VAR_ed25519_public_key: ${{ secrets.ED25519_PUBLIC_KEY }}
         run: terraform apply -var-file=prod.tfvars -auto-approve

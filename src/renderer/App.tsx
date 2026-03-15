@@ -16,6 +16,8 @@ import { VerificationSessionModal } from './components/TuningHistory/Verificatio
 import { FixSettingsConfirmModal } from './components/FCInfo/FixSettingsConfirmModal';
 import { StartTuningModal } from './components/StartTuningModal';
 import { TelemetrySettingsModal } from './components/TelemetrySettings/TelemetrySettingsModal';
+import { LicenseSettingsModal } from './components/LicenseSettings/LicenseSettingsModal';
+import { useLicense } from './hooks/useLicense';
 import { computeBBSettingsStatus } from './utils/bbSettingsUtils';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './contexts/ToastContext';
@@ -86,6 +88,8 @@ function AppContent() {
   const { isDemoMode } = useDemoMode();
   const [resettingDemo, setResettingDemo] = useState(false);
   const [showTelemetrySettings, setShowTelemetrySettings] = useState(false);
+  const [showLicenseSettings, setShowLicenseSettings] = useState(false);
+  const { isPro } = useLicense();
 
   const refreshAvailableLogIds = () => {
     window.betaflight
@@ -616,6 +620,13 @@ function AppContent() {
         </div>
         <div className="app-header-right">
           <span className="version">v0.1.0</span>
+          <button
+            className={`app-license-badge ${isPro ? 'app-license-pro' : 'app-license-free'}`}
+            onClick={() => setShowLicenseSettings(true)}
+            title={isPro ? 'Pro license active' : 'Free version — click to upgrade'}
+          >
+            {isPro ? 'Pro' : 'Free'}
+          </button>
           {isDemoMode && (
             <button
               className="demo-reset-btn"
@@ -808,6 +819,10 @@ function AppContent() {
 
       {showTelemetrySettings && (
         <TelemetrySettingsModal onClose={() => setShowTelemetrySettings(false)} />
+      )}
+
+      {showLicenseSettings && (
+        <LicenseSettingsModal onClose={() => setShowLicenseSettings(false)} />
       )}
 
       <ToastContainer />

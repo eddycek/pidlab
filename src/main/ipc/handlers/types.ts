@@ -21,6 +21,8 @@ export interface HandlerDependencies {
   isDemoMode: boolean;
   /** Telemetry manager for anonymous usage data */
   telemetryManager: any;
+  /** License manager for Pro/Free enforcement */
+  licenseManager: any;
 }
 
 export function createResponse<T>(data: T | undefined, error?: string): IPCResponse<T> {

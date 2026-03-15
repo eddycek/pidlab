@@ -111,6 +111,13 @@ global.window.betaflight = {
   setTelemetryEnabled: vi.fn(),
   sendTelemetryNow: vi.fn().mockResolvedValue(undefined),
 
+  // License
+  activateLicense: vi.fn(),
+  getLicenseStatus: vi.fn().mockResolvedValue({ type: 'free', expiresAt: null }),
+  removeLicense: vi.fn().mockResolvedValue(undefined),
+  validateLicense: vi.fn().mockResolvedValue(undefined),
+  onLicenseChanged: vi.fn(() => () => {}),
+
   // Events
   onError: vi.fn(() => () => {}),
   onLog: vi.fn(() => () => {}),

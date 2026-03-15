@@ -35,6 +35,7 @@ import type {
   TransferFunctionMetricsSummary,
 } from './tuning-history.types';
 import type { TelemetrySettings } from './telemetry.types';
+import type { LicenseInfo } from './license.types';
 
 /** Progress during snapshot restore */
 export interface SnapshotRestoreProgress {
@@ -163,6 +164,12 @@ export enum IPCChannel {
   TELEMETRY_SET_ENABLED = 'telemetry:set-enabled',
   TELEMETRY_SEND_NOW = 'telemetry:send-now',
 
+  // License
+  LICENSE_ACTIVATE = 'license:activate',
+  LICENSE_GET_STATUS = 'license:get-status',
+  LICENSE_REMOVE = 'license:remove',
+  LICENSE_VALIDATE = 'license:validate',
+
   // Events (main -> renderer)
   EVENT_CONNECTION_CHANGED = 'event:connection-changed',
   EVENT_PROFILE_CHANGED = 'event:profile-changed',
@@ -174,6 +181,7 @@ export enum IPCChannel {
   EVENT_TUNING_APPLY_PROGRESS = 'event:tuning-apply-progress',
   EVENT_SNAPSHOT_RESTORE_PROGRESS = 'event:snapshot-restore-progress',
   EVENT_TUNING_SESSION_CHANGED = 'event:tuning-session-changed',
+  EVENT_LICENSE_CHANGED = 'event:license-changed',
   EVENT_ERROR = 'event:error',
   EVENT_LOG = 'event:log',
 }
@@ -295,6 +303,13 @@ export interface BetaflightAPI {
   getTelemetrySettings(): Promise<TelemetrySettings>;
   setTelemetryEnabled(enabled: boolean): Promise<TelemetrySettings>;
   sendTelemetryNow(): Promise<void>;
+
+  // License
+  activateLicense(key: string): Promise<LicenseInfo>;
+  getLicenseStatus(): Promise<LicenseInfo>;
+  removeLicense(): Promise<void>;
+  validateLicense(): Promise<void>;
+  onLicenseChanged(callback: (info: LicenseInfo) => void): () => void;
 
   // Events
   onError(callback: (error: string) => void): () => void;

@@ -107,6 +107,19 @@ export const TUNING_TYPE_LABELS: Record<string, string> = {
   [TUNING_TYPE.FLASH]: 'Flash Tune',
 };
 
+export const LICENSE = {
+  /** License API endpoint (CF Worker) */
+  API_URL: 'https://license.pidlab.app',
+  /** Key format regex: PIDLAB-XXXX-XXXX-XXXX (28-char alphabet) */
+  KEY_FORMAT_REGEX: /^PIDLAB-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/,
+  /** Ed25519 public key (base64-encoded SPKI DER) — set after keypair generation */
+  ED25519_PUBLIC_KEY: '',
+  /** Free tier: max 1 profile */
+  FREE_PROFILE_LIMIT: 1,
+  /** Online validation interval (24 hours) */
+  VALIDATION_INTERVAL_MS: 24 * 60 * 60 * 1000,
+} as const;
+
 export const TELEMETRY = {
   /** Cloud endpoint for telemetry uploads (CF Worker — not yet deployed) */
   UPLOAD_URL: 'https://telemetry.pidlab.app/v1/collect',

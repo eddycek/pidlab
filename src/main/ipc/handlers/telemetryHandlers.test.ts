@@ -42,6 +42,7 @@ describe('telemetryHandlers', () => {
       pendingSettingsSnapshot: false,
       isDemoMode: false,
       telemetryManager: mockTelemetryManager,
+      licenseManager: null,
     };
 
     registerTelemetryHandlers(deps);
