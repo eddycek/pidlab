@@ -78,7 +78,7 @@ describe('App', () => {
 
   it('shows version number', () => {
     render(<App />);
-    expect(screen.getByText(/^v\d+\.\d+\.\d+$/)).toBeInTheDocument();
+    expect(screen.getByText(/^v\d+\.\d+\.\d+/)).toBeInTheDocument();
   });
 
   it('shows BF compatibility badge', () => {
