@@ -125,6 +125,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
       - uses: actions/download-artifact@v4
         with:
           name: worker-bundle
@@ -159,6 +164,15 @@ jobs:
           TF_VAR_license_ed25519_public_key: ${{ secrets.LICENSE_ED25519_PUBLIC_KEY }}
         run: terraform apply -var-file=dev.tfvars -auto-approve
 
+      - name: Run D1 migrations (dev)
+        working-directory: ${{ env.LICENSE_WORKER_DIR }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PROVISIONING }}
+          CLOUDFLARE_ACCOUNT_ID: 718d9177347897a7e4a282cdf5c38568
+        run: |
+          npm install
+          npx wrangler d1 execute pidlab-license-dev --file=src/schema.sql --remote
+
   deploy-prod:
     name: Deploy prod
     needs: [build-worker, build-license-worker, deploy-dev]
@@ -170,6 +184,11 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
       - uses: actions/download-artifact@v4
         with:
@@ -204,3 +223,12 @@ jobs:
           TF_VAR_license_ed25519_private_key: ${{ secrets.LICENSE_ED25519_PRIVATE_KEY }}
           TF_VAR_license_ed25519_public_key: ${{ secrets.LICENSE_ED25519_PUBLIC_KEY }}
         run: terraform apply -var-file=prod.tfvars -auto-approve
+
+      - name: Run D1 migrations (prod)
+        working-directory: ${{ env.LICENSE_WORKER_DIR }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PROVISIONING }}
+          CLOUDFLARE_ACCOUNT_ID: 718d9177347897a7e4a282cdf5c38568
+        run: |
+          npm install
+          npx wrangler d1 execute pidlab-license --env prod --file=src/schema.sql --remote
