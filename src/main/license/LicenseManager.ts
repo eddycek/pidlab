@@ -1,7 +1,7 @@
 import { join } from 'path';
 import fs from 'fs/promises';
 import { createPublicKey, verify } from 'crypto';
-import { net } from 'electron';
+import { app, net } from 'electron';
 import { LICENSE } from '@shared/constants';
 import type { LicenseInfo, PersistedLicense, SignedLicense } from '@shared/types/license.types';
 import { logger } from '../utils/logger';
@@ -65,7 +65,8 @@ export class LicenseManager {
 
   /** Get current license status */
   getLicenseStatus(): LicenseInfo {
-    if (this.isDemoMode) {
+    // Dev mode and demo mode always get Pro (no restrictions for development)
+    if (this.isDemoMode || !app.isPackaged) {
       return { type: 'paid', expiresAt: null };
     }
 

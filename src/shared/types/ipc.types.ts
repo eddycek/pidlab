@@ -313,8 +313,12 @@ export interface BetaflightAPI {
   // Auto-update
   checkForUpdate(): Promise<void>;
   installUpdate(): Promise<void>;
-  onUpdateAvailable(callback: (info: { version: string }) => void): () => void;
-  onUpdateDownloaded(callback: (info: { version: string }) => void): () => void;
+  onUpdateAvailable(
+    callback: (info: { version: string; releaseNotes?: string }) => void
+  ): () => void;
+  onUpdateDownloaded(
+    callback: (info: { version: string; releaseNotes?: string }) => void
+  ): () => void;
 
   // License
   activateLicense(key: string): Promise<LicenseInfo>;

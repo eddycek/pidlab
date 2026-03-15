@@ -659,16 +659,20 @@ const betaflightAPI: BetaflightAPI = {
     }
   },
 
-  onUpdateAvailable(callback: (info: { version: string }) => void): () => void {
-    const listener = (_: any, info: { version: string }) => callback(info);
+  onUpdateAvailable(
+    callback: (info: { version: string; releaseNotes?: string }) => void
+  ): () => void {
+    const listener = (_: any, info: { version: string; releaseNotes?: string }) => callback(info);
     ipcRenderer.on(IPCChannel.EVENT_UPDATE_AVAILABLE, listener);
     return () => {
       ipcRenderer.removeListener(IPCChannel.EVENT_UPDATE_AVAILABLE, listener);
     };
   },
 
-  onUpdateDownloaded(callback: (info: { version: string }) => void): () => void {
-    const listener = (_: any, info: { version: string }) => callback(info);
+  onUpdateDownloaded(
+    callback: (info: { version: string; releaseNotes?: string }) => void
+  ): () => void {
+    const listener = (_: any, info: { version: string; releaseNotes?: string }) => callback(info);
     ipcRenderer.on(IPCChannel.EVENT_UPDATE_DOWNLOADED, listener);
     return () => {
       ipcRenderer.removeListener(IPCChannel.EVENT_UPDATE_DOWNLOADED, listener);

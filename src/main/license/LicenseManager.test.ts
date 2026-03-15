@@ -24,6 +24,7 @@ vi.mock('crypto', () => {
 
 // Mock electron
 vi.mock('electron', () => ({
+  app: { isPackaged: true },
   net: {
     fetch: vi.fn(),
   },
