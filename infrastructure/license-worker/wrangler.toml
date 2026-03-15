@@ -1,0 +1,19 @@
+name = "pidlab-license-dev"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+
+# D1 database binding (dev)
+[[d1_databases]]
+binding = "LICENSE_DB"
+database_name = "pidlab-license-dev"
+database_id = "placeholder-dev-id"
+
+# Secrets set via `wrangler secret put`:
+# ADMIN_KEY, ED25519_PRIVATE_KEY, ED25519_PUBLIC_KEY
+
+[env.prod]
+name = "pidlab-license"
+[[env.prod.d1_databases]]
+binding = "LICENSE_DB"
+database_name = "pidlab-license"
+database_id = "placeholder-prod-id"

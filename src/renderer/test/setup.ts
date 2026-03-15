@@ -107,9 +107,27 @@ global.window.betaflight = {
     enabled: true,
     installationId: 'test-uuid',
     lastUploadAt: null,
+    lastUploadError: null,
   }),
   setTelemetryEnabled: vi.fn(),
   sendTelemetryNow: vi.fn().mockResolvedValue(undefined),
+
+  // App Logs
+  getAppLogs: vi.fn().mockResolvedValue([]),
+  exportAppLogs: vi.fn().mockResolvedValue(''),
+
+  // Auto-update
+  checkForUpdate: vi.fn().mockResolvedValue(undefined),
+  installUpdate: vi.fn().mockResolvedValue(undefined),
+  onUpdateAvailable: vi.fn(() => () => {}),
+  onUpdateDownloaded: vi.fn(() => () => {}),
+
+  // License
+  activateLicense: vi.fn(),
+  getLicenseStatus: vi.fn().mockResolvedValue({ type: 'free', expiresAt: null }),
+  removeLicense: vi.fn().mockResolvedValue(undefined),
+  validateLicense: vi.fn().mockResolvedValue(undefined),
+  onLicenseChanged: vi.fn(() => () => {}),
 
   // Events
   onError: vi.fn(() => () => {}),

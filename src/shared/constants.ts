@@ -1,4 +1,5 @@
-export const APP_VERSION = '0.1.0';
+declare const __APP_VERSION__: string;
+export const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0-dev';
 
 export const MSP = {
   DEFAULT_BAUD_RATE: 115200,
@@ -107,9 +108,27 @@ export const TUNING_TYPE_LABELS: Record<string, string> = {
   [TUNING_TYPE.FLASH]: 'Flash Tune',
 };
 
+export const LICENSE = {
+  /** Production license API endpoint */
+  API_URL: 'https://license.pidlab.app',
+  /** Development license API endpoint (CF Workers subdomain — update after first deploy) */
+  API_URL_DEV: 'https://pidlab-license-dev.eddycek.workers.dev',
+  /** Key format regex: PIDLAB-XXXX-XXXX-XXXX (28-char alphabet) */
+  KEY_FORMAT_REGEX: /^PIDLAB-[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/,
+  /** Ed25519 public key (base64 SPKI DER). MUST be set before production release.
+   *  Empty = dev mode allows bypass, production rejects all licenses. */
+  ED25519_PUBLIC_KEY: '',
+  /** Free tier: max 1 profile */
+  FREE_PROFILE_LIMIT: 1,
+  /** Online validation interval (24 hours) */
+  VALIDATION_INTERVAL_MS: 24 * 60 * 60 * 1000,
+} as const;
+
 export const TELEMETRY = {
-  /** Cloud endpoint for telemetry uploads (CF Worker — not yet deployed) */
+  /** Production telemetry endpoint */
   UPLOAD_URL: 'https://telemetry.pidlab.app/v1/collect',
+  /** Development telemetry endpoint (CF Workers subdomain — update after first deploy) */
+  UPLOAD_URL_DEV: 'https://pidlab-telemetry-dev.eddycek.workers.dev/v1/collect',
   /** Retry delays in ms for failed uploads */
   RETRY_DELAYS: [1000, 2000, 4000] as readonly number[],
   /** Minimum interval between automatic uploads (24 hours) */

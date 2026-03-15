@@ -78,13 +78,44 @@ variable "zone_id" {
   default     = ""
 }
 
+# License Worker variables
+variable "license_admin_key" {
+  description = "Admin API key for license /admin/* endpoints"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "ed25519_private_key" {
+  description = "Ed25519 private key (base64 PKCS8 DER) for license signing"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "ed25519_public_key" {
+  description = "Ed25519 public key (base64 SPKI DER) for license verification"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "license_domain" {
+  description = "Custom domain for the license worker (e.g. license.pidlab.app). Leave empty to use *.workers.dev"
+  type        = string
+  default     = ""
+}
+
 # ─── Locals ─────────────────────────────────────────────────────────
 
 locals {
-  is_prod     = var.environment == "prod"
-  name_suffix = local.is_prod ? "" : "-${var.environment}"
-  bucket_name = "pidlab-telemetry${local.name_suffix}"
-  worker_name = "pidlab-telemetry${local.name_suffix}"
+  is_prod             = var.environment == "prod"
+  name_suffix         = local.is_prod ? "" : "-${var.environment}"
+  bucket_name         = "pidlab-telemetry${local.name_suffix}"
+  worker_name         = "pidlab-telemetry${local.name_suffix}"
+  license_db_name     = "pidlab-license${local.name_suffix}"
+  license_worker_name = "pidlab-license${local.name_suffix}"
+  license_enabled     = var.license_admin_key != "" && var.ed25519_private_key != ""
 }
 
 # ─── R2 Bucket ──────────────────────────────────────────────────────
@@ -160,6 +191,67 @@ resource "cloudflare_record" "telemetry" {
   comment = "Telemetry Worker (${var.environment})"
 }
 
+# ═══════════════════════════════════════════════════════════════════
+# LICENSE WORKER
+# ═══════════════════════════════════════════════════════════════════
+
+# ─── D1 Database ───────────────────────────────────────────────────
+
+resource "cloudflare_d1_database" "license" {
+  count      = local.license_enabled ? 1 : 0
+  account_id = var.cloudflare_account_id
+  name       = local.license_db_name
+}
+
+# ─── License Worker ────────────────────────────────────────────────
+
+resource "cloudflare_workers_script" "license" {
+  count      = local.license_enabled ? 1 : 0
+  account_id = var.cloudflare_account_id
+  name       = local.license_worker_name
+  content    = file("${path.module}/license-worker-bundle.js")
+  module     = true
+
+  d1_database_binding {
+    name        = "LICENSE_DB"
+    database_id = cloudflare_d1_database.license[0].id
+  }
+
+  secret_text_binding {
+    name = "ADMIN_KEY"
+    text = var.license_admin_key
+  }
+
+  secret_text_binding {
+    name = "ED25519_PRIVATE_KEY"
+    text = var.ed25519_private_key
+  }
+
+  secret_text_binding {
+    name = "ED25519_PUBLIC_KEY"
+    text = var.ed25519_public_key
+  }
+}
+
+# ─── License Custom Domain (optional) ─────────────────────────────
+
+resource "cloudflare_workers_route" "license" {
+  count       = local.license_enabled && var.license_domain != "" ? 1 : 0
+  zone_id     = var.zone_id
+  pattern     = "${var.license_domain}/*"
+  script_name = cloudflare_workers_script.license[0].name
+}
+
+resource "cloudflare_record" "license" {
+  count   = local.license_enabled && var.license_domain != "" ? 1 : 0
+  zone_id = var.zone_id
+  name    = var.license_domain
+  content = "100::"
+  type    = "AAAA"
+  proxied = true
+  comment = "License Worker (${var.environment})"
+}
+
 # ─── Outputs ────────────────────────────────────────────────────────
 
 output "environment" {
@@ -180,4 +272,19 @@ output "custom_url" {
 output "r2_bucket" {
   description = "R2 bucket name"
   value       = cloudflare_r2_bucket.telemetry.name
+}
+
+output "license_worker_url" {
+  description = "License Worker URL (workers.dev)"
+  value       = local.license_enabled ? "https://${local.license_worker_name}.${var.cloudflare_account_id}.workers.dev" : "(not configured)"
+}
+
+output "license_custom_url" {
+  description = "License Worker custom domain URL (if configured)"
+  value       = local.license_enabled && var.license_domain != "" ? "https://${var.license_domain}" : "(not configured)"
+}
+
+output "license_d1_database" {
+  description = "License D1 database name"
+  value       = local.license_enabled ? local.license_db_name : "(not configured)"
 }

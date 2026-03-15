@@ -6,9 +6,9 @@ import type {
   ProfileCreationInput,
   ProfileUpdateInput,
 } from '@shared/types/profile.types';
-import { PRESET_PROFILES } from '@shared/constants';
+import { PRESET_PROFILES, LICENSE } from '@shared/constants';
 import { logger } from '../../utils/logger';
-import { getErrorMessage } from '../../utils/errors';
+import { getErrorMessage, ProfileLimitError } from '../../utils/errors';
 import { getMainWindow } from '../../window';
 import type { HandlerDependencies } from './types';
 import { createResponse } from './types';
@@ -24,6 +24,14 @@ export function registerProfileHandlers(deps: HandlerDependencies): void {
         }
         if (!deps.snapshotManager) {
           throw new Error('Snapshot manager not initialized');
+        }
+
+        // License enforcement: free tier = 1 profile max
+        if (deps.licenseManager && !deps.licenseManager.isPro()) {
+          const profiles = await deps.profileManager.listProfiles();
+          if (profiles.length >= LICENSE.FREE_PROFILE_LIMIT) {
+            throw new ProfileLimitError();
+          }
         }
 
         const profile = await deps.profileManager.createProfile(input);
@@ -62,6 +70,14 @@ export function registerProfileHandlers(deps: HandlerDependencies): void {
         }
         if (!deps.snapshotManager) {
           throw new Error('Snapshot manager not initialized');
+        }
+
+        // License enforcement: free tier = 1 profile max
+        if (deps.licenseManager && !deps.licenseManager.isPro()) {
+          const profiles = await deps.profileManager.listProfiles();
+          if (profiles.length >= LICENSE.FREE_PROFILE_LIMIT) {
+            throw new ProfileLimitError();
+          }
         }
 
         const preset = PRESET_PROFILES[presetId as keyof typeof PRESET_PROFILES];

@@ -44,6 +44,7 @@ import type {
   TransferFunctionMetricsSummary,
 } from '@shared/types/tuning-history.types';
 import type { TelemetrySettings } from '@shared/types/telemetry.types';
+import type { LicenseInfo } from '@shared/types/license.types';
 
 const betaflightAPI: BetaflightAPI = {
   // App
@@ -641,6 +642,97 @@ const betaflightAPI: BetaflightAPI = {
     if (!response.success) {
       throw new Error(response.error || 'Failed to send telemetry');
     }
+  },
+
+  // App Logs
+  async getAppLogs(lines?: number): Promise<string[]> {
+    const response = await ipcRenderer.invoke(IPCChannel.APP_GET_LOGS, lines);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to get app logs');
+    }
+    return response.data;
+  },
+
+  async exportAppLogs(): Promise<string> {
+    const response = await ipcRenderer.invoke(IPCChannel.APP_EXPORT_LOGS);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to export logs');
+    }
+    return response.data;
+  },
+
+  // Auto-update
+  async checkForUpdate(): Promise<void> {
+    const response = await ipcRenderer.invoke(IPCChannel.UPDATE_CHECK);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to check for updates');
+    }
+  },
+
+  async installUpdate(): Promise<void> {
+    const response = await ipcRenderer.invoke(IPCChannel.UPDATE_INSTALL);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to install update');
+    }
+  },
+
+  onUpdateAvailable(
+    callback: (info: { version: string; releaseNotes?: string }) => void
+  ): () => void {
+    const listener = (_: any, info: { version: string; releaseNotes?: string }) => callback(info);
+    ipcRenderer.on(IPCChannel.EVENT_UPDATE_AVAILABLE, listener);
+    return () => {
+      ipcRenderer.removeListener(IPCChannel.EVENT_UPDATE_AVAILABLE, listener);
+    };
+  },
+
+  onUpdateDownloaded(
+    callback: (info: { version: string; releaseNotes?: string }) => void
+  ): () => void {
+    const listener = (_: any, info: { version: string; releaseNotes?: string }) => callback(info);
+    ipcRenderer.on(IPCChannel.EVENT_UPDATE_DOWNLOADED, listener);
+    return () => {
+      ipcRenderer.removeListener(IPCChannel.EVENT_UPDATE_DOWNLOADED, listener);
+    };
+  },
+
+  // License
+  async activateLicense(key: string): Promise<LicenseInfo> {
+    const response = await ipcRenderer.invoke(IPCChannel.LICENSE_ACTIVATE, key);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to activate license');
+    }
+    return response.data;
+  },
+
+  async getLicenseStatus(): Promise<LicenseInfo> {
+    const response = await ipcRenderer.invoke(IPCChannel.LICENSE_GET_STATUS);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to get license status');
+    }
+    return response.data;
+  },
+
+  async removeLicense(): Promise<void> {
+    const response = await ipcRenderer.invoke(IPCChannel.LICENSE_REMOVE);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to remove license');
+    }
+  },
+
+  async validateLicense(): Promise<void> {
+    const response = await ipcRenderer.invoke(IPCChannel.LICENSE_VALIDATE);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to validate license');
+    }
+  },
+
+  onLicenseChanged(callback: (info: LicenseInfo) => void): () => void {
+    const listener = (_: any, info: LicenseInfo) => callback(info);
+    ipcRenderer.on(IPCChannel.EVENT_LICENSE_CHANGED, listener);
+    return () => {
+      ipcRenderer.removeListener(IPCChannel.EVENT_LICENSE_CHANGED, listener);
+    };
   },
 
   // Tuning History

@@ -190,4 +190,7 @@ export interface CompletedTuningRecord {
 
   /** BF PID profile used in this tuning session (0-based) */
   bfPidProfileIndex?: number;
+
+  /** App version that created this record (for debugging) */
+  appVersion?: string;
 }

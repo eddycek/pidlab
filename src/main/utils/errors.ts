@@ -51,6 +51,15 @@ export class SnapshotError extends BetaflightError {
   }
 }
 
+export class ProfileLimitError extends BetaflightError {
+  constructor(
+    message: string = 'Free version supports 1 profile. Upgrade to Pro for unlimited profiles.'
+  ) {
+    super(message, 'PROFILE_LIMIT');
+    this.name = 'ProfileLimitError';
+  }
+}
+
 export function isError(error: any): error is Error {
   return error instanceof Error;
 }

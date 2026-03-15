@@ -2,7 +2,7 @@ import { join } from 'path';
 import fs from 'fs/promises';
 import { createHash, randomUUID } from 'crypto';
 import { gzipSync } from 'zlib';
-import { net } from 'electron';
+import { app, net } from 'electron';
 import { APP_VERSION, TELEMETRY } from '@shared/constants';
 import type { TelemetrySettings, TelemetryBundle } from '@shared/types/telemetry.types';
 import { logger } from '../utils/logger';
@@ -56,6 +56,7 @@ export class TelemetryManager {
         enabled: true,
         installationId: randomUUID(),
         lastUploadAt: null,
+        lastUploadError: null,
       };
       await this.persist();
     }
@@ -114,6 +115,7 @@ export class TelemetryManager {
       installationId: this.settings.installationId,
       timestamp: new Date().toISOString(),
       appVersion: APP_VERSION,
+      environment: app.isPackaged ? 'production' : 'development',
       platform: process.platform,
       profiles: { count: 0, sizes: [], flightStyles: [] },
       tuningSessions: {
@@ -270,7 +272,8 @@ export class TelemetryManager {
 
       for (let attempt = 0; attempt <= TELEMETRY.RETRY_DELAYS.length; attempt++) {
         try {
-          const uploadUrl = process.env.TELEMETRY_URL || TELEMETRY.UPLOAD_URL;
+          const defaultUrl = app.isPackaged ? TELEMETRY.UPLOAD_URL : TELEMETRY.UPLOAD_URL_DEV;
+          const uploadUrl = process.env.TELEMETRY_URL || defaultUrl;
           const response = await net.fetch(uploadUrl, {
             method: 'POST',
             headers: {
@@ -282,6 +285,7 @@ export class TelemetryManager {
 
           if (response.ok) {
             this.settings!.lastUploadAt = new Date().toISOString();
+            this.settings!.lastUploadError = null;
             await this.persist();
             logger.info('Telemetry: upload successful');
             return;
@@ -298,8 +302,14 @@ export class TelemetryManager {
         }
       }
 
+      this.settings!.lastUploadError = lastError?.message || 'Unknown error';
+      await this.persist();
       logger.warn('Telemetry: upload failed after retries:', lastError?.message);
     } catch (err) {
+      if (this.settings) {
+        this.settings.lastUploadError = err instanceof Error ? err.message : String(err);
+        await this.persist().catch(() => {});
+      }
       logger.warn('Telemetry: upload error:', err);
     }
   }

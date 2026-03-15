@@ -1,4 +1,5 @@
-import { ipcMain } from 'electron';
+import { ipcMain, dialog } from 'electron';
+import fs from 'fs/promises';
 import { IPCChannel, IPCResponse } from '@shared/types/ipc.types';
 import type { PortInfo, ConnectionStatus } from '@shared/types/common.types';
 import type { HandlerDependencies } from './types';
@@ -130,4 +131,49 @@ export function registerConnectionHandlers(deps: HandlerDependencies): void {
       }
     }
   );
+
+  // ── App Logs ────────────────────────────────────────────────────────
+
+  ipcMain.handle(
+    IPCChannel.APP_GET_LOGS,
+    async (_event, lines?: number): Promise<IPCResponse<string[]>> => {
+      try {
+        const logPath = logger.getLogFilePath();
+        const count = Math.min(Math.max(lines || 50, 1), 200);
+        // Read last ~64KB to avoid loading huge log files into memory
+        const stat = await fs.stat(logPath);
+        const readSize = Math.min(stat.size, 64 * 1024);
+        const fh = await fs.open(logPath, 'r');
+        const buffer = Buffer.alloc(readSize);
+        await fh.read(buffer, 0, readSize, Math.max(0, stat.size - readSize));
+        await fh.close();
+        const tail = buffer.toString('utf-8');
+        const allLines = tail.split('\n').filter((l) => l.trim());
+        return createResponse(allLines.slice(-count));
+      } catch (err) {
+        return createResponse<string[]>(undefined, getErrorMessage(err));
+      }
+    }
+  );
+
+  ipcMain.handle(IPCChannel.APP_EXPORT_LOGS, async (): Promise<IPCResponse<string>> => {
+    try {
+      const window = getMainWindow();
+      if (!window) throw new Error('No window');
+
+      const logPath = logger.getLogFilePath();
+      const { filePath } = await dialog.showSaveDialog(window, {
+        title: 'Export Application Logs',
+        defaultPath: `pidlab-logs-${new Date().toISOString().slice(0, 10)}.log`,
+        filters: [{ name: 'Log files', extensions: ['log', 'txt'] }],
+      });
+
+      if (!filePath) return createResponse('');
+
+      await fs.copyFile(logPath, filePath);
+      return createResponse(filePath);
+    } catch (err) {
+      return createResponse<string>(undefined, getErrorMessage(err));
+    }
+  });
 }

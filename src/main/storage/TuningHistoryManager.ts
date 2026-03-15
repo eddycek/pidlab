@@ -9,7 +9,7 @@ import { randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import type { TuningSession } from '@shared/types/tuning.types';
-import { TUNING_PHASE } from '@shared/constants';
+import { APP_VERSION, TUNING_PHASE } from '@shared/constants';
 import type {
   CompletedTuningRecord,
   FilterMetricsSummary,
@@ -63,6 +63,7 @@ export class TuningHistoryManager {
       verificationPidMetrics: session.verificationPidMetrics ?? null,
       transferFunctionMetrics: session.transferFunctionMetrics ?? null,
       bfPidProfileIndex: session.bfPidProfileIndex,
+      appVersion: APP_VERSION,
     };
 
     const existing = await this.loadRecords(session.profileId);
