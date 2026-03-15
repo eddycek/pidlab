@@ -1,0 +1,152 @@
+name: Infrastructure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infrastructure/terraform/**'
+      - 'infrastructure/telemetry-worker/src/**'
+      - '.github/workflows/infrastructure.yml'
+  pull_request:
+    paths:
+      - 'infrastructure/terraform/**'
+      - 'infrastructure/telemetry-worker/src/**'
+      - '.github/workflows/infrastructure.yml'
+
+env:
+  TF_DIR: infrastructure/terraform
+  WORKER_DIR: infrastructure/telemetry-worker
+
+jobs:
+  # ── Build Worker bundle ──────────────────────────────────────────
+  build-worker:
+    name: Build Worker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install worker dependencies
+        working-directory: ${{ env.WORKER_DIR }}
+        run: npm install
+
+      - name: Build bundle
+        working-directory: ${{ env.WORKER_DIR }}
+        run: npx esbuild src/index.ts --bundle --format=esm --outfile=../terraform/worker-bundle.js
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: worker-bundle
+          path: ${{ env.TF_DIR }}/worker-bundle.js
+
+  # ── Terraform Plan (PR only) ────────────────────────────────────
+  plan:
+    name: Plan (${{ matrix.environment }})
+    needs: build-worker
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, prod]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: worker-bundle
+          path: ${{ env.TF_DIR }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.5"
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_DIR }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: terraform init -backend-config=backend-${{ matrix.environment }}.hcl
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_DIR }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_admin_key: ${{ secrets.TELEMETRY_ADMIN_KEY_DEV }}
+          TF_VAR_resend_api_key: ${{ secrets.RESEND_API_KEY }}
+        run: terraform plan -var-file=${{ matrix.environment }}.tfvars -no-color
+
+  # ── Terraform Apply (push to main) ──────────────────────────────
+  deploy-dev:
+    name: Deploy dev
+    needs: build-worker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: worker-bundle
+          path: ${{ env.TF_DIR }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.5"
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_DIR }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: terraform init -backend-config=backend-dev.hcl
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_DIR }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_admin_key: ${{ secrets.TELEMETRY_ADMIN_KEY_DEV }}
+          TF_VAR_resend_api_key: ${{ secrets.RESEND_API_KEY }}
+        run: terraform apply -var-file=dev.tfvars -auto-approve
+
+  deploy-prod:
+    name: Deploy prod
+    needs: [build-worker, deploy-dev]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: worker-bundle
+          path: ${{ env.TF_DIR }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.5"
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_DIR }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: terraform init -backend-config=backend-prod.hcl
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_DIR }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_admin_key: ${{ secrets.TELEMETRY_ADMIN_KEY_PROD }}
+          TF_VAR_resend_api_key: ${{ secrets.RESEND_API_KEY }}
+        run: terraform apply -var-file=prod.tfvars -auto-approve
