@@ -8,22 +8,16 @@ terraform {
     }
   }
 
-  # Remote state in Cloudflare R2 (bootstrapped manually once)
-  # Uncomment after first `terraform init` with local state:
-  #
-  # backend "s3" {
-  #   bucket                      = "pidlab-tfstate"
-  #   key                         = "terraform.tfstate"
-  #   region                      = "auto"
-  #   skip_credentials_validation = true
-  #   skip_metadata_api_check     = true
-  #   skip_region_validation      = true
-  #   skip_requesting_account_id  = true
-  #   use_path_style              = true
-  #   endpoints = {
-  #     s3 = "https://<ACCOUNT_ID>.r2.cloudflarestorage.com"
-  #   }
-  # }
+  backend "s3" {
+    bucket                      = "pidlab-tfstate"
+    region                      = "auto"
+    skip_credentials_validation = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    skip_requesting_account_id  = true
+    use_path_style              = true
+    # key and endpoints set per-workspace via -backend-config
+  }
 }
 
 provider "cloudflare" {
@@ -46,7 +40,6 @@ variable "cloudflare_account_id" {
 variable "environment" {
   description = "Environment: dev or prod"
   type        = string
-  default     = "dev"
 
   validation {
     condition     = contains(["dev", "prod"], var.environment)
@@ -64,14 +57,15 @@ variable "resend_api_key" {
   description = "Resend API key for daily email reports"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "report_email" {
   description = "Email address for daily telemetry reports"
   type        = string
+  default     = ""
 }
 
-# Optional: custom domain (prod only typically)
 variable "domain" {
   description = "Custom domain for the worker (e.g. telemetry.pidlab.app). Leave empty to use *.workers.dev"
   type        = string
@@ -129,7 +123,6 @@ resource "cloudflare_workers_script" "telemetry" {
     text = var.report_email
   }
 
-  # Expose environment to Worker (for logging/debugging)
   plain_text_binding {
     name = "ENVIRONMENT"
     text = var.environment
@@ -141,11 +134,10 @@ resource "cloudflare_workers_script" "telemetry" {
 resource "cloudflare_workers_cron_trigger" "daily_report" {
   account_id  = var.cloudflare_account_id
   script_name = cloudflare_workers_script.telemetry.name
-  # Dev: no cron (empty list). Prod: daily at 07:00 UTC.
-  schedules = local.is_prod ? ["0 7 * * *"] : []
+  schedules   = local.is_prod ? ["0 7 * * *"] : []
 }
 
-# ─── Custom Domain (optional, prod only) ───────────────────────────
+# ─── Custom Domain (optional) ──────────────────────────────────────
 
 resource "cloudflare_workers_route" "telemetry" {
   count       = var.domain != "" ? 1 : 0
@@ -161,7 +153,7 @@ resource "cloudflare_record" "telemetry" {
   content = "100::"
   type    = "AAAA"
   proxied = true
-  comment = "Telemetry Worker custom domain (${var.environment})"
+  comment = "Telemetry Worker (${var.environment})"
 }
 
 # ─── Outputs ────────────────────────────────────────────────────────
