@@ -69,11 +69,11 @@ jobs:
           name: license-worker-bundle
           path: ${{ env.TF_DIR }}/license-worker-bundle.js
 
-  # ── Terraform Plan prod (PR only) ───────────────────────────────
+  # ── Terraform Plan prod (internal PRs only) ────────────────────
   plan-prod:
     name: Plan (prod)
     needs: [build-worker, build-license-worker]
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -112,12 +112,16 @@ jobs:
           TF_VAR_ed25519_public_key: ${{ secrets.ED25519_PUBLIC_KEY }}
         run: terraform plan -var-file=prod.tfvars -no-color
 
-  # ── Deploy dev (PR + push to main) ─────────────────────────────
+  # ── Deploy dev (internal PRs + push to main) ───────────────────
   deploy-dev:
     name: Deploy dev
     needs: [build-worker, build-license-worker]
+    if: github.event.pull_request.head.repo.fork != true
     runs-on: ubuntu-latest
     environment: dev
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
@@ -161,6 +165,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: prod
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
