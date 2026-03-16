@@ -98,6 +98,7 @@ export function LicenseSettingsModal({ onClose }: LicenseSettingsModalProps) {
                   <li>Analysis overview</li>
                   <li>Tuning history</li>
                   <li>Snapshots &amp; restore</li>
+                  <li className="license-comparison-highlight">Diagnostic reports</li>
                 </ul>
               </div>
             </div>
