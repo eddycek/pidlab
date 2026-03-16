@@ -735,6 +735,20 @@ Documentation accuracy auditor. Verifies README decision tables, feature descrip
 
 **Skill definition:** `.claude/skills/doc-sync/SKILL.md`
 
+### Telemetry Evaluator Skill (`/telemetry-evaluator`)
+
+Evaluates telemetry data against target KPIs. Fetches data from admin API endpoints and generates evaluation reports.
+
+**Modes:**
+- `evaluate` (default) — Full KPI dashboard with pass/fail status
+- `rules` — Deep dive into rule effectiveness (which rules work, which don't)
+- `convergence` — Quality score trends across sessions per installation
+- `compare` — Compare metrics across drone sizes, BF versions, tuning modes
+
+**Target KPIs:** Apply rate >70%, verification improvement >60%, noise floor improvement -2dB+, overshoot reduction -5%+, convergence rate 73%+
+
+**Skill definition:** `.claude/skills/telemetry-evaluator/SKILL.md`
+
 ### PostToolUse Hooks
 
 Two PostToolUse hooks registered in `.claude/settings.json` under `hooks.PostToolUse`:
