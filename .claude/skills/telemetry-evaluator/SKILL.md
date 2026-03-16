@@ -15,9 +15,14 @@ goals: improving users' flight performance through automated PID and filter tuni
 
 ## Data Access
 
-All data comes from the telemetry admin API. Source the environment first:
+All data comes from the telemetry admin API. You MUST set the environment before sourcing `_env.sh`
+because it prompts interactively (which Claude Code cannot answer).
+
+**Default to `prod`** unless the user explicitly says "dev":
 
 ```bash
+# Set environment BEFORE sourcing (avoids interactive prompt)
+export PIDLAB_ENV=prod   # or "dev" if user requests it
 source infrastructure/scripts/_env.sh
 ```
 
@@ -45,8 +50,9 @@ Determine the mode from `$ARGUMENTS`:
 
 Full KPI evaluation report.
 
-1. Fetch all data:
+1. Fetch all data (set `PIDLAB_ENV` before sourcing to avoid interactive prompt):
    ```bash
+   export PIDLAB_ENV=prod
    source infrastructure/scripts/_env.sh
    curl -sf -H "X-Admin-Key: $PIDLAB_TELEMETRY_ADMIN_KEY" "$PIDLAB_TELEMETRY_API_URL/admin/stats/full" | jq . > /tmp/telemetry-full.json
    curl -sf -H "X-Admin-Key: $PIDLAB_TELEMETRY_ADMIN_KEY" "$PIDLAB_TELEMETRY_API_URL/admin/stats/rules" | jq . > /tmp/telemetry-rules.json
