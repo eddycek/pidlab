@@ -961,4 +961,4 @@ Contributions welcome! Please open an issue first to discuss changes.
 
 ## License
 
-GPL-3.0 — see [LICENSE](./LICENSE) for details.
+GPL-3.0-only — see [LICENSE](./LICENSE) for details.
