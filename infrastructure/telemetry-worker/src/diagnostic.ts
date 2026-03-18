@@ -133,7 +133,7 @@ Review: /diagnose ${meta.reportId}`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'PIDlab Diagnostics <diagnostics@pidlab.app>',
+        from: 'PIDlab Telemetry <telemetry@pidlab.app>',
         to: [env.REPORT_EMAIL],
         subject,
         text,
@@ -160,7 +160,7 @@ async function sendResolutionEmail(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'PIDlab Support <support@pidlab.app>',
+        from: 'PIDlab Telemetry <telemetry@pidlab.app>',
         to: [userEmail],
         subject: 'Your PIDlab report has been resolved',
         text: `Hi,
