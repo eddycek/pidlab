@@ -23,7 +23,8 @@ interface DiagnosticMetadata {
   };
 }
 
-const RATE_LIMIT_MS = 60 * 60 * 1000; // 1 report per hour per installation
+const RATE_LIMIT_MS = 60 * 60 * 1000; // 1 hour window
+const RATE_LIMIT_MAX = 5; // max reports per window per installation
 
 /** POST /v1/diagnostic — submit a diagnostic report */
 export async function handleDiagnosticUpload(request: Request, env: Env): Promise<Response> {
@@ -51,22 +52,26 @@ export async function handleDiagnosticUpload(request: Request, env: Env): Promis
     return new Response('Invalid ID format', { status: 400 });
   }
 
-  // Rate limit: 1 per hour per installation
+  // Rate limit: max 5 per hour per installation
   try {
     const recentKey = `diagnostics/_rate/${data.installationId}.json`;
+    const now = Date.now();
+    let timestamps: number[] = [];
     const existing = await env.TELEMETRY_BUCKET.get(recentKey);
     if (existing) {
-      const meta: { lastReport: string } = await existing.json();
-      const elapsed = Date.now() - new Date(meta.lastReport).getTime();
-      if (elapsed < RATE_LIMIT_MS) {
-        return new Response('Rate limited — max 1 diagnostic report per hour', { status: 429 });
-      }
+      const meta: { timestamps: number[] } = await existing.json();
+      // Keep only timestamps within the window
+      timestamps = (meta.timestamps ?? []).filter((t) => now - t < RATE_LIMIT_MS);
     }
-    await env.TELEMETRY_BUCKET.put(
-      recentKey,
-      JSON.stringify({ lastReport: new Date().toISOString() }),
-      { httpMetadata: { contentType: 'application/json' } }
-    );
+    if (timestamps.length >= RATE_LIMIT_MAX) {
+      return new Response(`Rate limited — max ${RATE_LIMIT_MAX} diagnostic reports per hour`, {
+        status: 429,
+      });
+    }
+    timestamps.push(now);
+    await env.TELEMETRY_BUCKET.put(recentKey, JSON.stringify({ timestamps }), {
+      httpMetadata: { contentType: 'application/json' },
+    });
   } catch {
     // Rate limit check failed, allow the upload
   }
