@@ -4,7 +4,7 @@
 
 ## Overview
 
-PIDlab uses electron-builder for packaging and electron-updater for automatic updates. Code signing is optional — when secrets are not configured, the CI pipeline builds unsigned releases (usable for testing).
+FPVPIDlab uses electron-builder for packaging and electron-updater for automatic updates. Code signing is optional — when secrets are not configured, the CI pipeline builds unsigned releases (usable for testing).
 
 ## Auto-Updater
 
@@ -44,7 +44,7 @@ Implementation: `src/main/updater.ts`, `src/renderer/components/UpdateNotificati
 
 2. **Generate app-specific password**:
    - Go to [appleid.apple.com](https://appleid.apple.com) → Security → App-Specific Passwords
-   - Generate one for "PIDlab CI"
+   - Generate one for "FPVPIDlab CI"
 
 3. **Find your Team ID**:
    - Go to [developer.apple.com/account](https://developer.apple.com/account) → Membership Details
@@ -67,10 +67,10 @@ Implementation: `src/main/updater.ts`, `src/renderer/components/UpdateNotificati
 After a signed release:
 ```bash
 # Check code signing
-codesign -dvv /Applications/PIDlab.app
+codesign -dvv /Applications/FPVPIDlab.app
 
 # Check notarization
-spctl --assess --type execute /Applications/PIDlab.app
+spctl --assess --type execute /Applications/FPVPIDlab.app
 ```
 
 ## Windows Code Signing
@@ -104,7 +104,7 @@ When signing secrets are not configured:
 - Windows: No `CSC_LINK` — builds unsigned NSIS installer
 - Users see security warnings but can bypass them
 
-**macOS**: Right-click → Open (or `xattr -cr /Applications/PIDlab.app`)
+**macOS**: Right-click → Open (or `xattr -cr /Applications/FPVPIDlab.app`)
 **Windows**: Click "More info" → "Run anyway" in SmartScreen dialog
 
 ## GitHub Secrets Summary

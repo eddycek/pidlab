@@ -32,7 +32,7 @@ describe('LicenseSettingsModal', () => {
 
     expect(screen.getByText('Already have a license key?')).toBeInTheDocument();
 
-    expect(screen.getByPlaceholderText('PIDLAB-XXXX-XXXX-XXXX')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('FPVPIDLAB-XXXX-XXXX-XXXX')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Activate' })).toBeInTheDocument();
   });
 
@@ -48,7 +48,7 @@ describe('LicenseSettingsModal', () => {
     vi.mocked(window.betaflight.getLicenseStatus).mockResolvedValue({
       type: 'paid',
       expiresAt: null,
-      key: 'PIDLAB-ABCD-****-****',
+      key: 'FPVPIDLAB-ABCD-****-****',
       activatedAt: '2026-03-01T00:00:00Z',
       lastValidatedAt: '2026-03-15T00:00:00Z',
     });
@@ -56,7 +56,7 @@ describe('LicenseSettingsModal', () => {
     render(<LicenseSettingsModal onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByText('PIDLAB-ABCD-****-****')).toBeInTheDocument();
+      expect(screen.getByText('FPVPIDLAB-ABCD-****-****')).toBeInTheDocument();
     });
     expect(screen.getByText('Remove License')).toBeInTheDocument();
 
@@ -72,21 +72,21 @@ describe('LicenseSettingsModal', () => {
     vi.mocked(window.betaflight.activateLicense).mockResolvedValue({
       type: 'paid',
       expiresAt: null,
-      key: 'PIDLAB-ABCD-****-****',
+      key: 'FPVPIDLAB-ABCD-****-****',
       activatedAt: '2026-03-15T00:00:00Z',
     });
 
     render(<LicenseSettingsModal onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('PIDLAB-XXXX-XXXX-XXXX')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('FPVPIDLAB-XXXX-XXXX-XXXX')).toBeInTheDocument();
     });
 
-    const input = screen.getByPlaceholderText('PIDLAB-XXXX-XXXX-XXXX');
-    await user.type(input, 'PIDLAB-ABCD-EFGH-JKNM');
+    const input = screen.getByPlaceholderText('FPVPIDLAB-XXXX-XXXX-XXXX');
+    await user.type(input, 'FPVPIDLAB-ABCD-EFGH-JKNM');
     await user.click(screen.getByRole('button', { name: 'Activate' }));
 
-    expect(window.betaflight.activateLicense).toHaveBeenCalledWith('PIDLAB-ABCD-EFGH-JKNM');
+    expect(window.betaflight.activateLicense).toHaveBeenCalledWith('FPVPIDLAB-ABCD-EFGH-JKNM');
   });
 
   it('shows error on activation failure', async () => {
@@ -98,11 +98,11 @@ describe('LicenseSettingsModal', () => {
     render(<LicenseSettingsModal onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('PIDLAB-XXXX-XXXX-XXXX')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('FPVPIDLAB-XXXX-XXXX-XXXX')).toBeInTheDocument();
     });
 
-    const input = screen.getByPlaceholderText('PIDLAB-XXXX-XXXX-XXXX');
-    await user.type(input, 'PIDLAB-ABCD-EFGH-JKNM');
+    const input = screen.getByPlaceholderText('FPVPIDLAB-XXXX-XXXX-XXXX');
+    await user.type(input, 'FPVPIDLAB-ABCD-EFGH-JKNM');
     await user.click(screen.getByRole('button', { name: 'Activate' }));
 
     await waitFor(() => {
@@ -144,7 +144,7 @@ describe('LicenseSettingsModal', () => {
     vi.mocked(window.betaflight.getLicenseStatus).mockResolvedValue({
       type: 'paid',
       expiresAt: null,
-      key: 'PIDLAB-ABCD-****-****',
+      key: 'FPVPIDLAB-ABCD-****-****',
       activatedAt: '2026-03-01T00:00:00Z',
     });
     vi.mocked(window.betaflight.removeLicense).mockResolvedValue(undefined);
@@ -176,12 +176,12 @@ describe('LicenseSettingsModal', () => {
     render(<LicenseSettingsModal onClose={onClose} />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('PIDLAB-XXXX-XXXX-XXXX')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('FPVPIDLAB-XXXX-XXXX-XXXX')).toBeInTheDocument();
     });
 
-    const input = screen.getByPlaceholderText('PIDLAB-XXXX-XXXX-XXXX') as HTMLInputElement;
-    await user.type(input, 'pidlab-test');
+    const input = screen.getByPlaceholderText('FPVPIDLAB-XXXX-XXXX-XXXX') as HTMLInputElement;
+    await user.type(input, 'fpvpidlab-test');
 
-    expect(input.value).toBe('PIDLAB-TEST');
+    expect(input.value).toBe('FPVPIDLAB-TEST');
   });
 });

@@ -10,7 +10,7 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write, Agent
 
 # Documentation Sync Audit
 
-You are a documentation accuracy auditor for the PIDlab codebase. Your job is to ensure all
+You are a documentation accuracy auditor for the FPVPIDlab codebase. Your job is to ensure all
 markdown files are factually correct and consistent with the code. You catch stale descriptions,
 wrong thresholds, outdated counts, and misleading text.
 

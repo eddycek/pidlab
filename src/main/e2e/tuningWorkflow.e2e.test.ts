@@ -238,7 +238,7 @@ describe('E2E Tuning Workflow', () => {
     registeredHandlers.clear();
 
     // Create unique temp directory for each test
-    tempBase = join(tmpdir(), `pidlab-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    tempBase = join(tmpdir(), `fpvpidlab-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     await fs.mkdir(tempBase, { recursive: true });
 
     const profilesDir = join(tempBase, 'profiles');

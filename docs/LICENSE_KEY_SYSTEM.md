@@ -4,7 +4,7 @@
 
 ## Problem
 
-PIDlab needs a freemium model: free version with limited profiles, Pro version with unlimited profiles. The licensing system must work offline (Electron desktop app), be simple to activate, and integrate with the Stripe payment flow.
+FPVPIDlab needs a freemium model: free version with limited profiles, Pro version with unlimited profiles. The licensing system must work offline (Electron desktop app), be simple to activate, and integrate with the Stripe payment flow.
 
 ## Analysis
 
@@ -33,7 +33,7 @@ PIDlab needs a freemium model: free version with limited profiles, Pro version w
 ### Key Format
 
 ```
-PIDLAB-XXXX-XXXX-XXXX
+FPVPIDLAB-XXXX-XXXX-XXXX
 ```
 
 Where each `X` is an alphanumeric character (A-Z, 0-9, excluding ambiguous characters: 0/O, 1/I/L).
@@ -124,7 +124,7 @@ This means: **user gets Pro the instant they enter a valid key**, even without i
 
 ```json
 // Request
-{ "key": "PIDLAB-ABCD-EFGH-JKLM", "installationId": "uuid-v4-..." }
+{ "key": "FPVPIDLAB-ABCD-EFGH-JKLM", "installationId": "uuid-v4-..." }
 
 // Response (success)
 { "status": "activated", "type": "paid" }
@@ -146,7 +146,7 @@ This means: **user gets Pro the instant they enter a valid key**, even without i
 
 ```json
 // Request
-{ "key": "PIDLAB-ABCD-EFGH-JKLM", "installationId": "uuid-v4-..." }
+{ "key": "FPVPIDLAB-ABCD-EFGH-JKLM", "installationId": "uuid-v4-..." }
 
 // Response
 { "status": "valid", "type": "paid" }
@@ -177,7 +177,7 @@ This means: **user gets Pro the instant they enter a valid key**, even without i
 
 ```json
 {
-  "key": "PIDLAB-ABCD-EFGH-JKLM",
+  "key": "FPVPIDLAB-ABCD-EFGH-JKLM",
   "status": "active",
   "type": "paid",
   "expiresAt": null,
@@ -251,7 +251,7 @@ All endpoints require `X-Admin-Key` header (shared secret in CF Worker env).
 // Response
 {
   "id": "abc123...",
-  "licenseKey": "PIDLAB-ABCD-EFGH-JKLM",
+  "licenseKey": "FPVPIDLAB-ABCD-EFGH-JKLM",
   "email": "customer@example.com",
   "type": "paid",
   "status": "active",

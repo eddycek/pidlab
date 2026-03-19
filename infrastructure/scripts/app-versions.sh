@@ -1,5 +1,5 @@
 #!/bin/bash
-# Show PIDlab app version distribution. Defaults to DEV. Override: PIDLAB_ENV=prod
+# Show FPVPIDlab app version distribution. Defaults to DEV. Override: PIDLAB_ENV=prod
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_env.sh"
 

@@ -24,7 +24,7 @@ describe('useLicense', () => {
     vi.mocked(window.betaflight.getLicenseStatus).mockResolvedValue({
       type: 'paid',
       expiresAt: null,
-      key: 'PIDLAB-ABCD-****-****',
+      key: 'FPVPIDLAB-ABCD-****-****',
       activatedAt: '2026-03-01T00:00:00Z',
     });
 
@@ -49,7 +49,7 @@ describe('useLicense', () => {
     vi.mocked(window.betaflight.activateLicense).mockResolvedValue({
       type: 'paid',
       expiresAt: null,
-      key: 'PIDLAB-ABCD-****-****',
+      key: 'FPVPIDLAB-ABCD-****-****',
       activatedAt: '2026-03-15T00:00:00Z',
     });
 
@@ -57,7 +57,7 @@ describe('useLicense', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     await act(async () => {
-      await result.current.activate('PIDLAB-ABCD-EFGH-JKNM');
+      await result.current.activate('FPVPIDLAB-ABCD-EFGH-JKNM');
     });
 
     expect(result.current.status?.type).toBe('paid');
@@ -75,7 +75,7 @@ describe('useLicense', () => {
 
     await act(async () => {
       try {
-        await result.current.activate('PIDLAB-XXXX-XXXX-XXXX');
+        await result.current.activate('FPVPIDLAB-XXXX-XXXX-XXXX');
       } catch {
         // Expected
       }

@@ -108,7 +108,7 @@ export class LicenseManager {
     // Format check
     const normalizedKey = key.trim().toUpperCase();
     if (!LICENSE.KEY_FORMAT_REGEX.test(normalizedKey)) {
-      throw new Error('Invalid license key format. Expected: PIDLAB-XXXX-XXXX-XXXX');
+      throw new Error('Invalid license key format. Expected: FPVPIDLAB-XXXX-XXXX-XXXX');
     }
 
     const installationId = this.getInstallationId();
@@ -249,7 +249,7 @@ export class LicenseManager {
   }
 
   private maskKey(key: string): string {
-    // PIDLAB-XXXX-XXXX-XXXX → PIDLAB-XXXX-****-****
+    // FPVPIDLAB-XXXX-XXXX-XXXX → FPVPIDLAB-XXXX-****-****
     const parts = key.split('-');
     if (parts.length !== 4) return '****';
     return `${parts[0]}-${parts[1]}-****-****`;

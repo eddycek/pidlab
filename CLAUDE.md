@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-PIDlab is an Electron-based desktop application for managing FPV drone PID configurations. It uses MSP (MultiWii Serial Protocol) to communicate with Betaflight flight controllers over USB serial connection.
+FPVPIDlab is an Electron-based desktop application for managing FPV drone PID configurations. It uses MSP (MultiWii Serial Protocol) to communicate with Betaflight flight controllers over USB serial connection.
 
 **Current Phase**: Phase 4 complete, Phase 6 complete (CI/CD, code quality, data quality scoring, flight quality score)
 
@@ -724,7 +724,7 @@ Custom Claude Code skill for PID tuning expertise. Invoke with `/tuning-advisor`
 - `audit` — Full audit of recommendation quality against best practices
 - `analyze` — Deep analysis of specific flight data or tuning results
 
-**Knowledge base:** `docs/PID_TUNING_KNOWLEDGE.md` — FPV tuning theory, filter/PID architecture, quad archetypes, PIDlab-specific analysis rules.
+**Knowledge base:** `docs/PID_TUNING_KNOWLEDGE.md` — FPV tuning theory, filter/PID architecture, quad archetypes, FPVPIDlab-specific analysis rules.
 
 **Skill definition:** `.claude/skills/tuning-advisor/SKILL.md`
 

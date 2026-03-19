@@ -106,7 +106,7 @@ export const QUICK_FLIGHT_PHASES: FlightPhase[] = [
   {
     title: 'Land & Plug In',
     duration: '',
-    description: 'Done! Connect via USB and let PIDlab do the rest.',
+    description: 'Done! Connect via USB and let FPVPIDlab do the rest.',
   },
 ];
 

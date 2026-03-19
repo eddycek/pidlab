@@ -1,6 +1,6 @@
-# PIDlab Infrastructure
+# FPVPIDlab Infrastructure
 
-Cloud infrastructure for PIDlab backend services. All services run on **Cloudflare** (Workers, R2, D1).
+Cloud infrastructure for FPVPIDlab backend services. All services run on **Cloudflare** (Workers, R2, D1).
 
 All resources are managed via **Terraform** with state in Cloudflare R2. CI/CD deploys automatically on merge to main.
 
@@ -59,7 +59,7 @@ infrastructure/
 │       ├── admin.ts               ← 6 admin endpoints (generate, list, get, revoke, reset, stats)
 │       ├── license.ts             ← Public endpoints (activate, validate, self-reset)
 │       ├── crypto.ts              ← Ed25519 sign/verify via WebCrypto
-│       ├── keygen.ts              ← PIDLAB-XXXX-XXXX-XXXX key generation
+│       ├── keygen.ts              ← FPVPIDLAB-XXXX-XXXX-XXXX key generation
 │       ├── validation.ts          ← Input validation
 │       └── schema.sql             ← D1 database schema
 ├── scripts/                       ← Admin CLI tools (auto-source .env.local)
@@ -182,7 +182,7 @@ All manual operations require secrets from `.env.local` in the **repo root**. Fi
 
 ```bash
 cp env.template .env.local
-# Fill in real values from 1Password (vault: PIDlab Infrastructure)
+# Fill in real values from 1Password (vault: FPVPIDlab Infrastructure)
 ```
 
 Admin scripts auto-load `.env.local` and default to **dev** environment. To target prod:
@@ -260,7 +260,7 @@ PIDLAB_ENV=prod ./infrastructure/scripts/generate-key.sh
 
 # Individual endpoints:
 ./infrastructure/scripts/telemetry-stats.sh         # Installs, active 24h/7d/30d, modes, platforms
-./infrastructure/scripts/app-versions.sh             # PIDlab app version distribution
+./infrastructure/scripts/app-versions.sh             # FPVPIDlab app version distribution
 ./infrastructure/scripts/telemetry-bf-versions.sh    # Betaflight firmware versions
 ./infrastructure/scripts/telemetry-drones.sh         # Drone sizes + flight styles
 ./infrastructure/scripts/telemetry-quality.sh        # Quality score histogram + average
@@ -304,7 +304,7 @@ curl -sf https://pidlab-license-dev.eddycek-ve.workers.dev/health
 |--------|------|------|-------------|
 | `POST` | `/v1/collect` | None | Upload telemetry bundle (gzip, rate-limited 1/hr) |
 | `GET` | `/admin/stats` | `X-Admin-Key` | Summary: installs, active 24h/7d/30d, modes, platforms |
-| `GET` | `/admin/stats/app-versions` | `X-Admin-Key` | PIDlab app version distribution |
+| `GET` | `/admin/stats/app-versions` | `X-Admin-Key` | FPVPIDlab app version distribution |
 | `GET` | `/admin/stats/versions` | `X-Admin-Key` | Betaflight firmware version distribution |
 | `GET` | `/admin/stats/drones` | `X-Admin-Key` | Drone sizes + flight style distribution |
 | `GET` | `/admin/stats/quality` | `X-Admin-Key` | Quality score histogram (5 buckets) + average |

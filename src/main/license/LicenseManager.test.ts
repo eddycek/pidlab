@@ -79,7 +79,7 @@ describe('LicenseManager', () => {
 
     it('loads existing license from file', async () => {
       const persisted = {
-        key: 'PIDLAB-ABCD-EFGH-JKNM',
+        key: 'FPVPIDLAB-ABCD-EFGH-JKNM',
         signedLicense: {
           payload: {
             keyId: 'abc',
@@ -124,7 +124,7 @@ describe('LicenseManager', () => {
 
     it('returns free for revoked license', async () => {
       const persisted = {
-        key: 'PIDLAB-ABCD-EFGH-JKNM',
+        key: 'FPVPIDLAB-ABCD-EFGH-JKNM',
         signedLicense: {
           payload: {
             keyId: 'abc',
@@ -151,7 +151,7 @@ describe('LicenseManager', () => {
 
     it('returns free for expired license', async () => {
       const persisted = {
-        key: 'PIDLAB-ABCD-EFGH-JKNM',
+        key: 'FPVPIDLAB-ABCD-EFGH-JKNM',
         signedLicense: {
           payload: {
             keyId: 'abc',
@@ -178,7 +178,7 @@ describe('LicenseManager', () => {
 
     it('masks key in status', async () => {
       const persisted = {
-        key: 'PIDLAB-ABCD-EFGH-JKNM',
+        key: 'FPVPIDLAB-ABCD-EFGH-JKNM',
         signedLicense: {
           payload: {
             keyId: 'abc',
@@ -201,7 +201,7 @@ describe('LicenseManager', () => {
       await manager.initialize();
 
       const status = manager.getLicenseStatus();
-      expect(status.key).toBe('PIDLAB-ABCD-****-****');
+      expect(status.key).toBe('FPVPIDLAB-ABCD-****-****');
     });
   });
 
@@ -223,7 +223,7 @@ describe('LicenseManager', () => {
   describe('removeLicense', () => {
     it('clears license and deletes file', async () => {
       const persisted = {
-        key: 'PIDLAB-ABCD-EFGH-JKNM',
+        key: 'FPVPIDLAB-ABCD-EFGH-JKNM',
         signedLicense: {
           payload: {
             keyId: 'abc',
@@ -264,7 +264,7 @@ describe('LicenseManager', () => {
     it('throws when installation ID provider not set', async () => {
       await manager.initialize();
 
-      await expect(manager.activate('PIDLAB-ABCD-EFGH-JKNM')).rejects.toThrow(
+      await expect(manager.activate('FPVPIDLAB-ABCD-EFGH-JKNM')).rejects.toThrow(
         'Installation ID provider not set'
       );
     });

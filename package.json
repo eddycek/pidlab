@@ -1,7 +1,7 @@
 {
-  "name": "pidlab",
+  "name": "fpvpidlab",
   "version": "0.1.0",
-  "description": "PIDlab - FPV Quad PID Tuning Assistant",
+  "description": "FPVPIDlab - FPV Quad PID Tuning Assistant",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "DEBUG_SERVER=true vite",
@@ -85,8 +85,8 @@
     "vitest": "^4.0.18"
   },
   "build": {
-    "appId": "com.eddycek.pidlab",
-    "productName": "PIDlab",
+    "appId": "com.eddycek.fpvpidlab",
+    "productName": "FPVPIDlab",
     "directories": {
       "output": "release"
     },
