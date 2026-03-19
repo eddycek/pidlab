@@ -75,7 +75,7 @@ function FilterTuneContent({
       <div className="workflow-info-box">
         <div className="workflow-info-title">How it works</div>
         <p className="workflow-info-text">
-          A dedicated hover + throttle sweep flight produces clean gyro noise data. PIDlab runs{' '}
+          A dedicated hover + throttle sweep flight produces clean gyro noise data. FPVPIDlab runs{' '}
           <strong>FFT analysis</strong> (Welch&apos;s method) to measure the noise spectrum, detect
           resonance peaks, and compute optimal gyro and D-term filter cutoffs.
         </p>
@@ -115,7 +115,7 @@ function PIDTuneContent({ fcVersion }: { fcVersion?: string }) {
       <div className="workflow-info-box">
         <div className="workflow-info-title">How it works</div>
         <p className="workflow-info-text">
-          Dedicated stick snaps produce clear step inputs on each axis. PIDlab measures{' '}
+          Dedicated stick snaps produce clear step inputs on each axis. FPVPIDlab measures{' '}
           <strong>step response</strong> (overshoot, rise time, settling time) and computes optimal
           P, I, D gains. Cross-axis coupling and prop wash are also detected.
         </p>

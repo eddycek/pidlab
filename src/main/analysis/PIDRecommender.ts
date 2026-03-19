@@ -676,7 +676,7 @@ export function extractFeedforwardContext(rawHeaders: Map<string, string>): Feed
  *
  * When d_min is active (d_min_roll/pitch > 0), the D value in PID config
  * represents d_max. The actual D varies between d_min and d_max based on
- * stick input. PIDlab's D recommendations target d_max only.
+ * stick input. FPVPIDlab's D recommendations target d_max only.
  */
 export interface DMinContext {
   active: boolean;
@@ -883,7 +883,7 @@ function generateFrequencyDomainRecs(
 
 /**
  * Annotate D recommendations when D-min/D-max is active.
- * PIDlab adjusts the D value (d_max in BF terms); d_min is separate.
+ * FPVPIDlab adjusts the D value (d_max in BF terms); d_min is separate.
  */
 function applyDMinAdvisory(recommendations: PIDRecommendation[], dMin: DMinContext): void {
   for (const rec of recommendations) {

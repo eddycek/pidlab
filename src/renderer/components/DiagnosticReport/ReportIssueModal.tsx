@@ -27,7 +27,7 @@ export function ReportIssueModal({ onSubmit, onClose, submitting }: ReportIssueM
 
         <div className="report-modal-body">
           <p className="report-modal-description">
-            We'll send diagnostic data from this session to help us improve PIDlab.
+            We'll send diagnostic data from this session to help us improve FPVPIDlab.
           </p>
 
           <label className="report-field-label" htmlFor="report-email">

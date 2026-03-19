@@ -424,7 +424,7 @@ Checks before analysis:
 | `TelemetryManager` | `{userData}/data/` | `telemetry-settings.json` (opt-in settings + installation ID) |
 | `LicenseManager` | `{userData}/` | `license.json` (Ed25519 signed license for offline verification) |
 
-**User data path:** `~/Library/Application Support/pidlab/` (macOS) | `%APPDATA%/pidlab/` (Windows) | `~/.config/pidlab/` (Linux)
+**User data path:** `~/Library/Application Support/fpvpidlab/` (macOS) | `%APPDATA%/fpvpidlab/` (Windows) | `~/.config/fpvpidlab/` (Linux)
 
 #### Profile Data Model
 
@@ -616,7 +616,7 @@ else                → Dashboard (ConnectionPanel, ProfileSelector, TuningStatu
 ```
 App (ToastProvider wrapper)
 ├── AppContent
-│   ├── Header: "PIDlab" + version + "How to tune?" button
+│   ├── Header: "FPVPIDlab" + version + "How to tune?" button
 │   │
 │   ├── [If analysisLogId] AnalysisOverview (read-only, single page)
 │   ├── [If activeLogId]   TuningWizard (guided multi-step)

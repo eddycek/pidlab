@@ -59,12 +59,12 @@ describe('App', () => {
 
   it('renders without crashing', () => {
     render(<App />);
-    expect(screen.getByText('PIDlab')).toBeInTheDocument();
+    expect(screen.getByText('FPVPIDlab')).toBeInTheDocument();
   });
 
-  it('shows app title "PIDlab"', () => {
+  it('shows app title "FPVPIDlab"', () => {
     render(<App />);
-    const title = screen.getByRole('heading', { name: /pidlab/i });
+    const title = screen.getByRole('heading', { name: /fpvpidlab/i });
     expect(title).toBeInTheDocument();
     expect(title.tagName).toBe('H1');
   });
@@ -73,7 +73,7 @@ describe('App', () => {
     render(<App />);
     // ConnectionPanel should render (we can check for connection-related text)
     // Since ConnectionPanel is always rendered, we just verify the component tree doesn't crash
-    expect(screen.getByText('PIDlab')).toBeInTheDocument();
+    expect(screen.getByText('FPVPIDlab')).toBeInTheDocument();
   });
 
   it('shows version number', () => {

@@ -1,6 +1,6 @@
-# PIDlab Telemetry
+# FPVPIDlab Telemetry
 
-PIDlab collects anonymous usage telemetry to understand how people tune their drones. This document describes what we collect, why, and how it works.
+FPVPIDlab collects anonymous usage telemetry to understand how people tune their drones. This document describes what we collect, why, and how it works.
 
 ## What We Collect
 
@@ -90,7 +90,7 @@ No historical data stored per installation — trends are derived from `recentQu
 
 Telemetry is enabled by default. To disable:
 
-1. Open PIDlab → click gear icon (top right) → toggle off "Send anonymous usage data"
+1. Open FPVPIDlab → click gear icon (top right) → toggle off "Send anonymous usage data"
 2. Or set `enabled: false` in `{userData}/telemetry-settings.json`
 
 When disabled, no data is collected or sent. The installation ID is preserved (in case you re-enable later).
@@ -113,7 +113,7 @@ Admin stats (requires `X-Admin-Key` header):
 Cloudflare Cron Trigger runs daily at 07:00 UTC (prod only). Aggregates all R2 data and sends email via Resend:
 
 ```
-PIDlab Telemetry Report — 2026-03-15
+FPVPIDlab Telemetry Report — 2026-03-15
 ══════════════════════════════════════
 New installations (24h):     3
 Active users (24h):          47

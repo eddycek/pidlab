@@ -123,7 +123,7 @@ export function TelemetrySettingsModal({ onClose }: TelemetrySettingsModalProps)
                 </div>
 
                 <p className="telemetry-description">
-                  Help improve PIDlab by sharing anonymous usage data.
+                  Help improve FPVPIDlab by sharing anonymous usage data.
                 </p>
 
                 <div className="telemetry-data-table">

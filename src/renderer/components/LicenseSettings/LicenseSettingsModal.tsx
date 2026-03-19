@@ -108,14 +108,14 @@ export function LicenseSettingsModal({ onClose }: LicenseSettingsModalProps) {
               <p>
                 {isPro ? (
                   <>
-                    Thank you for supporting PIDlab! Your Pro license gives you{' '}
+                    Thank you for supporting FPVPIDlab! Your Pro license gives you{' '}
                     <strong>lifetime access</strong> to all current and future features.
                   </>
                 ) : (
                   <>
                     With a Pro license you get <strong>lifetime access</strong> to all current and
                     future features. We don't guarantee that all functionality will remain in the
-                    free version as PIDlab evolves. By upgrading you also directly support the
+                    free version as FPVPIDlab evolves. By upgrading you also directly support the
                     development of this project.
                   </>
                 )}
@@ -181,11 +181,11 @@ export function LicenseSettingsModal({ onClose }: LicenseSettingsModalProps) {
                     <input
                       type="text"
                       className="license-key-input"
-                      placeholder="PIDLAB-XXXX-XXXX-XXXX"
+                      placeholder="FPVPIDLAB-XXXX-XXXX-XXXX"
                       value={keyInput}
                       onChange={(e) => setKeyInput(e.target.value.toUpperCase())}
                       onKeyDown={handleKeyDown}
-                      maxLength={21}
+                      maxLength={24}
                       disabled={activating}
                     />
                     <button

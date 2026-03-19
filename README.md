@@ -1,8 +1,8 @@
-# PIDlab
+# FPVPIDlab
 
 **Data-driven Betaflight autotuning. Fly → Analyze → Apply.**
 
-PIDlab reads your Blackbox log, analyzes the data (FFT noise spectrum, step response, transfer function), and computes optimal filter cutoffs and PID values — not from presets or guesswork, but from your quad's actual flight characteristics. The result: concrete Betaflight CLI commands with plain-English explanations, applied with one click.
+FPVPIDlab reads your Blackbox log, analyzes the data (FFT noise spectrum, step response, transfer function), and computes optimal filter cutoffs and PID values — not from presets or guesswork, but from your quad's actual flight characteristics. The result: concrete Betaflight CLI commands with plain-English explanations, applied with one click.
 
 **What makes it different:**
 - **Computed recommendations** — filter cutoffs and PID values derived from measured flight data, not just graphs
@@ -18,7 +18,7 @@ PIDlab reads your Blackbox log, analyzes the data (FFT noise spectrum, step resp
 - **Auto-updater** — silent background download from GitHub Releases, install on quit. Changelog modal with "What's new" details
 - **Settings with log viewer** — tabbed settings modal (Telemetry + Logs). Color-coded log viewer with export-to-file
 
-**How it works:** Connect FC via USB → Erase flash → Fly → Download log → PIDlab analyzes and applies optimized settings → Done.
+**How it works:** Connect FC via USB → Erase flash → Fly → Download log → FPVPIDlab analyzes and applies optimized settings → Done.
 
 ## Download
 
@@ -26,9 +26,9 @@ Pre-built binaries are available on the [Releases](https://github.com/eddycek/pi
 
 | Platform | Format | File |
 |----------|--------|------|
-| **macOS** | Disk Image | `PIDlab-*.dmg` |
-| **Windows** | Installer | `PIDlab-Setup-*.exe` |
-| **Linux** | AppImage | `PIDlab-*.AppImage` |
+| **macOS** | Disk Image | `FPVPIDlab-*.dmg` |
+| **Windows** | Installer | `FPVPIDlab-Setup-*.exe` |
+| **Linux** | AppImage | `FPVPIDlab-*.AppImage` |
 
 > **Note:** Builds are code-signed (macOS notarization + Windows Authenticode). Auto-updates are delivered via GitHub Releases.
 
@@ -103,7 +103,7 @@ Connecting with BF 4.2 or earlier will show an error and auto-disconnect. See [B
 
 ### Transfer Function Analysis (Wiener Deconvolution)
 
-Inspired by [Plasmatree PID-Analyzer](https://github.com/Plasmatree/PID-Analyzer) by Florian Melsheimer — the first tool to bring frequency-domain system identification to FPV tuning (2018). PIDlab reimplements the technique in TypeScript with `fft.js`, extended with automatic PID recommendations.
+Inspired by [Plasmatree PID-Analyzer](https://github.com/Plasmatree/PID-Analyzer) by Florian Melsheimer — the first tool to bring frequency-domain system identification to FPV tuning (2018). FPVPIDlab reimplements the technique in TypeScript with `fft.js`, extended with automatic PID recommendations.
 
 - Computes closed-loop transfer function H(f) = S_xy(f) / (S_xx(f) + ε) from any flight data — no dedicated maneuvers needed
 - 2-second Hanning windows with 50% Welch overlap, noise-floor-based regularization
@@ -668,9 +668,9 @@ The app uses the MultiWii Serial Protocol (MSP) v1 to communicate with Betafligh
 
 All data is stored locally per platform:
 
-- **macOS**: `~/Library/Application Support/pidlab/data/`
-- **Windows**: `%APPDATA%/pidlab/data/`
-- **Linux**: `~/.config/pidlab/data/`
+- **macOS**: `~/Library/Application Support/fpvpidlab/data/`
+- **Windows**: `%APPDATA%/fpvpidlab/data/`
+- **Linux**: `~/.config/fpvpidlab/data/`
 
 Subdirectories:
 - `profiles/` — Quad profile JSON files + metadata index
@@ -682,7 +682,7 @@ Subdirectories:
 
 ## How Autotuning Works
 
-This section documents the signal processing and decision logic behind PIDlab's recommendations. All recommendations are computed from measured flight data — not from presets or lookup tables. The system is **convergent**: re-analyzing the same Blackbox log always produces identical recommendations regardless of current FC settings.
+This section documents the signal processing and decision logic behind FPVPIDlab's recommendations. All recommendations are computed from measured flight data — not from presets or lookup tables. The system is **convergent**: re-analyzing the same Blackbox log always produces identical recommendations regardless of current FC settings.
 
 | | Filter Tune | PID Tune | Flash Tune |
 |---|---|---|---|
@@ -951,9 +951,9 @@ See [SPEC.md](./SPEC.md) for detailed requirements and phase tracking.
 
 ## Acknowledgments
 
-- **[Plasmatree PID-Analyzer](https://github.com/Plasmatree/PID-Analyzer)** by Florian Melsheimer — pioneered Wiener deconvolution for FPV PID tuning (2018). PIDlab's Flash Tune reimplements this technique with automatic PID recommendations.
+- **[Plasmatree PID-Analyzer](https://github.com/Plasmatree/PID-Analyzer)** by Florian Melsheimer — pioneered Wiener deconvolution for FPV PID tuning (2018). FPVPIDlab's Flash Tune reimplements this technique with automatic PID recommendations.
 - **[PIDtoolbox](https://github.com/bw1129/PIDtoolbox)** by bw1129 — spectral analysis methodology and overshoot ideal ranges draw on PIDtoolbox's work.
-- **[Betaflight](https://betaflight.com/)** — the open-source flight controller firmware. PIDlab communicates via MSP and validates against BF Explorer's binary log parser.
+- **[Betaflight](https://betaflight.com/)** — the open-source flight controller firmware. FPVPIDlab communicates via MSP and validates against BF Explorer's binary log parser.
 
 ## Contributing
 

@@ -4,7 +4,7 @@
 
 ## Problem
 
-PIDlab needs a monetization layer before community release. We need to accept payments, generate invoices (Czech legal requirement), and deliver license keys — all with minimal operational overhead.
+FPVPIDlab needs a monetization layer before community release. We need to accept payments, generate invoices (Czech legal requirement), and deliver license keys — all with minimal operational overhead.
 
 ## Analysis
 
@@ -113,7 +113,7 @@ Content-Type: application/json
   },
   "lines": [
     {
-      "description": "PIDlab Pro License",
+      "description": "FPVPIDlab Pro License",
       "quantity": 1,
       "unitPrice": 29.00,
       "vatRate": 21
@@ -130,7 +130,7 @@ Content-Type: application/json
 
 {
   "recipientEmail": "customer@example.com",
-  "subject": "PIDlab Pro - Invoice",
+  "subject": "FPVPIDlab Pro - Invoice",
   "message": "Thank you for your purchase."
 }
 ```

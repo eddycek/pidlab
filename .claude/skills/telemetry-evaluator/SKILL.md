@@ -1,7 +1,7 @@
 ---
 name: telemetry-evaluator
 description: >
-  Evaluates PIDlab telemetry data against target KPIs. Analyzes rule effectiveness,
+  Evaluates FPVPIDlab telemetry data against target KPIs. Analyzes rule effectiveness,
   verification success rates, metric distributions, and quality score convergence.
   Use to assess whether the app is actually improving users' flights.
 user-invocable: true
@@ -10,7 +10,7 @@ allowed-tools: Read, Grep, Glob, Bash
 
 # Telemetry Evaluator
 
-You evaluate PIDlab's telemetry data to determine whether the application is meeting its
+You evaluate FPVPIDlab's telemetry data to determine whether the application is meeting its
 goals: improving users' flight performance through automated PID and filter tuning.
 
 ## Argument Parsing
@@ -83,7 +83,7 @@ Full KPI evaluation report.
 3. Generate report in this format:
 
 ```markdown
-# PIDlab Telemetry Evaluation Report
+# FPVPIDlab Telemetry Evaluation Report
 Generated: <date> | Environment: <DEV/PROD>
 
 ## Overall Score: XX/100 (<tier>)

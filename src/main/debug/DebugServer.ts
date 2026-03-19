@@ -283,10 +283,10 @@ async function getLogTail(n: number) {
   // electron-log default path
   const logPath =
     process.platform === 'darwin'
-      ? join(app.getPath('home'), 'Library/Logs/PIDlab/main.log')
+      ? join(app.getPath('home'), 'Library/Logs/FPVPIDlab/main.log')
       : process.platform === 'win32'
         ? join(app.getPath('userData'), 'logs/main.log')
-        : join(app.getPath('home'), '.config/PIDlab/logs/main.log');
+        : join(app.getPath('home'), '.config/FPVPIDlab/logs/main.log');
 
   try {
     const content = await readFile(logPath, 'utf-8');

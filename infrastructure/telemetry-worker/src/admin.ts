@@ -188,7 +188,7 @@ async function handleQuality(env: Env): Promise<Response> {
   return Response.json(result);
 }
 
-/** GET /admin/stats/app-versions — PIDlab app version distribution */
+/** GET /admin/stats/app-versions — FPVPIDlab app version distribution */
 async function handleAppVersions(env: Env): Promise<Response> {
   const installations = await listInstallations(env.TELEMETRY_BUCKET);
   const versions: Record<string, number> = {};

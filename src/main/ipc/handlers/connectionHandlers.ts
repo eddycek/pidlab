@@ -164,7 +164,7 @@ export function registerConnectionHandlers(deps: HandlerDependencies): void {
       const logPath = logger.getLogFilePath();
       const { filePath } = await dialog.showSaveDialog(window, {
         title: 'Export Application Logs',
-        defaultPath: `pidlab-logs-${new Date().toISOString().slice(0, 10)}.log`,
+        defaultPath: `fpvpidlab-logs-${new Date().toISOString().slice(0, 10)}.log`,
         filters: [{ name: 'Log files', extensions: ['log', 'txt'] }],
       });
 

@@ -93,7 +93,7 @@ export async function handleCron(env: Env): Promise<void> {
 
   const date = new Date().toISOString().split('T')[0];
 
-  const report = `PIDlab Telemetry Report — ${date}
+  const report = `FPVPIDlab Telemetry Report — ${date}
 ${'═'.repeat(42)}
 New installations (24h):     ${newInstallations24h}
 Active users (24h):          ${active24h}
@@ -135,7 +135,7 @@ ${await getDiagnosticSummary(env)}`;
     body: JSON.stringify({
       from: env.REPORT_FROM_EMAIL,
       to: [env.REPORT_EMAIL],
-      subject: `PIDlab Telemetry Report — ${date}`,
+      subject: `FPVPIDlab Telemetry Report — ${date}`,
       text: report,
     }),
   });

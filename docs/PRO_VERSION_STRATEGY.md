@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-PIDlab uses an **open-core freemium model**: all tuning functionality is free, Pro unlocks multi-drone profiles and diagnostic reports. Revenue comes from two streams: **lifetime licenses ($35-$59)** and **annual subscriptions ($15-$19)**, with an optional **Premium tier ($39/year)** from year 2.
+FPVPIDlab uses an **open-core freemium model**: all tuning functionality is free, Pro unlocks multi-drone profiles and diagnostic reports. Revenue comes from two streams: **lifetime licenses ($35-$59)** and **annual subscriptions ($15-$19)**, with an optional **Premium tier ($39/year)** from year 2.
 
 **Key projections:**
 - Break-even: Month 1 (costs are negligible)
@@ -134,7 +134,7 @@ Stripe is the only cost that scales with revenue. At 2% blended rate:
 | Premium retention | 80% | 80% | 80% | 80% |
 | Active user retention | 60% | 60% | 60% | 60% |
 
-**Conversion rationale:** Desktop developer tools typically see 2-5% conversion. PIDlab targets a passionate niche (FPV pilots spend $1000+ on gear), so 3-6% is conservative.
+**Conversion rationale:** Desktop developer tools typically see 2-5% conversion. FPVPIDlab targets a passionate niche (FPV pilots spend $1000+ on gear), so 3-6% is conservative.
 
 ## 5. Revenue Model — 10-Year Projection
 
@@ -213,7 +213,7 @@ Stripe is the only cost that scales with revenue. At 2% blended rate:
 | 1.7 | Failed delivery retry cron (hourly) | 1 day | 1.5, 1.6 |
 | 1.8 | Pricing page on pidlab.app | 2 days | 1.2 |
 
-**Deliverable:** Users can buy PIDlab Pro ($35 lifetime or $15/year) and receive key via email.
+**Deliverable:** Users can buy FPVPIDlab Pro ($35 lifetime or $15/year) and receive key via email.
 
 ### Phase 2: Launch Marketing (Month 2-3)
 
@@ -389,4 +389,4 @@ Even the disaster scenario covers costs and provides meaningful side income.
 
 ---
 
-*This document is the single source of truth for PIDlab's monetization strategy. Update projections annually based on actual metrics.*
+*This document is the single source of truth for FPVPIDlab's monetization strategy. Update projections annually based on actual metrics.*

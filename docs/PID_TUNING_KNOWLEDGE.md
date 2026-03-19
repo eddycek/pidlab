@@ -2,10 +2,10 @@
 
 > Comprehensive FPV drone tuning reference. Sections 1-5 and 8-15 reflect **community consensus**
 > from Betaflight docs, Oscar Liang, Joshua Bardwell, Plasmatree PID-Analyzer, PIDtoolbox, UAV Tech,
-> and FPVSIM. Sections 6-7 document **PIDlab-specific decision rules** and where they differ from
+> and FPVSIM. Sections 6-7 document **FPVPIDlab-specific decision rules** and where they differ from
 > community defaults, with rationale.
 >
-> This document serves as the single source of truth. PIDlab's `constants.ts` should be validated
+> This document serves as the single source of truth. FPVPIDlab's `constants.ts` should be validated
 > against the values documented here — not the other way around.
 
 ---
@@ -177,7 +177,7 @@ From BF Tuning Guide and community consensus:
 - When `dterm_lpf1_dyn_min_hz > 0`, D-term LPF1 becomes dynamic
 - Cutoff frequency tracks throttle position: low throttle → min_hz, high throttle → max_hz
 - **Purpose**: At low throttle, motor noise is low-frequency — filter must track down. At high throttle, noise shifts up — filter can relax
-- **D-term dynamic lowpass**: D amplifies high-frequency noise (derivative operation). Dynamic D-term filtering reduces motor heating at high throttle while preserving stick feel at cruise. PIDlab recommends D-term dynamic lowpass alongside gyro when throttle-dependent noise is detected
+- **D-term dynamic lowpass**: D amplifies high-frequency noise (derivative operation). Dynamic D-term filtering reduces motor heating at high throttle while preserving stick feel at cruise. FPVPIDlab recommends D-term dynamic lowpass alongside gyro when throttle-dependent noise is detected
 - BF dynamic ranges: Low 83-500 Hz, Medium 110-660 Hz, High 166-900 Hz
 - Useful for quads without RPM filter (no bidirectional DSHOT)
 
@@ -394,26 +394,26 @@ Works from **any flight data** — no dedicated maneuvers needed. Pioneered by P
 
 ---
 
-## 6. PIDlab Decision Rules
+## 6. FPVPIDlab Decision Rules
 
-> **This section documents PIDlab-specific algorithms and thresholds.** Where PIDlab values differ
+> **This section documents FPVPIDlab-specific algorithms and thresholds.** Where FPVPIDlab values differ
 > from community defaults, the rationale is explained. These rules are implemented in
 > `src/main/analysis/` and thresholds live in `src/main/analysis/constants.ts`.
 
-### Noise Floor Scale (PIDlab-Specific)
+### Noise Floor Scale (FPVPIDlab-Specific)
 
-PIDlab uses its own dB scale based on raw FFT power spectral density, normalized per the analysis window. This is **not directly comparable** to BF Explorer or PIDtoolbox dB values — each tool normalizes differently.
+FPVPIDlab uses its own dB scale based on raw FFT power spectral density, normalized per the analysis window. This is **not directly comparable** to BF Explorer or PIDtoolbox dB values — each tool normalizes differently.
 
-| PIDlab dB | Internal Classification | Mapping Rationale |
+| FPVPIDlab dB | Internal Classification | Mapping Rationale |
 |-----------|----------------------|-------------------|
 | < -50 dB | Very clean | Minimal filtering needed |
 | -50 to -30 dB | Normal | Standard filtering |
 | -30 to -20 dB | Noisy | Lower cutoffs needed |
 | > -20 dB | Very noisy | Aggressive filtering, check hardware |
 
-PIDlab's noise-to-cutoff interpolation range: **-70 dB (cleanest) to -10 dB (noisiest)**. These are internal scale endpoints, not community-standard values.
+FPVPIDlab's noise-to-cutoff interpolation range: **-70 dB (cleanest) to -10 dB (noisiest)**. These are internal scale endpoints, not community-standard values.
 
-### Peak Detection (PIDlab-Specific)
+### Peak Detection (FPVPIDlab-Specific)
 
 - **Prominence threshold**: 6 dB above local noise floor (within ±50 frequency bins) — classifies a peak as "detected"
 - **Action threshold**: 12 dB above floor — triggers a filter recommendation
@@ -434,7 +434,7 @@ PIDlab's noise-to-cutoff interpolation range: **-70 dB (cleanest) to -10 dB (noi
   t = (noiseFloorDb - (-10)) / ((-70) - (-10))
   target = minHz + t × (maxHz - minHz)
   ```
-- **Safety bounds** (PIDlab-specific, tighter than BF firmware limits):
+- **Safety bounds** (FPVPIDlab-specific, tighter than BF firmware limits):
 
   | Parameter | Without RPM | With RPM | BF Guide Reference |
   |-----------|-------------|----------|-------------------|
@@ -487,7 +487,7 @@ Per-axis rules anchored to **flight PIDs from BBL header** (convergent design �
 - Severity scale: `severity = meanOvershoot / threshold`
 - D increase: severity > 4 → +15, severity > 2 → +10, else → +5
 - P reduction (only if severity > 2 OR D already near max): severity > 4 → -10, else → -5
-- *Rationale for proportional steps*: Community (Oscar Liang, Bardwell) recommends "adjust by 5" increments. PIDlab scales up for severe cases to avoid multi-round convergence.
+- *Rationale for proportional steps*: Community (Oscar Liang, Bardwell) recommends "adjust by 5" increments. FPVPIDlab scales up for severe cases to avoid multi-round convergence.
 
 **Rule 2: Moderate Overshoot** (between moderateOvershoot and overshootMax)
 - D increase by 5 only
@@ -516,15 +516,15 @@ Per-axis rules anchored to **flight PIDs from BBL header** (convergent design �
 ### PID Post-Processing Rules
 
 **Damping Ratio Validation** (roll/pitch only):
-- PIDlab enforces D/P ratio within **0.45-0.85**
-- *Comparison to community*: BF defaults are ~0.55-0.65, FPVSIM recommends 0.6 start. PIDlab's 0.45 lower bound is intentionally liberal — it's a safety floor, not a target. It allows slightly under-damped tunes for pilots who prefer snappy response. The 0.85 upper bound prevents excessive D-noise.
+- FPVPIDlab enforces D/P ratio within **0.45-0.85**
+- *Comparison to community*: BF defaults are ~0.55-0.65, FPVSIM recommends 0.6 start. FPVPIDlab's 0.45 lower bound is intentionally liberal — it's a safety floor, not a target. It allows slightly under-damped tunes for pilots who prefer snappy response. The 0.85 upper bound prevents excessive D-noise.
 - 3 correction rules:
   1. Under-damped (D/P < 0.45, no existing D rec): recommend D increase to P × 0.45
   2. Over-damped after D increase (D/P > 0.85, D rec exists, no P rec): recommend P increase to D / 0.85
   3. Over-damped with no recs (D/P > 0.85): recommend D decrease to P × 0.85
 - Deadzone: ≥3-point change required (prevents rounding noise)
 
-**D-Term Effectiveness Gating** (PIDlab-specific, 3 tiers):
+**D-Term Effectiveness Gating** (FPVPIDlab-specific, 3 tiers):
 1. D effectiveness > 0.7: boost D-increase confidence to 'high' — D is clearly helping
 2. D effectiveness 0.3-0.7: allow D increase, annotate noise cost warning
 3. D effectiveness < 0.3: redirect to "improve filters first", confidence → 'low'
@@ -545,13 +545,13 @@ Per-axis rules anchored to **flight PIDs from BBL header** (convergent design �
 - Used for P-too-high and P-too-low warnings — advisory-only, displayed as notes in UI
 - *Rationale*: These conditions may or may not be problems depending on the pilot's setup. Alerting without forcing action prevents unwanted changes while keeping the pilot informed.
 
-**D-Min/D-Max Awareness** (PIDlab-specific):
+**D-Min/D-Max Awareness** (FPVPIDlab-specific):
 - `extractDMinContext(rawHeaders)` reads `d_min_roll`, `d_min_pitch`, `d_min_yaw` from BBL headers
 - When D-min is active (d_min > 0), D recommendations annotate that the change targets d_max only
 - Advisory note: "D-min may also need adjustment for consistent feel"
-- *Rationale*: BF's D-min/D-max system means the configured D value is actually d_max. Pilots need to know that PIDlab adjusts d_max, and that d_min may need manual tweaking for consistent hover-to-maneuver feel.
+- *Rationale*: BF's D-min/D-max system means the configured D value is actually d_max. Pilots need to know that FPVPIDlab adjusts d_max, and that d_min may need manual tweaking for consistent hover-to-maneuver feel.
 
-**TPA Awareness** (PIDlab-specific):
+**TPA Awareness** (FPVPIDlab-specific):
 - `extractTPAContext(rawHeaders)` reads `tpa_rate` and `tpa_breakpoint` from BBL headers
 - When TPA is active (rate > 0), D *increase* recommendations are annotated with TPA context
 - Advisory note: explains that effective D is reduced at high throttle, so step responses from high-throttle maneuvers may show less damping than configured
@@ -604,9 +604,9 @@ Default bounds (used when drone size is unknown) match standard 5" values. When 
 | I max 100-120 | Micro quads rarely need I > 100. Standard quads: community rarely above 110. |
 | P typical | Size-specific P reference for informational warnings: "P too high" (triggers at 1.3×) and "P too low" (triggers at 0.7×) |
 
-### Flight Style Thresholds (PIDlab-Specific)
+### Flight Style Thresholds (FPVPIDlab-Specific)
 
-PIDlab adjusts all PID thresholds based on the pilot's declared flight style. These are PIDlab-specific values, not BF defaults:
+FPVPIDlab adjusts all PID thresholds based on the pilot's declared flight style. These are FPVPIDlab-specific values, not BF defaults:
 
 | Metric | Smooth | Balanced | Aggressive | Community Reference |
 |--------|--------|----------|-----------|-------------------|
@@ -623,7 +623,7 @@ PIDlab adjusts all PID thresholds based on the pilot's declared flight style. Th
 
 *Rationale*: **Balanced** maps to typical community targets (10% overshoot, 200ms settling). **Smooth** is for cinematic/long-range where stability trumps response. **Aggressive** is for racing where pilots accept more overshoot for faster rise times. Bandwidth thresholds reflect that aggressive pilots need higher bandwidth for locked-in feel.
 
-### Step Detection (PIDlab-Specific)
+### Step Detection (FPVPIDlab-Specific)
 
 - Derivative threshold: 500 deg/s/s
 - Minimum magnitude: 150 deg/s (raised from 100 to reduce false positives in turbulent data)
@@ -632,13 +632,13 @@ PIDlab adjusts all PID thresholds based on the pilot's declared flight style. Th
 - Adaptive window: 2× median settling time, clamped [150, 500] ms
 - Two-pass detection: first at 500ms window, then adaptive
 
-### Cross-Axis Coupling Detection (PIDlab-Specific)
+### Cross-Axis Coupling Detection (FPVPIDlab-Specific)
 
 - Pearson correlation (zero-lag) between step axis and non-step axes
 - Thresholds: < 0.15 = none, 0.15-0.40 = mild, ≥ 0.40 = significant
 - Identifies mechanical asymmetry, FC mounting angle, motor thrust differences
 
-### Prop Wash Detection (PIDlab-Specific)
+### Prop Wash Detection (FPVPIDlab-Specific)
 
 - Throttle-down detection: derivative < -0.3 (normalized) sustained ≥50 ms
 - Analysis window: 400 ms post-drop, FFT in 20-90 Hz band
@@ -647,7 +647,7 @@ PIDlab adjusts all PID thresholds based on the pilot's declared flight style. Th
 - Minimum 3 events for reliable analysis
 - Dominant frequency: grouped into 5 Hz buckets, most common = dominant
 
-### Group Delay Estimation (PIDlab-Specific)
+### Group Delay Estimation (FPVPIDlab-Specific)
 
 - Reference frequency: 80 Hz (typical control bandwidth)
 - Per-filter delay computation using analytical formulas (PT1, biquad, notch)
@@ -659,7 +659,7 @@ PIDlab adjusts all PID thresholds based on the pilot's declared flight style. Th
 
 ## 7. Data Quality & Flight Quality Scoring
 
-> **PIDlab-specific scoring system.** No direct community equivalent — most tools don't score data quality.
+> **FPVPIDlab-specific scoring system.** No direct community equivalent — most tools don't score data quality.
 
 ### Filter Data Quality (0-100)
 
@@ -991,7 +991,7 @@ Source: UAV Tech systematic methodology, BF Tuning Guide, Oscar Liang
 
 ## 13. BF Version-Specific Notes
 
-### BF 4.3 (Minimum Supported by PIDlab)
+### BF 4.3 (Minimum Supported by FPVPIDlab)
 
 - Removed biquad from gyro lowpass options (PT1/PT2/PT3 only)
 - Introduced slider system for simplified filter tuning
@@ -1019,7 +1019,7 @@ Source: UAV Tech systematic methodology, BF Tuning Guide, Oscar Liang
 
 | Tool | Purpose | Methodology |
 |------|---------|-------------|
-| **PIDlab** | Automated tuning (this app) | FFT + step response + Wiener deconvolution |
+| **FPVPIDlab** | Automated tuning (this app) | FFT + step response + Wiener deconvolution |
 | **Plasmatree PID-Analyzer** | Transfer function analysis | Wiener deconvolution, Bode plots |
 | **PIDtoolbox** | MATLAB-based BBL analysis | Step response, noise spectra, FFT |
 | **BF Blackbox Explorer** | Official log viewer | Time-domain traces, basic FFT |
@@ -1028,7 +1028,7 @@ Source: UAV Tech systematic methodology, BF Tuning Guide, Oscar Liang
 
 ### Methodology Sources
 
-- **Plasmatree PID-Analyzer**: Pioneer of frequency-domain PID analysis for FPV. PIDlab's transfer function analysis is inspired by this approach.
+- **Plasmatree PID-Analyzer**: Pioneer of frequency-domain PID analysis for FPV. FPVPIDlab's transfer function analysis is inspired by this approach.
 - **PIDtoolbox** (Brian White, Queen's University): Established step response metric methodology. Standard reference for overshoot/settling analysis.
 - **FPVSIM**: Multi-rotor dynamics simulator. Step response visualization for P/D balance.
 - **UAV Tech (Mark Spatz)**: Systematic PID tuning methodology (RPM filter first, then lowpass, then PIDs).

@@ -121,7 +121,7 @@ async function sendNewReportEmail(env: Env, meta: DiagnosticMetadata): Promise<v
   if (!env.RESEND_API_KEY || !env.REPORT_EMAIL || !env.REPORT_FROM_EMAIL) return;
 
   const p = meta.preview;
-  const subject = `[PIDlab] New diagnostic report — ${p.mode} ${p.droneSize ?? ''}`.trim();
+  const subject = `[FPVPIDlab] New diagnostic report — ${p.mode} ${p.droneSize ?? ''}`.trim();
   const text = `New Diagnostic Report
 ${'═'.repeat(40)}
 Report ID:      ${meta.reportId}
@@ -172,17 +172,17 @@ async function sendResolutionEmail(
       body: JSON.stringify({
         from: env.REPORT_FROM_EMAIL,
         to: [userEmail],
-        subject: 'Your PIDlab report has been resolved',
+        subject: 'Your FPVPIDlab report has been resolved',
         text: `Hi,
 
 Thanks for reporting the tuning issue. We've investigated and here's what we found:
 
 ${message}
 
-If you update PIDlab, this should work better on your next tuning session.
+If you update FPVPIDlab, this should work better on your next tuning session.
 Let us know if you have any other issues!
 
-— PIDlab Team`,
+— FPVPIDlab Team`,
       }),
     });
   } catch (err) {

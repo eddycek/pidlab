@@ -111,9 +111,9 @@ Auto-connects to a virtual FC, creates a demo profile, and generates realistic b
 ### Debug Logging
 
 Logs are in:
-- **macOS**: `~/Library/Logs/pidlab/`
-- **Windows**: `%USERPROFILE%\AppData\Roaming\pidlab\logs\`
-- **Linux**: `~/.config/pidlab/logs/`
+- **macOS**: `~/Library/Logs/fpvpidlab/`
+- **Windows**: `%USERPROFILE%\AppData\Roaming\fpvpidlab\logs\`
+- **Linux**: `~/.config/fpvpidlab/logs/`
 
 DevTools open automatically in dev mode, or press Cmd+Option+I / Ctrl+Shift+I.
 
