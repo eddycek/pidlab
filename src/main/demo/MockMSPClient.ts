@@ -788,7 +788,11 @@ export class MockMSPClient extends EventEmitter {
     this._rebootPending = false;
   }
 
-  async getStatusEx(): Promise<{ pidProfileIndex: number; pidProfileCount: number }> {
+  async getStatusEx(_apiVersion?: {
+    protocol: number;
+    major: number;
+    minor: number;
+  }): Promise<{ pidProfileIndex: number; pidProfileCount: number }> {
     return {
       pidProfileIndex: this._pidProfileIndex,
       pidProfileCount: this._pidProfileCount,
