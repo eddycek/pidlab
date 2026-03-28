@@ -19,7 +19,20 @@ export function useBlackboxInfo() {
 
     try {
       const blackboxInfo = await window.betaflight.getBlackboxInfo();
-      setInfo(blackboxInfo);
+      // Guard: flash chip temporarily unreadable after erase — keep previous storage type.
+      // Only for flash→none transition (SD card removal is a legitimate none).
+      setInfo((prev) => {
+        if (prev && prev.storageType === 'flash' && blackboxInfo.storageType === 'none') {
+          return {
+            ...prev,
+            usedSize: 0,
+            hasLogs: false,
+            freeSize: prev.totalSize,
+            usagePercent: 0,
+          };
+        }
+        return blackboxInfo;
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load Blackbox info';
       setError(message);
