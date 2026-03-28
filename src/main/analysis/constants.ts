@@ -362,3 +362,20 @@ export const PROPWASH_SEVERITY_SEVERE = 5.0;
 
 /** Minimum events needed for reliable analysis */
 export const PROPWASH_MIN_EVENTS = 3;
+
+// ---- I-term Relax Cutoff ----
+
+/** I-term relax cutoff ranges by flight style.
+ * Racing needs higher cutoff (less relax) for snappier response.
+ * Cinematic needs lower cutoff (more relax) for smoother recovery. */
+export const ITERM_RELAX_CUTOFF_BY_STYLE: Record<
+  FlightStyle,
+  { min: number; max: number; typical: number }
+> = {
+  smooth: { min: 5, max: 10, typical: 7 },
+  balanced: { min: 10, max: 15, typical: 12 },
+  aggressive: { min: 20, max: 30, typical: 25 },
+};
+
+/** Minimum deviation (%) from style-appropriate range to trigger recommendation */
+export const ITERM_RELAX_DEVIATION_THRESHOLD = 0.5; // 50%
