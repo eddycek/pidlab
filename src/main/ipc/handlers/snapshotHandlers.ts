@@ -9,7 +9,7 @@ import type { ConfigurationSnapshot, SnapshotMetadata } from '@shared/types/comm
 import { HandlerDependencies, createResponse } from './types';
 import { logger } from '../../utils/logger';
 import { getErrorMessage } from '../../utils/errors';
-import { validateCLIResponse } from '../../msp/cliUtils';
+import { validateCLIResponse, CLICommandError } from '../../msp/cliUtils';
 
 export function registerSnapshotHandlers(deps: HandlerDependencies): void {
   // SNAPSHOT_CREATE
@@ -186,8 +186,13 @@ export function registerSnapshotHandlers(deps: HandlerDependencies): void {
             const response = await deps.mspClient.connection.sendCLICommand(cmd);
             validateCLIResponse(cmd, response);
           } catch (cmdError) {
-            const msg = cmdError instanceof Error ? cmdError.message : String(cmdError);
-            logger.warn(`Restore: command failed (continuing): ${cmd} — ${msg}`);
+            // Only continue for CLI rejection errors (Invalid name, Allowed range, etc.)
+            // Rethrow transport/connection errors to abort the restore
+            if (!(cmdError instanceof CLICommandError)) {
+              throw cmdError;
+            }
+            const msg = cmdError.message;
+            logger.warn(`Restore: command rejected (continuing): ${cmd} — ${msg}`);
             failedCommands.push(cmd);
           }
         }

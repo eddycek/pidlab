@@ -325,7 +325,9 @@ async function initialize(): Promise<void> {
               try {
                 const mismatches: string[] = [];
 
-                // Verify PID changes
+                let allChecked = true;
+
+                // Verify PID changes (readable via MSP)
                 if (session.appliedPIDChanges && session.appliedPIDChanges.length > 0) {
                   const pidConfig = await mspClient.getPIDConfiguration();
                   const pidMap: Record<string, number> = {
@@ -341,7 +343,9 @@ async function initialize(): Promise<void> {
                   };
                   for (const change of session.appliedPIDChanges) {
                     const actual = pidMap[change.setting];
-                    if (actual !== undefined && actual !== change.newValue) {
+                    if (actual === undefined) {
+                      allChecked = false; // Can't verify this setting via MSP
+                    } else if (actual !== change.newValue) {
                       mismatches.push(
                         `${change.setting}: expected ${change.newValue}, got ${actual}`
                       );
@@ -349,7 +353,7 @@ async function initialize(): Promise<void> {
                   }
                 }
 
-                // Verify filter changes
+                // Verify filter changes (readable via MSP_FILTER_CONFIG)
                 if (session.appliedFilterChanges && session.appliedFilterChanges.length > 0) {
                   const filterConfig = await mspClient.getFilterConfiguration();
                   const filterMap: Record<string, number | undefined> = {
@@ -364,7 +368,9 @@ async function initialize(): Promise<void> {
                   };
                   for (const change of session.appliedFilterChanges) {
                     const actual = filterMap[change.setting];
-                    if (actual !== undefined && actual !== change.newValue) {
+                    if (actual === undefined) {
+                      allChecked = false; // CLI-only setting, can't verify via MSP
+                    } else if (actual !== change.newValue) {
                       mismatches.push(
                         `${change.setting}: expected ${change.newValue}, got ${actual}`
                       );
@@ -372,7 +378,8 @@ async function initialize(): Promise<void> {
                   }
                 }
 
-                const verified = mismatches.length === 0;
+                // Only mark verified=true if all changes were actually checked
+                const verified = mismatches.length === 0 && allChecked;
                 await tuningSessionManager.updatePhase(existingProfile.id, session.phase, {
                   applyVerified: verified,
                   applyMismatches: mismatches.length > 0 ? mismatches : undefined,
