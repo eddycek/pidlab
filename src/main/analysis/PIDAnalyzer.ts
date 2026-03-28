@@ -45,6 +45,10 @@ import {
   extractPidsumLimits,
   recommendPidsumLimits,
   recommendFFMaxRateLimit,
+  extractAntiGravityGain,
+  recommendAntiGravityGain,
+  extractThrustLinear,
+  recommendThrustLinear,
 } from './PIDRecommender';
 import type { TransferFunctionContext } from './PIDRecommender';
 import {
@@ -404,6 +408,23 @@ async function analyzePIDCore(params: CoreParams): Promise<PIDAnalysisResult> {
   const ffMaxRateLimitRec = recommendFFMaxRateLimit(ffMaxRateLimit, flightStyle);
   if (ffMaxRateLimitRec) {
     rawRecommendations.push(ffMaxRateLimitRec);
+  }
+
+  // Anti-gravity gain recommendation (weight + SSE based)
+  const antiGravityGain = rawHeaders ? extractAntiGravityGain(rawHeaders) : undefined;
+  const antiGravityRec = recommendAntiGravityGain(antiGravityGain, droneWeight, {
+    roll: profiles.roll.meanSteadyStateError,
+    pitch: profiles.pitch.meanSteadyStateError,
+  });
+  if (antiGravityRec) {
+    rawRecommendations.push(antiGravityRec);
+  }
+
+  // Thrust linearization recommendation (size-based advisory)
+  const thrustLinear = rawHeaders ? extractThrustLinear(rawHeaders) : undefined;
+  const thrustLinearRec = recommendThrustLinear(thrustLinear, droneSize);
+  if (thrustLinearRec) {
+    rawRecommendations.push(thrustLinearRec);
   }
 
   // Quality-adjusted confidence — no blanket cap, gating handles it
