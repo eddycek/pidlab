@@ -9,7 +9,7 @@ import type { ConfigurationSnapshot, SnapshotMetadata } from '@shared/types/comm
 import { HandlerDependencies, createResponse } from './types';
 import { logger } from '../../utils/logger';
 import { getErrorMessage } from '../../utils/errors';
-import { validateCLIResponse } from '../../msp/cliUtils';
+import { validateCLIResponse, CLICommandError } from '../../msp/cliUtils';
 
 export function registerSnapshotHandlers(deps: HandlerDependencies): void {
   // SNAPSHOT_CREATE
@@ -174,6 +174,7 @@ export function registerSnapshotHandlers(deps: HandlerDependencies): void {
         sendProgress({ stage: 'cli', message: 'Entering CLI mode...', percent: 25 });
         await deps.mspClient.connection.enterCLI();
 
+        const failedCommands: string[] = [];
         for (let i = 0; i < restorableCommands.length; i++) {
           const cmd = restorableCommands[i];
           sendProgress({
@@ -181,11 +182,26 @@ export function registerSnapshotHandlers(deps: HandlerDependencies): void {
             message: `Applying: ${cmd}`,
             percent: 25 + Math.round((i / restorableCommands.length) * 55),
           });
-          const response = await deps.mspClient.connection.sendCLICommand(cmd);
-          validateCLIResponse(cmd, response);
+          try {
+            const response = await deps.mspClient.connection.sendCLICommand(cmd);
+            validateCLIResponse(cmd, response);
+          } catch (cmdError) {
+            // Only continue for CLI rejection errors (Invalid name, Allowed range, etc.)
+            // Rethrow transport/connection errors to abort the restore
+            if (!(cmdError instanceof CLICommandError)) {
+              throw cmdError;
+            }
+            const msg = cmdError.message;
+            logger.warn(`Restore: command rejected (continuing): ${cmd} — ${msg}`);
+            failedCommands.push(cmd);
+          }
         }
 
-        logger.info(`Applied ${restorableCommands.length} CLI commands from snapshot`);
+        const applied = restorableCommands.length - failedCommands.length;
+        logger.info(
+          `Applied ${applied}/${restorableCommands.length} CLI commands from snapshot` +
+            (failedCommands.length > 0 ? ` (${failedCommands.length} failed)` : '')
+        );
 
         // Stage 3: Save and reboot
         sendProgress({ stage: 'save', message: 'Saving and rebooting FC...', percent: 90 });
@@ -196,11 +212,12 @@ export function registerSnapshotHandlers(deps: HandlerDependencies): void {
         const result: SnapshotRestoreResult = {
           success: true,
           backupSnapshotId,
-          appliedCommands: restorableCommands.length,
+          appliedCommands: applied,
+          failedCommands: failedCommands.length > 0 ? failedCommands : undefined,
           rebooted: true,
         };
 
-        logger.info(`Snapshot restored: ${restorableCommands.length} commands applied, rebooted`);
+        logger.info(`Snapshot restored: ${applied} commands applied, rebooted`);
         return createResponse<SnapshotRestoreResult>(result);
       } catch (error) {
         logger.error('Failed to restore snapshot:', error);

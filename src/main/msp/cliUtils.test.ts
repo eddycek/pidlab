@@ -87,6 +87,29 @@ describe('validateCLIResponse', () => {
     expect(() => validateCLIResponse('some command', response)).toThrow(CLICommandError);
   });
 
+  // ─── Allowed range ───────────────────────────────────────────────
+
+  it('throws CLICommandError for "Allowed range" response', () => {
+    const response =
+      'set horizon_limit_sticks = 0\r\nhorizon_limit_sticks: Allowed range: 10 - 200\r\n# ';
+    expect(() => validateCLIResponse('set horizon_limit_sticks = 0', response)).toThrow(
+      CLICommandError
+    );
+  });
+
+  it('includes "Allowed range" as matched pattern', () => {
+    const cmd = 'set horizon_limit_sticks = 0';
+    const response = `${cmd}\r\nhorizon_limit_sticks: Allowed range: 10 - 200\r\n# `;
+    try {
+      validateCLIResponse(cmd, response);
+      expect.fail('Should have thrown');
+    } catch (e) {
+      expect(e).toBeInstanceOf(CLICommandError);
+      const err = e as CLICommandError;
+      expect(err.matchedPattern).toBe('Allowed range');
+    }
+  });
+
   // ─── Edge cases ───────────────────────────────────────────────────
 
   it('does not false-positive on "error" in lowercase (BF uses uppercase ERROR)', () => {

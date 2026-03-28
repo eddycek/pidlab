@@ -1,5 +1,16 @@
 import type { DiffEntry } from '@shared/types/common.types';
 
+/**
+ * Detect corrupted config lines in a CLI diff.
+ * BF adds "###ERROR IN diff: CORRUPTED CONFIG:" markers when EEPROM values are invalid.
+ */
+export function detectCorruptedConfigLines(cliDiff: string): string[] {
+  if (!cliDiff) return [];
+  return cliDiff
+    .split(/\r?\n/)
+    .filter((line) => line.includes('###ERROR') && line.includes('CORRUPTED'));
+}
+
 const SKIP_PATTERNS = [
   /^#/,
   /^$/,
@@ -23,7 +34,7 @@ export function parseCLIDiff(cliDiff: string): Map<string, string> {
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
-    if (!line || SKIP_PATTERNS.some(p => p.test(line))) continue;
+    if (!line || SKIP_PATTERNS.some((p) => p.test(line))) continue;
 
     const setMatch = line.match(/^set\s+(\S+)\s*=\s*(.+)$/);
     if (setMatch) {
@@ -59,10 +70,7 @@ export function parseCLIDiff(cliDiff: string): Map<string, string> {
   return result;
 }
 
-export function computeDiff(
-  before: Map<string, string>,
-  after: Map<string, string>
-): DiffEntry[] {
+export function computeDiff(before: Map<string, string>, after: Map<string, string>): DiffEntry[] {
   const entries: DiffEntry[] = [];
 
   for (const [key, newValue] of after) {

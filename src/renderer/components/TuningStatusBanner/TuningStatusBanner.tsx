@@ -433,6 +433,14 @@ export function TuningStatusBanner({
             </span>
           </div>
         )}
+        {session.applyVerified === false && session.applyMismatches && (
+          <div className="tuning-bb-warning">
+            <span>
+              {session.applyMismatches.length} settings did not apply correctly. Consider restoring
+              from pre-tuning snapshot.
+            </span>
+          </div>
+        )}
         {showBBWarning && (
           <div className="tuning-bb-warning">
             <span>Blackbox settings need to be fixed before flying. Data may be unusable.</span>

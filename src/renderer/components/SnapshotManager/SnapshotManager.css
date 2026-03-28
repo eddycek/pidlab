@@ -150,6 +150,34 @@
   transition: width 0.3s ease;
 }
 
+.restore-warnings {
+  background-color: #3d2e00;
+  border: 1px solid #ff9900;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 16px 0;
+  color: #ffcc66;
+  font-size: 13px;
+}
+
+.restore-warnings strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #ff9900;
+}
+
+.restore-warnings ul {
+  margin: 0 0 8px 16px;
+  padding: 0;
+  list-style: disc;
+}
+
+.restore-warnings li {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
 /* Pagination Controls */
 .pagination-controls {
   display: flex;

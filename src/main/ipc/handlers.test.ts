@@ -1509,14 +1509,16 @@ describe('IPC Handlers', () => {
       expect(stages).toContain('save');
     });
 
-    it('returns error when CLI command is rejected during restore', async () => {
+    it('continues restore when CLI command is rejected, reports failed commands', async () => {
       mockMSP.connection.sendCLICommand.mockResolvedValue(
         'set bad_setting = 200\r\nInvalid name\r\n# '
       );
       const { event } = createMockEvent();
       const res = await invokeWithEvent(IPCChannel.SNAPSHOT_RESTORE, event, 'snap-1', false);
-      expect(res.success).toBe(false);
-      expect(res.error).toContain('CLI command rejected');
+      expect(res.success).toBe(true);
+      expect(res.data.appliedCommands).toBe(0);
+      expect(res.data.failedCommands).toBeDefined();
+      expect(res.data.failedCommands.length).toBeGreaterThan(0);
     });
   });
 
