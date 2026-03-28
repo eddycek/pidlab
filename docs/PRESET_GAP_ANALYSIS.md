@@ -35,7 +35,7 @@ For detailed community preset values, see `docs/PID_TUNING_KNOWLEDGE.md`:
 
 | Setting(s) | Category | Current Coverage | Gap Type | Priority |
 |------------|----------|-----------------|----------|----------|
-| `feedforward_averaging`, `ff_smooth_factor`, `ff_jitter_factor` | Feedforward | boost only, basic smooth/jitter | RC-link-aware profiles | HIGH |
+| `feedforward_averaging`, `feedforward_smooth_factor`, `feedforward_jitter_factor` | Feedforward | boost only, basic smooth/jitter | RC-link-aware profiles | HIGH |
 | `iterm_relax_cutoff` | PID | Not touched | Flight-style-aware recommendation | HIGH |
 | `anti_gravity_gain` | PID | Not touched | Size/weight-based advisory | MEDIUM |
 | `rpm_filter_q`, `rpm_filter_weights` | Filters | Read-only (detect active) | Size-based Q tuning | MEDIUM |
@@ -58,7 +58,7 @@ For detailed community preset values, see `docs/PID_TUNING_KNOWLEDGE.md`:
 - **What**: Recommend `feedforward_averaging`, `feedforward_smooth_factor`, `feedforward_jitter_factor` based on detected RC link rate. See KB Section 1 for the full RC link profile table.
 - **Detection**: RC link rate from BBL header (`rc_smoothing_input_hz` or `rcIntervalMs`). Already extracted via `extractRCLinkRate()`. Current `feedforward_averaging` from BBL header field.
 - **Logic**:
-  - Look up baseline FF profile from RC link rate bands (≤60, 61-150, 150-250, 250, 500 Hz)
+  - Look up baseline FF profile from RC link rate bands (≤60, 61-150, 151-249, 250-499, ≥500 Hz)
   - Compare current FC settings against baseline
   - Generate recommendations when significantly off-target (>30% deviation or wrong averaging mode)
   - Keep existing step-response-based analysis as refinement layer on top of baseline
@@ -79,18 +79,18 @@ For detailed community preset values, see `docs/PID_TUNING_KNOWLEDGE.md`:
 - **What**: Recommend `iterm_relax_cutoff` based on detected flight style and current value.
 - **Detection**: Flight style from user profile (`profile.flightStyle`: smooth/balanced/aggressive). Current `iterm_relax_cutoff` from BBL header. Profile flight style is more reliable than inferring from step response data.
 - **Logic**:
-  - Racing pattern (frequent high-magnitude steps, rapid direction changes): recommend 20-30
-  - Freestyle pattern (mixed magnitudes, moderate frequency): recommend 10-15 (BF default)
-  - Cinematic pattern (low-magnitude steps, smooth throttle): recommend 5-10
+  - If `profile.flightStyle` is aggressive (race): recommend 20-30
+  - If `profile.flightStyle` is balanced (freestyle): recommend 10-15 (BF default)
+  - If `profile.flightStyle` is smooth (cinematic): recommend 5-10
   - Only recommend if current value is >50% away from style-appropriate range
   - Rule ID: `P-IRELAX`, confidence: medium
 - **Files to modify**:
-  - `src/main/analysis/PIDRecommender.ts` — add iterm_relax rule using existing step data
+  - `src/main/analysis/PIDRecommender.ts` — add iterm_relax rule using profile flight style and BBL header value
   - `src/main/analysis/constants.ts` — add `ITERM_RELAX_CUTOFF_BY_STYLE` ranges
   - `src/shared/types/analysis.types.ts` — add `itermRelaxCutoff` to relevant context
   - Tests for modified files
 - **Effort**: Medium (1-2 days)
-- **Risk**: Low — informational advisory, relies on existing step detection data
+- **Risk**: Low — informational advisory, uses profile flight style as primary source
 
 ---
 

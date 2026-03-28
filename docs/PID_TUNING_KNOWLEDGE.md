@@ -97,13 +97,13 @@ FF parameters must match RC link packet rate. High-rate links (ELRS 250Hz+) need
 averaging to smooth discrete steps. Low-rate links (Crossfire 50Hz) must NOT average
 or latency is unacceptable.
 
-| RC Link Rate | ff_averaging | ff_smooth_factor | ff_jitter_factor | ff_boost |
+| RC Link Rate | feedforward_averaging | feedforward_smooth_factor | feedforward_jitter_factor | feedforward_boost |
 |-------------|-------------|-----------------|-----------------|----------|
 | ≤60 Hz (CRSF 50Hz) | OFF | 0 | 10 | 5 |
-| 61-150 Hz (CRSF 150Hz) | OFF | 30 | 7 | — (default) |
-| 150-250 Hz (CRSF Dynamic) | OFF | 15 | 10 | 10 |
-| 250 Hz (ELRS/Tracer) | 2_POINT | 35 | 4-5 | 18 |
-| 500 Hz (ELRS) | 2_POINT | 65 | 3-5 | 18 |
+| 61-149 Hz (CRSF 150Hz) | OFF | 30 | 7 | — (default) |
+| 150-249 Hz (CRSF Dynamic) | OFF | 15 | 10 | 10 |
+| 250-499 Hz (ELRS/Tracer) | 2_POINT | 35 | 4-5 | 18 |
+| ≥500 Hz (ELRS) | 2_POINT | 65 | 3-5 | 18 |
 
 Sources: SupaflyFPV 4.5 presets, UAV Tech radio options, Karate race presets.
 
