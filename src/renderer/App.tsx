@@ -347,6 +347,14 @@ function AppContent() {
           const previousType = tuning.session?.tuningType;
           const previousProfile = tuning.session?.bfPidProfileIndex;
           await tuning.startSession(previousType, previousProfile);
+          // Re-fetch BB info (may be stale from initial connection during CLI mode)
+          window.betaflight
+            .getBlackboxInfo()
+            .then((info) => {
+              setFlashUsedSize(info.usedSize);
+              setStorageType(info.storageType);
+            })
+            .catch(() => {});
         } catch (err) {
           toast.error(err instanceof Error ? err.message : 'Failed to start new cycle');
         }
@@ -783,6 +791,16 @@ function AppContent() {
             try {
               setErasedForPhase(null);
               await tuning.startSession(tuningType, bfPidProfileIndex);
+              // Re-fetch BB info — the initial fetch during onConnectionChanged may have
+              // returned stale data (getBlackboxInfo() during CLI mode returns usedSize=0).
+              // Session start runs AFTER baseline creation, so CLI mode has exited.
+              window.betaflight
+                .getBlackboxInfo()
+                .then((info) => {
+                  setFlashUsedSize(info.usedSize);
+                  setStorageType(info.storageType);
+                })
+                .catch(() => {});
             } catch (err) {
               toast.error(err instanceof Error ? err.message : 'Failed to start tuning session');
             }
