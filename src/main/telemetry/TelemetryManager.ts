@@ -180,20 +180,6 @@ export class TelemetryManager {
         bundle.fcInfo.bfVersions = [...versions];
         bundle.fcInfo.boardTargets = [...targets];
         bundle.fcInfo.fcSerialHashes = [...serialHashes];
-
-        // Collect unique rates types from tuning history
-        if (this.tuningHistoryManager) {
-          const ratesTypesSet = new Set<string>();
-          for (const meta of profiles) {
-            const history = await this.tuningHistoryManager.getHistory(meta.id);
-            for (const record of history) {
-              if (record.ratesConfig?.ratesType) {
-                ratesTypesSet.add(record.ratesConfig.ratesType);
-              }
-            }
-          }
-          bundle.fcInfo.ratesTypes = [...ratesTypesSet];
-        }
       } catch (err) {
         logger.warn('Telemetry: failed to collect profile data:', err);
       }
@@ -204,6 +190,7 @@ export class TelemetryManager {
       try {
         const profiles = await this.profileManager.listProfiles();
         const recentScores: number[] = [];
+        const ratesTypesSet = new Set<string>();
 
         for (const meta of profiles) {
           const history = await this.tuningHistoryManager.getHistory(meta.id);
@@ -217,11 +204,16 @@ export class TelemetryManager {
             if (record.qualityScore != null) {
               recentScores.push(record.qualityScore);
             }
+
+            if (record.ratesConfig?.ratesType) {
+              ratesTypesSet.add(record.ratesConfig.ratesType);
+            }
           }
         }
 
         // Keep last 10 scores (newest first — history is already newest-first from API)
         bundle.tuningSessions.recentQualityScores = recentScores.slice(0, 10);
+        bundle.fcInfo.ratesTypes = [...ratesTypesSet];
       } catch (err) {
         logger.warn('Telemetry: failed to collect tuning history:', err);
       }
@@ -463,23 +455,23 @@ export class TelemetryManager {
     if (record.ratesConfig) {
       const rc = record.ratesConfig;
       rates = {
-        type: rc.ratesType,
+        ratesType: rc.ratesType,
         roll: {
           rcRate: rc.roll.rcRate,
           rate: rc.roll.rate,
-          expo: rc.roll.rcExpo,
+          rcExpo: rc.roll.rcExpo,
           rateLimit: rc.roll.rateLimit,
         },
         pitch: {
           rcRate: rc.pitch.rcRate,
           rate: rc.pitch.rate,
-          expo: rc.pitch.rcExpo,
+          rcExpo: rc.pitch.rcExpo,
           rateLimit: rc.pitch.rateLimit,
         },
         yaw: {
           rcRate: rc.yaw.rcRate,
           rate: rc.yaw.rate,
-          expo: rc.yaw.rcExpo,
+          rcExpo: rc.yaw.rcExpo,
           rateLimit: rc.yaw.rateLimit,
         },
       };
