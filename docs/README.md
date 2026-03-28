@@ -14,7 +14,7 @@ Overview of all design documents in this directory. Completed documents are arch
 |----------|--------|-------------|
 | [TUNING_PRECISION_IMPROVEMENTS](./TUNING_PRECISION_IMPROVEMENTS.md) | **Active** | Research-based tuning accuracy improvements: ~~Wiener deconvolution~~ (done), ~~proportional PID scaling~~ (done), ~~data quality scoring~~ (done), ~~flight quality score~~ (done), ~~throttle spectrograms~~ (done), chirp analysis |
 | [UX_IMPROVEMENT_IDEAS](./UX_IMPROVEMENT_IDEAS.md) | **Active** | Backlog of UX improvement ideas (4/7 done, rest are future work) |
-| [PRESET_GAP_ANALYSIS](./PRESET_GAP_ANALYSIS.md) | **Proposed** | Gap analysis vs SupaflyFPV presets — RC link FF tuning, RPM Q, anti-gravity, D-max awareness |
+| [PRESET_GAP_ANALYSIS](./PRESET_GAP_ANALYSIS.md) | **Active** | Gap analysis vs community presets — RC link FF tuning, iterm_relax_cutoff, RPM Q, anti-gravity, D-max awareness (Tasks 1-2 complete) |
 | [PAYMENT_AND_INVOICING](./PAYMENT_AND_INVOICING.md) | **Proposed** | Stripe payment gateway + Trivi API invoicing. End-to-end purchase → invoice → license delivery flow |
 | [LICENSE_KEY_SYSTEM](./LICENSE_KEY_SYSTEM.md) | **Active** | Freemium licensing via CF Workers + D1. Ed25519 keys, offline grace period, admin API |
 | [CODE_SIGNING_AND_UPDATES](./CODE_SIGNING_AND_UPDATES.md) | **Active** | macOS/Windows code signing, electron-updater auto-update, GitHub Releases provider |
@@ -30,7 +30,7 @@ Overview of all design documents in this directory. Completed documents are arch
 | [FLASH_TUNE_RECOMMENDATION_PARITY](./complete/FLASH_TUNE_RECOMMENDATION_PARITY.md) | Unified PID pipeline, quality score parity, DC gain I-term rule, per-band TF analysis |
 | [FEEDFORWARD_AWARENESS](./complete/FEEDFORWARD_AWARENESS.md) | FF detection, FF-dominated overshoot classification, FF-aware PID recommendations, MSP read |
 | [FLIGHT_STYLE_PROFILES](./complete/FLIGHT_STYLE_PROFILES.md) | Smooth/Balanced/Aggressive flight style selector, style-based PID thresholds, preset defaults |
-| [OFFLINE_UX_TESTING](./complete/OFFLINE_UX_TESTING.md) | Demo mode (`--demo` flag) for offline UX testing. ~30 Playwright E2E tests |
+| [OFFLINE_UX_TESTING](./complete/OFFLINE_UX_TESTING.md) | Demo mode (`--demo` flag) for offline UX testing. ~37 Playwright E2E tests |
 | [PROPWASH_AND_DTERM_DIAGNOSTICS](./complete/PROPWASH_AND_DTERM_DIAGNOSTICS.md) | Prop wash detection + D-term effectiveness analysis with recommendation integration |
 | [PROJECT_QUALITY_REPORT_2026-02-14](./complete/PROJECT_QUALITY_REPORT_2026-02-14.md) | Point-in-time quality assessment (Feb 14, 2026) |
 | [QUICK_TUNE_WIENER_DECONVOLUTION](./complete/QUICK_TUNE_WIENER_DECONVOLUTION.md) | Single-flight Flash Tune mode via Wiener deconvolution: transfer function estimation, Bode plots. (Historical: originally described dual-mode Deep Tune vs Flash Tune; Deep Tune later replaced by separate Filter Tune + PID Tune modes) |

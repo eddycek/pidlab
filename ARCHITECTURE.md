@@ -1,6 +1,6 @@
 # Architecture Overview
 
-**Last Updated:** March 16, 2026 | **Phase 4 Complete, Phase 6 Complete** | **2612 unit tests, 132 files + 30 Playwright E2E tests**
+**Last Updated:** March 28, 2026 | **Phase 4 Complete, Phase 6 Complete** | **2684 unit tests, 134 files + 37 Playwright E2E tests**
 
 ---
 
@@ -838,7 +838,7 @@ Hardware error (FC timeout, USB disconnect)
 
 ## Testing Strategy
 
-**2631 unit tests across 134 files + 30 Playwright E2E tests**. See [TESTING.md](./TESTING.md) for complete inventory.
+**2684 unit tests across 134 files + 37 Playwright E2E tests**. See [TESTING.md](./TESTING.md) for complete inventory.
 
 | Area | Files | Tests |
 |------|-------|-------|
@@ -859,8 +859,8 @@ Hardware error (FC timeout, USB disconnect)
 | Shared Constants & Utils | 5 | 98 |
 | E2E Workflows (Vitest) | 1 | 20 |
 | Demo Mode (Vitest) | 2 | 79 |
-| **Playwright E2E** | **6** | **30** |
+| **Playwright E2E** | **7** | **37** |
 
 **Pre-commit hook** (husky + lint-staged) blocks commits when tests fail. All async UI tests use `waitFor()`. Mock layer: `src/renderer/test/setup.ts` mocks entire `window.betaflight` API.
 
-**Playwright E2E** (demo mode): Launches real Electron app with mock FC, clicks through full tuning workflow (Filter Tune, PID Tune, and Flash Tune). Run via `npm run test:e2e` (25 tests) or `npm run demo:generate-history` (generators, session count via `GENERATE_COUNT` env var). 30 tests across 6 spec files. See `e2e/` directory and [docs/OFFLINE_UX_TESTING.md](./docs/OFFLINE_UX_TESTING.md).
+**Playwright E2E** (demo mode): Launches real Electron app with mock FC, clicks through full tuning workflow (Filter Tune, PID Tune, Flash Tune, and diagnostic reports). Run via `npm run test:e2e` (25 tests) or `npm run demo:generate-history` (generators, session count via `GENERATE_COUNT` env var). 37 tests across 7 spec files. See `e2e/` directory and [docs/OFFLINE_UX_TESTING.md](./docs/OFFLINE_UX_TESTING.md).

@@ -167,7 +167,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 
 ## Test Inventory
 
-**Total: 2631 unit tests across 134 files + 30 Playwright E2E tests across 6 spec files** (last verified: March 16, 2026)
+**Total: 2684 unit tests across 134 files + 37 Playwright E2E tests across 7 spec files** (last verified: March 28, 2026)
 
 ### UI Components
 
@@ -353,7 +353,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 |------|-------|-------------|
 | `analysis/StepDetector.test.ts` | 16 | Derivative-based step detection, hold/cooldown |
 | `analysis/StepMetrics.test.ts` | 53 | Rise time, overshoot, settling, latency, ringing, FF contribution classification, trackingErrorRMS computation and aggregation, adaptive window, FF energy ratio |
-| `analysis/PIDRecommender.test.ts` | 114 | Flight PID anchoring, convergence, safety bounds, FF context, FF-aware recommendations, flight style thresholds, proportional severity scaling, TF-based recommendations, damping ratio, I-term, D-term effectiveness gating, prop wash integration, Rule TF-4 DC gain I-term, quad-size-aware bounds, severity-scaled sluggish P, P-too-high warning, P-too-low warning, informational flag, FF boost step 3, D-min/TPA advisory, structured ruleId on all recommendations |
+| `analysis/PIDRecommender.test.ts` | 128 | Flight PID anchoring, convergence, safety bounds, FF context, FF-aware recommendations, flight style thresholds, proportional severity scaling, TF-based recommendations, damping ratio, I-term, D-term effectiveness gating, prop wash integration, Rule TF-4 DC gain I-term, quad-size-aware bounds, severity-scaled sluggish P, P-too-high warning, P-too-low warning, informational flag, FF boost step 3, D-min/TPA advisory, structured ruleId on all recommendations, iterm_relax_cutoff |
 | `analysis/PIDAnalyzer.test.ts` | 28 | End-to-end pipeline, progress reporting, FF context wiring, flight style propagation, data quality scoring, cross-axis, propwash integration |
 | `analysis/CrossAxisDetector.test.ts` | 20 | Cross-axis coupling detection, axis interaction analysis |
 | `analysis/PropWashDetector.test.ts` | 15 | Propwash detection, wash-out frequency analysis |
@@ -362,7 +362,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 | `analysis/MechanicalHealthChecker.test.ts` | 13 | Mechanical health diagnostic, extreme noise detection, axis asymmetry, motor imbalance, combined issues, threshold edge cases |
 | `analysis/DynamicLowpassRecommender.test.ts` | 18 | Dynamic lowpass analysis, throttle-noise correlation, recommendation generation (gyro + D-term), threshold validation, structured ruleId |
 | `analysis/SliderMapper.test.ts` | 16 | Slider-aligned PID mapping, master multiplier, PD ratio, buildRecommendedPIDs, slider delta computation |
-| `analysis/FeedforwardAnalyzer.test.ts` | 24 | Extended FF analysis, leading-edge overshoot detection, small-step jitter analysis, RC link rate extraction, smooth/jitter factor recommendations |
+| `analysis/FeedforwardAnalyzer.test.ts` | 59 | Extended FF analysis, leading-edge overshoot detection, small-step jitter analysis, RC link rate extraction, smooth/jitter factor recommendations, RC link profile lookup, baseline comparison, merge logic |
 | `analysis/BayesianPIDOptimizer.test.ts` | 31 | Gaussian Process surrogate, Expected Improvement, Latin Hypercube Sampling, bounds |
 | `analysis/TransferFunctionEstimator.test.ts` | 23 | Wiener deconvolution, frequency response estimation, Bode plot data, PID recommendations from transfer function, DC gain extraction |
 | `analysis/ThrottleTFAnalyzer.test.ts` | 8 | Per-band TF analysis, throttle binning, variance computation, TPA warning, band boundaries |
@@ -372,7 +372,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 
 | File | Tests | Description |
 |------|-------|-------------|
-| `analysis/constants.test.ts` | 7 | PID style threshold validation, ordering constraints, balanced-matches-existing |
+| `analysis/constants.test.ts` | 11 | PID style threshold validation, ordering constraints, balanced-matches-existing, iterm relax ranges, RC link profiles |
 
 ### Shared Constants & Types
 
@@ -408,6 +408,7 @@ End-to-end tests that launch the real Electron app in demo mode and walk through
 | `e2e/demo-pid-tune-cycle.spec.ts` | 7 | Full PID Tune cycle: start → modal → erase → download → PID wizard → apply → erase & verify → download → analyze verification → complete → dismiss → check history |
 | `e2e/demo-quick-tune-cycle.spec.ts` | 7 | Full Flash Tune cycle: start → modal (Flash) → erase → download → flash wizard (auto-analysis) → apply all → erase & verify → download → analyze verification → complete → dismiss → check history |
 | `e2e/demo-generate-history.spec.ts` | 4 | Generates completed tuning sessions in 4 modes: mixed, filter-only, pid-only, flash-only. Session count configurable via `GENERATE_COUNT` env var (default 5). Excluded from normal `test:e2e` runs, run via `npm run demo:generate-history` |
+| `e2e/demo-diagnostic-report.spec.ts` | 7 | Diagnostic Report flow: complete filter tune → report issue from completion summary → submit to dev worker → dismiss → report from history (excluded from normal `test:e2e` runs, run via `npm run test:e2e:diagnostic`) |
 | `e2e/demo-generate-stress.spec.ts` | 1 | Generates stress-test tuning sessions with edge-case scenarios (excluded from normal `test:e2e` runs, run via `npm run demo:generate-history:stress`) |
 
 **E2E infrastructure:**

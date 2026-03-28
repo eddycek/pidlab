@@ -334,7 +334,7 @@ Automated Playwright E2E tests that launch the real Electron app in demo mode (m
 - 7 Flash Tune cycle tests: Flash Tune cycle with parallel analysis, apply all, erase & verify, download, analyze verification, complete, dismiss, history check
 - 5-cycle history generator: `npm run demo:generate-history` for populating tuning history with progressive quality scores
 - `advancePastVerification()` fix: keeps mock FC flight type cycle in sync when verification is skipped across multiple cycles
-- Total: 30 Playwright E2E tests across 6 spec files (25 in normal runs + generators/stress)
+- Total: 37 Playwright E2E tests across 7 spec files (25 in normal runs + generators/stress/diagnostic)
 
 #### 7b: Real FC E2E :x:
 Automated end-to-end tests running in CI pipeline against a real FC connected to a dedicated machine.
@@ -357,7 +357,7 @@ Automated end-to-end tests running in CI pipeline against a real FC connected to
 
 ## Progress Summary
 
-**Last Updated:** March 16, 2026 | **Tests:** 2631 unit tests across 134 files + ~30 Playwright E2E tests | **PRs Merged:** #1–#299
+**Last Updated:** March 28, 2026 | **Tests:** 2684 unit tests across 134 files + ~37 Playwright E2E tests | **PRs Merged:** #1–#316
 
 | Phase | Status | Notes |
 |-------|--------|-------|
@@ -368,7 +368,7 @@ Automated end-to-end tests running in CI pipeline against a real FC connected to
 | Phase 4: Tuning Workflow | **100%** :white_check_mark: | Session state machine (Filter Tune + PID Tune + Flash Tune), smart reconnect, status banner, mode-aware verification, tuning history |
 | Phase 5: Manual Testing & UX Polish | **0%** :x: | Next up |
 | Phase 6: CI/CD & Releases | **100%** :white_check_mark: | CI pipeline, cross-platform releases, ESLint/Prettier, ErrorBoundary, handler split, data quality, flight quality score, telemetry |
-| Phase 7a: Demo E2E (Playwright) | **100%** :white_check_mark: | ~30 Playwright tests (demo mode, Filter Tune + PID Tune + Flash Tune + generators) |
+| Phase 7a: Demo E2E (Playwright) | **100%** :white_check_mark: | ~37 Playwright tests (demo mode, Filter Tune + PID Tune + Flash Tune + diagnostic reports + generators) |
 | Phase 7b: Real FC E2E | **0%** :x: | After Phase 5 |
 
 ### Remaining Spec Items (deferred to future iterations)

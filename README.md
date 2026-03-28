@@ -292,9 +292,9 @@ npm run rebuild                      # Rebuild native modules (serialport)
 
 All UI changes must include tests. Tests automatically run before commits. Coverage thresholds enforced: 80% lines/functions/statements, 75% branches.
 
-**Unit tests:** 2631 tests across 134 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation, telemetry, diagnostic, license, auto-updater.
+**Unit tests:** 2684 tests across 134 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation, telemetry, diagnostic, license, auto-updater.
 
-**Playwright E2E:** 30 tests across 6 spec files — launches real Electron app in demo mode, walks through complete tuning cycles (Filter Tune, PID Tune, Flash Tune, and stress-test edge cases).
+**Playwright E2E:** 37 tests across 7 spec files — launches real Electron app in demo mode, walks through complete tuning cycles (Filter Tune, PID Tune, Flash Tune, diagnostic reports, and stress-test edge cases).
 
 See [TESTING.md](./TESTING.md) for complete testing guidelines, test inventory, and best practices.
 
@@ -944,7 +944,7 @@ The autotuning rules and thresholds are based on established FPV community pract
 - **Phase 4**: ✅ Stateful tuning workflow (Filter Tune, PID Tune, Flash Tune) with smart reconnect, verification, tuning history
 - **Phase 5**: ⬜ Complete manual testing & UX polish (real hardware validation)
 - **Phase 6**: ✅ CI/CD & cross-platform releases (macOS/Windows/Linux installers)
-- **Phase 7a**: ✅ Playwright E2E tests (demo mode, 30 tests across 6 spec files)
+- **Phase 7a**: ✅ Playwright E2E tests (demo mode, 37 tests across 7 spec files)
 - **Phase 7b**: ⬜ E2E tests on real FC in CI pipeline
 
 See [SPEC.md](./SPEC.md) for detailed requirements and phase tracking.
