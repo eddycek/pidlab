@@ -15,6 +15,7 @@ const CLI_ERROR_SUBSTRINGS = [
   'Invalid value',
   'Unknown command',
   'Parse error',
+  'Allowed range',
 ] as const;
 
 /**

@@ -957,4 +957,72 @@ describe('SnapshotManager', () => {
       });
     });
   });
+
+  // ─── Restore warnings ─────────────────────────────────────────────
+
+  it('displays restore warnings when some commands failed', async () => {
+    vi.mocked(window.betaflight.restoreSnapshot).mockResolvedValue({
+      success: true,
+      appliedCommands: 8,
+      failedCommands: ['set horizon_limit_sticks = 0', 'set bad_setting = 999'],
+      rebooted: true,
+    } as SnapshotRestoreResult);
+
+    const user = userEvent.setup();
+    render(<SnapshotManager />);
+
+    await waitFor(() => {
+      expect(screen.getByText('After PID tune')).toBeInTheDocument();
+    });
+
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    await user.click(restoreButtons[0]);
+
+    const dialog = screen
+      .getByRole('heading', { name: 'Restore Snapshot' })
+      .closest('.create-dialog')!;
+    const confirmButton = within(dialog as HTMLElement).getByRole('button', { name: /^restore$/i });
+    await user.click(confirmButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/2 settings failed to restore/)).toBeInTheDocument();
+      expect(screen.getByText('set horizon_limit_sticks = 0')).toBeInTheDocument();
+      expect(screen.getByText('set bad_setting = 999')).toBeInTheDocument();
+    });
+  });
+
+  it('dismisses restore warnings when dismiss button clicked', async () => {
+    vi.mocked(window.betaflight.restoreSnapshot).mockResolvedValue({
+      success: true,
+      appliedCommands: 8,
+      failedCommands: ['set bad_setting = 0'],
+      rebooted: true,
+    } as SnapshotRestoreResult);
+
+    const user = userEvent.setup();
+    render(<SnapshotManager />);
+
+    await waitFor(() => {
+      expect(screen.getByText('After PID tune')).toBeInTheDocument();
+    });
+
+    const restoreButtons = screen.getAllByRole('button', { name: /^restore$/i });
+    await user.click(restoreButtons[0]);
+
+    const dialog = screen
+      .getByRole('heading', { name: 'Restore Snapshot' })
+      .closest('.create-dialog')!;
+    const confirmButton = within(dialog as HTMLElement).getByRole('button', { name: /^restore$/i });
+    await user.click(confirmButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /dismiss/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+  });
 });

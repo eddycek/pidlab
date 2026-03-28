@@ -313,6 +313,83 @@ async function initialize(): Promise<void> {
               }
             }
 
+            // Post-apply read-back verification: check PID/filter values match what was applied
+            const isAppliedOrVerification =
+              session.phase === TUNING_PHASE.FILTER_APPLIED ||
+              session.phase === TUNING_PHASE.PID_APPLIED ||
+              session.phase === TUNING_PHASE.FLASH_APPLIED ||
+              session.phase === TUNING_PHASE.FILTER_VERIFICATION_PENDING ||
+              session.phase === TUNING_PHASE.PID_VERIFICATION_PENDING ||
+              session.phase === TUNING_PHASE.FLASH_VERIFICATION_PENDING;
+            if (isAppliedOrVerification && session.applyVerified === undefined) {
+              try {
+                const mismatches: string[] = [];
+
+                // Verify PID changes
+                if (session.appliedPIDChanges && session.appliedPIDChanges.length > 0) {
+                  const pidConfig = await mspClient.getPIDConfiguration();
+                  const pidMap: Record<string, number> = {
+                    pid_roll_p: pidConfig.roll.P,
+                    pid_roll_i: pidConfig.roll.I,
+                    pid_roll_d: pidConfig.roll.D,
+                    pid_pitch_p: pidConfig.pitch.P,
+                    pid_pitch_i: pidConfig.pitch.I,
+                    pid_pitch_d: pidConfig.pitch.D,
+                    pid_yaw_p: pidConfig.yaw.P,
+                    pid_yaw_i: pidConfig.yaw.I,
+                    pid_yaw_d: pidConfig.yaw.D,
+                  };
+                  for (const change of session.appliedPIDChanges) {
+                    const actual = pidMap[change.setting];
+                    if (actual !== undefined && actual !== change.newValue) {
+                      mismatches.push(
+                        `${change.setting}: expected ${change.newValue}, got ${actual}`
+                      );
+                    }
+                  }
+                }
+
+                // Verify filter changes
+                if (session.appliedFilterChanges && session.appliedFilterChanges.length > 0) {
+                  const filterConfig = await mspClient.getFilterConfiguration();
+                  const filterMap: Record<string, number | undefined> = {
+                    gyro_lpf1_static_hz: filterConfig.gyro_lpf1_static_hz,
+                    gyro_lpf2_static_hz: filterConfig.gyro_lpf2_static_hz,
+                    dterm_lpf1_static_hz: filterConfig.dterm_lpf1_static_hz,
+                    dterm_lpf2_static_hz: filterConfig.dterm_lpf2_static_hz,
+                    dyn_notch_min_hz: filterConfig.dyn_notch_min_hz,
+                    dyn_notch_max_hz: filterConfig.dyn_notch_max_hz,
+                    dyn_notch_q: filterConfig.dyn_notch_q,
+                    dyn_notch_count: filterConfig.dyn_notch_count,
+                  };
+                  for (const change of session.appliedFilterChanges) {
+                    const actual = filterMap[change.setting];
+                    if (actual !== undefined && actual !== change.newValue) {
+                      mismatches.push(
+                        `${change.setting}: expected ${change.newValue}, got ${actual}`
+                      );
+                    }
+                  }
+                }
+
+                const verified = mismatches.length === 0;
+                await tuningSessionManager.updatePhase(existingProfile.id, session.phase, {
+                  applyVerified: verified,
+                  applyMismatches: mismatches.length > 0 ? mismatches : undefined,
+                });
+                if (verified) {
+                  logger.info('Post-apply verification: all settings match FC');
+                } else {
+                  logger.warn(
+                    `Post-apply verification: ${mismatches.length} mismatches`,
+                    mismatches
+                  );
+                }
+              } catch (verifyErr) {
+                logger.warn('Post-apply verification failed (non-fatal):', verifyErr);
+              }
+            }
+
             // Post-tuning snapshot is now created during apply (before save & reboot)
             // to avoid race conditions with UI phase transitions.
           }

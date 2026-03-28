@@ -74,7 +74,13 @@ export function useSnapshots() {
       setError(null);
       try {
         const result = await window.betaflight.restoreSnapshot(id, createBackup);
-        toast.success(`Snapshot restored (${result.appliedCommands} settings applied)`);
+        if (result.failedCommands && result.failedCommands.length > 0) {
+          toast.warning(
+            `Snapshot restored with warnings: ${result.failedCommands.length} settings failed to apply`
+          );
+        } else {
+          toast.success(`Snapshot restored (${result.appliedCommands} settings applied)`);
+        }
         await loadSnapshots(); // Refresh list (backup snapshot may have been created)
         return result;
       } catch (err: any) {

@@ -49,6 +49,7 @@ export function SnapshotManager() {
     after: ConfigurationSnapshot;
   } | null>(null);
   const [loadingDiff, setLoadingDiff] = useState(false);
+  const [restoreWarnings, setRestoreWarnings] = useState<string[] | null>(null);
   const [snapshotsPage, setSnapshotsPage] = useState(persistedSnapshotsPage);
 
   // Keep module-level var in sync for persistence across unmounts
@@ -115,10 +116,14 @@ export function SnapshotManager() {
     if (!restoreConfirmId) return;
     setRestoring(true);
     setRestoreProgress(null);
+    setRestoreWarnings(null);
     const id = restoreConfirmId;
     setRestoreConfirmId(null);
     try {
-      await restoreSnapshot(id, restoreBackup);
+      const result = await restoreSnapshot(id, restoreBackup);
+      if (result?.failedCommands && result.failedCommands.length > 0) {
+        setRestoreWarnings(result.failedCommands);
+      }
     } finally {
       setRestoring(false);
       setRestoreProgress(null);
@@ -276,6 +281,20 @@ export function SnapshotManager() {
               style={{ width: `${restoreProgress.percent}%` }}
             />
           </div>
+        </div>
+      )}
+
+      {restoreWarnings && restoreWarnings.length > 0 && (
+        <div className="restore-warnings" role="alert">
+          <strong>{restoreWarnings.length} settings failed to restore:</strong>
+          <ul>
+            {restoreWarnings.map((cmd, i) => (
+              <li key={i}>{cmd}</li>
+            ))}
+          </ul>
+          <button className="secondary" onClick={() => setRestoreWarnings(null)}>
+            Dismiss
+          </button>
         </div>
       )}
 

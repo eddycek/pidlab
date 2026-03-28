@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { parseCLIDiff, computeDiff, groupDiffByCommand } from './snapshotDiffUtils';
+import {
+  parseCLIDiff,
+  computeDiff,
+  groupDiffByCommand,
+  detectCorruptedConfigLines,
+} from './snapshotDiffUtils';
 
 describe('parseCLIDiff', () => {
   it('parses set commands', () => {
@@ -53,7 +58,9 @@ describe('parseCLIDiff', () => {
   });
 
   it('handles \\r\\n line endings', () => {
-    const result = parseCLIDiff('set gyro_lpf1_static_hz = 150\r\nset dterm_lpf1_static_hz = 100\r\n');
+    const result = parseCLIDiff(
+      'set gyro_lpf1_static_hz = 150\r\nset dterm_lpf1_static_hz = 100\r\n'
+    );
     expect(result.size).toBe(2);
     expect(result.get('set gyro_lpf1_static_hz')).toBe('150');
   });
@@ -97,9 +104,7 @@ describe('computeDiff', () => {
     const after = new Map([['set gyro_lpf1_static_hz', '150']]);
     const diff = computeDiff(before, after);
 
-    expect(diff).toEqual([
-      { key: 'set gyro_lpf1_static_hz', newValue: '150', status: 'added' },
-    ]);
+    expect(diff).toEqual([{ key: 'set gyro_lpf1_static_hz', newValue: '150', status: 'added' }]);
   });
 
   it('detects removed entries (reverted to default)', () => {
@@ -107,9 +112,7 @@ describe('computeDiff', () => {
     const after = new Map<string, string>();
     const diff = computeDiff(before, after);
 
-    expect(diff).toEqual([
-      { key: 'set gyro_lpf1_static_hz', oldValue: '150', status: 'removed' },
-    ]);
+    expect(diff).toEqual([{ key: 'set gyro_lpf1_static_hz', oldValue: '150', status: 'removed' }]);
   });
 
   it('detects changed entries', () => {
@@ -148,10 +151,10 @@ describe('computeDiff', () => {
     const diff = computeDiff(before, after);
 
     expect(diff).toHaveLength(3);
-    expect(diff.find(d => d.key === 'set dterm_lpf1_static_hz')?.status).toBe('changed');
-    expect(diff.find(d => d.key === 'feature TELEMETRY')?.status).toBe('added');
+    expect(diff.find((d) => d.key === 'set dterm_lpf1_static_hz')?.status).toBe('changed');
+    expect(diff.find((d) => d.key === 'feature TELEMETRY')?.status).toBe('added');
     // feature GPS disappeared from diff → reverted to default, shown as 'removed'
-    const gpsEntry = diff.find(d => d.key === 'feature GPS');
+    const gpsEntry = diff.find((d) => d.key === 'feature GPS');
     expect(gpsEntry?.status).toBe('removed');
     expect(gpsEntry?.oldValue).toBe('(enabled)');
   });
@@ -164,7 +167,7 @@ describe('computeDiff', () => {
       ['set m_value', '3'],
     ]);
     const diff = computeDiff(before, after);
-    expect(diff.map(d => d.key)).toEqual(['set a_value', 'set m_value', 'set z_value']);
+    expect(diff.map((d) => d.key)).toEqual(['set a_value', 'set m_value', 'set z_value']);
   });
 });
 
@@ -212,5 +215,44 @@ describe('groupDiffByCommand', () => {
     expect(groups.has('feature')).toBe(true);
     expect(groups.has('serial')).toBe(true);
     expect(groups.has('set')).toBe(true);
+  });
+});
+
+describe('detectCorruptedConfigLines', () => {
+  it('detects CORRUPTED CONFIG markers', () => {
+    const cliDiff = [
+      '# Betaflight / MATEKF405',
+      'set gyro_lpf1_static_hz = 150',
+      '###ERROR IN diff: CORRUPTED CONFIG: horizon_limit_sticks = 0 (Allowed range: 10 - 200)',
+      'set dterm_lpf1_static_hz = 100',
+    ].join('\n');
+    const lines = detectCorruptedConfigLines(cliDiff);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('horizon_limit_sticks');
+  });
+
+  it('returns empty array for clean diff', () => {
+    const cliDiff = 'set gyro_lpf1_static_hz = 150\nset dterm_lpf1_static_hz = 100';
+    expect(detectCorruptedConfigLines(cliDiff)).toEqual([]);
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(detectCorruptedConfigLines('')).toEqual([]);
+  });
+
+  it('detects multiple corrupted lines', () => {
+    const cliDiff = [
+      '###ERROR IN diff: CORRUPTED CONFIG: setting_a = 0',
+      'set ok_setting = 100',
+      '###ERROR IN diff: CORRUPTED CONFIG: setting_b = 999',
+    ].join('\n');
+    const lines = detectCorruptedConfigLines(cliDiff);
+    expect(lines).toHaveLength(2);
+  });
+
+  it('handles CRLF line endings', () => {
+    const cliDiff = 'set ok = 1\r\n###ERROR IN diff: CORRUPTED CONFIG: bad = 0\r\n';
+    const lines = detectCorruptedConfigLines(cliDiff);
+    expect(lines).toHaveLength(1);
   });
 });

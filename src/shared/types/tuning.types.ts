@@ -138,6 +138,12 @@ export interface TuningSession {
   /** Per-recommendation metadata for telemetry tracking */
   recommendationTraces?: RecommendationTrace[];
 
+  /** Whether applied settings were verified on FC after reconnect */
+  applyVerified?: boolean;
+
+  /** Settings that didn't match after read-back verification */
+  applyMismatches?: string[];
+
   /** RC rates configuration at time of tuning (for telemetry) */
   ratesConfig?: RatesConfiguration;
 }

@@ -50,6 +50,7 @@ export interface SnapshotRestoreResult {
   success: boolean;
   backupSnapshotId?: string;
   appliedCommands: number;
+  failedCommands?: string[];
   rebooted: boolean;
 }
 

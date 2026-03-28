@@ -1,6 +1,11 @@
 import React from 'react';
 import type { ConfigurationSnapshot } from '@shared/types/common.types';
-import { parseCLIDiff, computeDiff, groupDiffByCommand } from './snapshotDiffUtils';
+import {
+  parseCLIDiff,
+  computeDiff,
+  groupDiffByCommand,
+  detectCorruptedConfigLines,
+} from './snapshotDiffUtils';
 import './SnapshotDiffModal.css';
 
 interface SnapshotDiffModalProps {
@@ -15,9 +20,13 @@ export function SnapshotDiffModal({ snapshotA, snapshotB, onClose }: SnapshotDif
   const diff = computeDiff(beforeMap, afterMap);
   const groups = groupDiffByCommand(diff);
 
-  const addedCount = diff.filter(d => d.status === 'added').length;
-  const changedCount = diff.filter(d => d.status === 'changed').length;
-  const removedCount = diff.filter(d => d.status === 'removed').length;
+  const corruptedA = detectCorruptedConfigLines(snapshotA.configuration.cliDiff);
+  const corruptedB = detectCorruptedConfigLines(snapshotB.configuration.cliDiff);
+  const corruptedLines = [...new Set([...corruptedA, ...corruptedB])];
+
+  const addedCount = diff.filter((d) => d.status === 'added').length;
+  const changedCount = diff.filter((d) => d.status === 'changed').length;
+  const removedCount = diff.filter((d) => d.status === 'removed').length;
 
   const summaryParts: string[] = [];
   if (addedCount > 0) summaryParts.push(`${addedCount} added`);
@@ -36,9 +45,18 @@ export function SnapshotDiffModal({ snapshotA, snapshotB, onClose }: SnapshotDif
           </div>
         </div>
 
-        <div className="snapshot-diff-summary">
-          {summaryParts.join(', ') || 'No changes'}
-        </div>
+        <div className="snapshot-diff-summary">{summaryParts.join(', ') || 'No changes'}</div>
+
+        {corruptedLines.length > 0 && (
+          <div className="snapshot-diff-corrupted" role="alert">
+            <strong>Corrupted config detected ({corruptedLines.length} entries)</strong>
+            <ul>
+              {corruptedLines.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="snapshot-diff-content">
           {diff.length === 0 ? (
@@ -86,7 +104,9 @@ export function SnapshotDiffModal({ snapshotA, snapshotB, onClose }: SnapshotDif
         </div>
 
         <div className="snapshot-diff-footer">
-          <button className="secondary" onClick={onClose}>Close</button>
+          <button className="secondary" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>

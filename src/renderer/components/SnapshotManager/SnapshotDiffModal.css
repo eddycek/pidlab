@@ -147,3 +147,31 @@
   display: flex;
   justify-content: flex-end;
 }
+
+.snapshot-diff-corrupted {
+  background-color: #3d1a00;
+  border: 1px solid #cc4400;
+  border-radius: 6px;
+  padding: 10px 16px;
+  margin: 0 20px 8px;
+  color: #ff8844;
+  font-size: 12px;
+}
+
+.snapshot-diff-corrupted strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #ff6622;
+}
+
+.snapshot-diff-corrupted ul {
+  margin: 0 0 0 16px;
+  padding: 0;
+  list-style: disc;
+}
+
+.snapshot-diff-corrupted li {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 11px;
+  margin-bottom: 2px;
+}

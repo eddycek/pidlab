@@ -822,4 +822,39 @@ describe('TuningStatusBanner', () => {
     await user.click(screen.getByText('View Flight Guide'));
     expect(onViewGuide).toHaveBeenCalledWith('pid_verification');
   });
+
+  // ─── Post-apply verification mismatch ─────────────────────────────
+
+  it('shows mismatch warning when applyVerified is false', () => {
+    renderBanner({
+      ...baseSession,
+      phase: TUNING_PHASE.FILTER_VERIFICATION_PENDING,
+      applyVerified: false,
+      applyMismatches: [
+        'gyro_lpf1_static_hz: expected 200, got 250',
+        'dterm_lpf1_static_hz: expected 100, got 150',
+      ],
+    });
+
+    expect(screen.getByText(/2 settings did not apply correctly/)).toBeInTheDocument();
+  });
+
+  it('does not show mismatch warning when applyVerified is true', () => {
+    renderBanner({
+      ...baseSession,
+      phase: TUNING_PHASE.FILTER_VERIFICATION_PENDING,
+      applyVerified: true,
+    });
+
+    expect(screen.queryByText(/settings did not apply correctly/)).not.toBeInTheDocument();
+  });
+
+  it('does not show mismatch warning when applyVerified is undefined', () => {
+    renderBanner({
+      ...baseSession,
+      phase: TUNING_PHASE.FILTER_APPLIED,
+    });
+
+    expect(screen.queryByText(/settings did not apply correctly/)).not.toBeInTheDocument();
+  });
 });
