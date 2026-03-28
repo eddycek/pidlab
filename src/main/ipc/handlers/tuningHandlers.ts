@@ -305,7 +305,31 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
           }
         }
 
+        // Tell MockMSPClient which flight type cycle to use
+        if (deps.isDemoMode && mspClient instanceof MockMSPClient) {
+          if (resolvedType === TUNING_TYPE.FLASH) {
+            mspClient.setFlashTuneMode();
+          } else if (resolvedType === TUNING_TYPE.PID) {
+            mspClient.setPIDTuneMode();
+          } else {
+            mspClient.setFilterTuneMode();
+          }
+        }
+
+        // Read rates BEFORE snapshot — snapshot enters CLI mode (exportCLIDiff),
+        // and BF CLI exit triggers FC reboot, making MSP unavailable afterward
+        let ratesConfig: TuningSession['ratesConfig'];
+        if (mspClient?.isConnected()) {
+          try {
+            ratesConfig = await mspClient.getRatesConfiguration();
+          } catch (e) {
+            logger.warn('Could not read rates configuration:', e);
+          }
+        }
+
         // Create safety snapshot before starting tuning
+        // WARNING: This enters CLI mode via exportCLIDiff(). After snapshot,
+        // we exit CLI which reboots the FC. MSP is unavailable until reconnect.
         let baselineSnapshotId: string | undefined;
         if (snapshotManager && mspClient?.isConnected()) {
           try {
@@ -323,29 +347,20 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
             });
             baselineSnapshotId = snapshot.id;
             logger.info(`Pre-tuning backup created: ${snapshot.id}`);
+
+            // Exit CLI mode — BF `exit` triggers FC reboot, so MSP is temporarily
+            // unavailable. The erase connectivity check will wait for FC to return.
+            if (mspClient.connection.isInCLI()) {
+              try {
+                await mspClient.connection.sendCLICommand('exit');
+              } catch {
+                // exit triggers reboot — timeout/port close is expected
+              }
+              mspClient.connection.clearFCRebootedFromCLI();
+              logger.info('CLI exit sent after snapshot — FC rebooting');
+            }
           } catch (e) {
             logger.warn('Could not create pre-tuning snapshot:', e);
-          }
-        }
-
-        // Tell MockMSPClient which flight type cycle to use
-        if (deps.isDemoMode && mspClient instanceof MockMSPClient) {
-          if (resolvedType === TUNING_TYPE.FLASH) {
-            mspClient.setFlashTuneMode();
-          } else if (resolvedType === TUNING_TYPE.PID) {
-            mspClient.setPIDTuneMode();
-          } else {
-            mspClient.setFilterTuneMode();
-          }
-        }
-
-        // Read current RC rates config for telemetry correlation
-        let ratesConfig: TuningSession['ratesConfig'];
-        if (mspClient?.isConnected()) {
-          try {
-            ratesConfig = await mspClient.getRatesConfiguration();
-          } catch (e) {
-            logger.warn('Could not read rates configuration:', e);
           }
         }
 
