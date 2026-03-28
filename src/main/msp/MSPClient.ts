@@ -1372,8 +1372,10 @@ export class MSPClient extends EventEmitter {
         }
 
         try {
-          const info = await this.getBlackboxInfo();
-          if (info.usedSize === 0) {
+          // Use getDataflashInfo() directly — NOT getBlackboxInfo() which falls back
+          // to SD card and returns usedSize=0 on timeout (false positive erase success)
+          const info = await this.getDataflashInfo();
+          if (info.supported && info.usedSize === 0) {
             logger.info('Blackbox flash erased successfully (verified via poll)');
             return;
           }
@@ -1382,7 +1384,7 @@ export class MSPClient extends EventEmitter {
           if (!this.connection.isOpen()) {
             throw new ConnectionError('FC disconnected during erase');
           }
-          // FC may be busy erasing — ignore poll errors and retry
+          // FC may be busy erasing and not responding to MSP — retry
           logger.debug('Poll failed (FC busy), retrying...');
         }
       }
