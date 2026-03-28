@@ -348,13 +348,14 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
             baselineSnapshotId = snapshot.id;
             logger.info(`Pre-tuning backup created: ${snapshot.id}`);
 
-            // Exit CLI mode — BF `exit` triggers FC reboot, so MSP is temporarily
-            // unavailable. The erase connectivity check will wait for FC to return.
+            // Exit CLI mode — BF `exit` triggers FC reboot (systemReset), so MSP is
+            // temporarily unavailable. Use writeCLIRaw (fire-and-forget) instead of
+            // sendCLICommand which waits for prompt response that never comes.
             if (mspClient.connection.isInCLI()) {
               try {
-                await mspClient.connection.sendCLICommand('exit');
+                await mspClient.connection.writeCLIRaw('exit');
               } catch {
-                // exit triggers reboot — timeout/port close is expected
+                // port may already be closing from reboot
               }
               mspClient.connection.clearFCRebootedFromCLI();
               logger.info('CLI exit sent after snapshot — FC rebooting');
