@@ -1455,7 +1455,7 @@ describe('MSPClient.eraseBlackboxFlash — poll uses getDataflashInfo not getBla
         // Simulate timeout on dataflash summary (FC busy erasing)
         // This should NOT be treated as erase success
         if (pollCount <= 2) {
-          throw new TimeoutError(cmd);
+          throw new TimeoutError(`MSP command ${cmd} timed out`);
         }
         // After 2 retries, return erased state
         return {
