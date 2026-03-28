@@ -1406,31 +1406,43 @@ describe('MSPClient.eraseBlackboxFlash — disconnect detection', () => {
 // ─── getStatusEx ─────────────────────────────────────────────────────
 
 describe('MSPClient.getStatusEx', () => {
-  it('parses PID profile index and count from MSP_STATUS_EX', async () => {
+  it('parses PID profile index from MSP_STATUS_EX and derives count=4 for API 1.45+', async () => {
     const { client, sendCommand } = createClientWithStub();
 
-    // MSP_STATUS_EX response: at least 12 bytes
-    // Byte 10 = PID profile index, Byte 11 = PID profile count
     const data = Buffer.alloc(16);
     data[10] = 1; // profile index
-    data[11] = 4; // profile count
 
     sendCommand.mockResolvedValue({
       command: MSPCommand.MSP_STATUS_EX,
       data,
     });
 
-    const result = await client.getStatusEx();
+    const result = await client.getStatusEx({ protocol: 0, major: 1, minor: 45 });
     expect(result.pidProfileIndex).toBe(1);
     expect(result.pidProfileCount).toBe(4);
   });
 
-  it('falls back to pidProfileCount=3 when FC returns 0', async () => {
+  it('derives pidProfileCount=3 for API 1.44 (BF 4.3)', async () => {
     const { client, sendCommand } = createClientWithStub();
 
     const data = Buffer.alloc(16);
     data[10] = 0;
-    data[11] = 0; // count = 0
+
+    sendCommand.mockResolvedValue({
+      command: MSPCommand.MSP_STATUS_EX,
+      data,
+    });
+
+    const result = await client.getStatusEx({ protocol: 0, major: 1, minor: 44 });
+    expect(result.pidProfileIndex).toBe(0);
+    expect(result.pidProfileCount).toBe(3);
+  });
+
+  it('defaults to pidProfileCount=3 when no apiVersion provided', async () => {
+    const { client, sendCommand } = createClientWithStub();
+
+    const data = Buffer.alloc(16);
+    data[10] = 2;
 
     sendCommand.mockResolvedValue({
       command: MSPCommand.MSP_STATUS_EX,
@@ -1438,11 +1450,11 @@ describe('MSPClient.getStatusEx', () => {
     });
 
     const result = await client.getStatusEx();
-    expect(result.pidProfileIndex).toBe(0);
+    expect(result.pidProfileIndex).toBe(2);
     expect(result.pidProfileCount).toBe(3);
   });
 
-  it('throws on response shorter than 12 bytes', async () => {
+  it('throws on response shorter than 11 bytes', async () => {
     const { client, sendCommand } = createClientWithStub();
 
     sendCommand.mockResolvedValue({

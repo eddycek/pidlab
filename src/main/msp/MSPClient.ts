@@ -153,7 +153,7 @@ export class MSPClient extends EventEmitter {
 
       // Read PID profile info from MSP_STATUS_EX
       try {
-        const statusEx = await this.getStatusEx();
+        const statusEx = await this.getStatusEx(fcInfo!.apiVersion);
         fcInfo!.pidProfileIndex = statusEx.pidProfileIndex;
         fcInfo!.pidProfileCount = statusEx.pidProfileCount;
       } catch (error) {
@@ -994,25 +994,31 @@ export class MSPClient extends EventEmitter {
    * Clear MSC mode flag after FC reconnects from MSC mode.
    */
   /**
-   * Read PID profile index and count from MSP_STATUS_EX.
+   * Read PID profile index from MSP_STATUS_EX and derive profile count from API version.
    * Byte 10 = current PID profile index (0-based)
-   * Byte 11 = number of PID profiles
+   * Note: Byte 11 is averageSystemLoadPercent (uint16 LE with byte 12), NOT profile count.
+   * PID profile count is a compile-time constant in BF:
+   *   - API 1.44 (BF 4.3): PID_PROFILE_COUNT = 3
+   *   - API 1.45+ (BF 4.4+): PID_PROFILE_COUNT = 4
    */
-  async getStatusEx(): Promise<{ pidProfileIndex: number; pidProfileCount: number }> {
+  async getStatusEx(
+    apiVersion?: ApiVersionInfo
+  ): Promise<{ pidProfileIndex: number; pidProfileCount: number }> {
     const response = await this.connection.sendCommand(MSPCommand.MSP_STATUS_EX);
 
     // MSP_STATUS_EX response is at least 16 bytes in BF 4.3+
-    if (response.data.length < 12) {
-      throw new MSPError('Invalid MSP_STATUS_EX response - expected at least 12 bytes');
+    if (response.data.length < 11) {
+      throw new MSPError('Invalid MSP_STATUS_EX response - expected at least 11 bytes');
     }
 
     const pidProfileIndex = response.data[10];
-    const pidProfileCount = response.data[11];
+    // Derive profile count from API version (compile-time constant in BF)
+    const pidProfileCount = apiVersion && apiVersion.minor >= 45 ? 4 : 3;
 
     logger.info(`Status EX: PID profile ${pidProfileIndex}/${pidProfileCount}`);
     return {
       pidProfileIndex,
-      pidProfileCount: pidProfileCount > 0 ? pidProfileCount : 3, // fallback for old BF
+      pidProfileCount,
     };
   }
 

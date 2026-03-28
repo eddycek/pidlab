@@ -49,7 +49,9 @@
 
 .start-tuning-profile-selector {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+  max-width: 320px;
 }
 
 .start-tuning-profile-btn {
