@@ -167,6 +167,21 @@ export function startDebugServer(port: number = DEFAULT_PORT): void {
         case '/erase-flash':
           return handlePost(req, res, () => handleEraseFlash());
 
+        case '/restore-snapshot':
+          return handlePost(req, res, () => handleRestoreSnapshot(url));
+
+        case '/update-phase':
+          return handlePost(req, res, () => handleUpdatePhase(url));
+
+        case '/apply':
+          return handlePost(req, res, () => handleApply(url));
+
+        case '/open-wizard':
+          return handlePost(req, res, () => handleOpenWizard(url));
+
+        case '/wait-connected':
+          return handlePost(req, res, () => handleWaitConnected(url));
+
         default:
           res.statusCode = 404;
           return json(res, {
@@ -188,6 +203,11 @@ export function startDebugServer(port: number = DEFAULT_PORT): void {
               'POST /start-tuning?mode=filter|pid|flash',
               'POST /reset-session',
               'POST /erase-flash',
+              'POST /restore-snapshot?id=X&backup=true',
+              'POST /update-phase?phase=X&filterLogId=Y',
+              'POST /apply?logId=X&mode=filter|pid',
+              'POST /open-wizard?logId=X&mode=filter|pid',
+              'POST /wait-connected?timeout=30000',
             ],
           });
       }
@@ -732,6 +752,115 @@ async function handleEraseFlash() {
   if (!win) return { error: 'No window' };
   const result = await win.webContents.executeJavaScript(`window.betaflight.eraseBlackboxFlash()`);
   return result;
+}
+
+async function handleRestoreSnapshot(url: URL) {
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
+  const id = url.searchParams.get('id');
+  if (!id) return { error: 'Missing id parameter' };
+  const backup = url.searchParams.get('backup') !== 'false';
+  const result = await win.webContents.executeJavaScript(
+    `window.betaflight.restoreSnapshot('${id}', ${backup})`
+  );
+  return result;
+}
+
+async function handleUpdatePhase(url: URL) {
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
+  const phase = url.searchParams.get('phase');
+  if (!phase) return { error: 'Missing phase parameter' };
+  const data: Record<string, any> = {};
+  for (const field of [
+    'filterLogId',
+    'pidLogId',
+    'quickLogId',
+    'verificationLogId',
+    'eraseSkipped',
+    'eraseCompleted',
+  ]) {
+    const val = url.searchParams.get(field);
+    if (val != null) {
+      data[field] = field.endsWith('Skipped') || field.endsWith('Completed') ? val === 'true' : val;
+    }
+  }
+  const dataJson = JSON.stringify(data);
+  const result = await win.webContents.executeJavaScript(
+    `window.betaflight.updateTuningPhase('${phase}', ${dataJson})`
+  );
+  return result;
+}
+
+async function handleApply(url: URL) {
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
+  const logId = url.searchParams.get('logId');
+  if (!logId) return { error: 'Missing logId parameter' };
+  const mode = url.searchParams.get('mode') || 'filter';
+  const sessionIdx = parseInt(url.searchParams.get('session') || '0', 10);
+
+  // 1) Run analysis server-side
+  const analysis = await runFullAnalysis(logId, sessionIdx);
+  if (analysis.error) return { error: analysis.error, step: 'analysis' };
+
+  // 2) Extract recommendations based on mode
+  const filterRecs = mode !== 'pid' ? (analysis.filter?.recommendations ?? []) : [];
+  const allPidRecs = mode !== 'filter' ? (analysis.pid?.recommendations ?? []) : [];
+  const purePidRecs = allPidRecs.filter((r: any) => r.setting?.startsWith('pid_'));
+  const ffRecs = allPidRecs.filter((r: any) => r.setting && !r.setting.startsWith('pid_'));
+
+  // Only include actionable changed recommendations
+  const changed = (recs: any[]) =>
+    recs.filter((r: any) => r.currentValue !== r.recommendedValue && !r.informational);
+
+  const applyInput = {
+    filterRecommendations: changed(filterRecs),
+    pidRecommendations: changed(purePidRecs),
+    feedforwardRecommendations: changed(ffRecs),
+  };
+
+  // 3) Apply via renderer IPC
+  const inputJson = JSON.stringify(applyInput);
+  const result = await win.webContents.executeJavaScript(
+    `window.betaflight.applyRecommendations(${inputJson})`
+  );
+
+  return {
+    recommendations: {
+      filter: applyInput.filterRecommendations.length,
+      pid: applyInput.pidRecommendations.length,
+      feedforward: applyInput.feedforwardRecommendations.length,
+      details: applyInput,
+    },
+    apply: result,
+  };
+}
+
+async function handleOpenWizard(url: URL) {
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
+  const logId = url.searchParams.get('logId');
+  const mode = url.searchParams.get('mode') || 'filter';
+  if (!logId) return { error: 'Missing logId parameter' };
+  await win.webContents.executeJavaScript(`
+    window.dispatchEvent(new CustomEvent('debug:open-wizard', {
+      detail: { logId: '${logId}', mode: '${mode}' }
+    }))
+  `);
+  return { status: 'ok', logId, mode };
+}
+
+async function handleWaitConnected(url: URL) {
+  const timeoutMs = parseInt(url.searchParams.get('timeout') || '30000', 10);
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (deps?.mspClient?.isConnected?.()) {
+      return { status: 'connected', waitedMs: Date.now() - start };
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return { error: 'Timeout waiting for FC connection', waitedMs: timeoutMs };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────

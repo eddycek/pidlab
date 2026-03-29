@@ -96,6 +96,19 @@ function AppContent() {
   const [showLicenseSettings, setShowLicenseSettings] = useState(false);
   const { isPro } = useLicense();
 
+  // Debug server: programmatic wizard opening via custom event
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.logId && detail?.mode) {
+        setWizardMode(detail.mode);
+        setActiveLogId(detail.logId);
+      }
+    };
+    window.addEventListener('debug:open-wizard', handler);
+    return () => window.removeEventListener('debug:open-wizard', handler);
+  }, []);
+
   const refreshAvailableLogIds = () => {
     window.betaflight
       .listBlackboxLogs()
