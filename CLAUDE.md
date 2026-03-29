@@ -99,7 +99,7 @@ npm run rebuild
 - FFT analysis: `src/main/analysis/` (noise analysis & filter tuning)
 - Step response analysis: `src/main/analysis/` (PID tuning via step metrics)
 - Telemetry: `src/main/telemetry/TelemetryManager.ts` (opt-in anonymous usage data collection + upload), `TelemetryEventCollector.ts` (structured event logging — errors, workflow, analysis)
-- Diagnostic: `src/main/diagnostic/DiagnosticBundleBuilder.ts` (builds diagnostic bundles for support reports, Pro only). Optional BBL flight data upload (fire-and-forget)
+- Diagnostic: `src/main/diagnostic/DiagnosticBundleBuilder.ts` (builds diagnostic bundles for support reports, Pro only), `DiagnosticReportService.ts` (auto-report on apply verification failure + PATCH merge). Optional BBL flight data upload (fire-and-forget)
 - Debug server: `src/main/debug/DebugServer.ts` (HTTP endpoints for tooling, port 9300)
 
 **Preload Script** (`src/preload/index.ts`)
@@ -185,7 +185,7 @@ IPC handlers are split into domain modules under `src/main/ipc/handlers/`:
 | `telemetryHandlers.ts` | 3 | Telemetry settings get/set, manual upload trigger |
 | `licenseHandlers.ts` | 4 | License activate, get status, remove, validate |
 | `updateHandlers.ts` | 2 | Auto-update check, install |
-| `diagnosticHandlers.ts` | 1 | Build and upload diagnostic report bundle + fire-and-forget BBL flight data upload (Pro only) |
+| `diagnosticHandlers.ts` | 2 | Build and upload diagnostic report bundle + fire-and-forget BBL flight data upload (Pro only) + PATCH auto-report with user details |
 | `index.ts` | — | DI container, `registerIPCHandlers()` |
 
 **Request-Response Pattern**:
@@ -242,7 +242,7 @@ window.betaflight.onConnectionChanged((status) => {
 - `recommendationTraces` stored on `TuningSession` during apply, archived to history
 - Upload via Electron `net.fetch()` to CF Worker endpoint (gzipped JSON)
 - Skipped in demo mode
-- Diagnostic reports: Pro-only gzipped bundles with recommendations, analysis data, FC config. Optional BBL flight data upload (fire-and-forget after bundle submit, 50 MB max, 120s timeout). `POST /v1/diagnostic` (submit), `PUT /v1/diagnostic/{id}/bbl` (streaming BBL upload), `GET/PATCH /admin/diagnostics/{reportId}` (review/resolve), `GET /admin/diagnostics/{id}/bbl` (admin BBL download), `GET /admin/diagnostics` (list), `GET /admin/diagnostics/summary` (counts for cron). Stored in R2 under `diagnostics/{reportId}/`. BBL files have 30-day retention (cron cleanup). Rate-limited 1/hour per installation. Design doc: `docs/DIAGNOSTIC_REPORTS.md`
+- Diagnostic reports: Pro-only gzipped bundles with recommendations, analysis data, FC config. Optional BBL flight data upload (fire-and-forget after bundle submit, 50 MB max, 120s timeout). `POST /v1/diagnostic` (submit), `PUT /v1/diagnostic/{id}/bbl` (streaming BBL upload), `PATCH /v1/diagnostic/{reportId}` (merge user details into auto-report, auth: X-Installation-Id), `GET/PATCH /admin/diagnostics/{reportId}` (review/resolve), `GET /admin/diagnostics/{id}/bbl` (admin BBL download), `GET /admin/diagnostics` (list), `GET /admin/diagnostics/summary` (counts for cron). Stored in R2 under `diagnostics/{reportId}/`. BBL files have 30-day retention (cron cleanup). Rate-limited 1/hour per installation. Auto-reports sent on apply verification failure (`sendAutoReport()` in `DiagnosticReportService.ts`) with `autoReported: true` flag; user can later merge email/note via PATCH. Design doc: `docs/DIAGNOSTIC_REPORTS.md`
 - Cron daily email includes diagnostic report summary (new/reviewing/needs-bbl counts)
 - IPC: `TELEMETRY_GET_SETTINGS`, `TELEMETRY_SET_ENABLED`, `TELEMETRY_SEND_NOW`
 - Design doc: `docs/TELEMETRY_COLLECTION.md`
@@ -362,7 +362,7 @@ Three tuning modes: **Filter Tune** (2 flights: analysis + verification), **PID 
 - **TuningMode**: `'filter' | 'pid' | 'flash'` — wizard components adapt UI/flow per mode
 - **StartTuningModal**: Mode selection (Filter Tune/PID Tune/Flash Tune) with BF PID profile selector when FC has multiple profiles. Selected profile stored on `TuningSession.bfPidProfileIndex`
 - **Verification flow** (mandatory): After apply, user clicks "Erase & Verify" → fly verification flight → download → analyze verification → completed. Filter Tune: throttle sweep → spectrogram comparison. PID Tune: stick snaps → step response comparison. Flash Tune: hover → noise comparison.
-- **Post-apply verification**: On smart reconnect after apply, the main process reads back CLI diff and compares applied settings against expected values. Results stored on `TuningSession.applyVerified` (boolean) and `TuningSession.applyMismatches` (string[]). TuningStatusBanner shows amber warning if mismatches detected.
+- **Post-apply verification**: On smart reconnect after apply, `verifyAppliedConfig()` (`src/main/utils/verifyAppliedConfig.ts`) reads back full PID and filter configuration from FC via MSP, compares ALL readable values (not just applied changes), and runs sanity checks (P/I/D=0, filter bypassed). Retries PID write+readback once on mismatch. Results stored on `TuningSession.applyVerified` (boolean), `applyMismatches` (string[]), `applyExpected` (Record<string, number>), `applyActual` (Record<string, number>), `applySuspicious` (boolean), and `autoReportId` (string). TuningStatusBanner shows amber warning if mismatches detected. On failure, auto-submits a diagnostic report via `DiagnosticReportService.sendAutoReport()` (Pro only) with expected/actual values and mismatch details.
 - **Archive on completion**: When phase transitions to `completed`, session is archived to `TuningHistoryManager` before becoming dismissable
 - IPC: `TUNING_GET_SESSION`, `TUNING_START_SESSION`, `TUNING_UPDATE_PHASE`, `TUNING_RESET_SESSION`, `TUNING_GET_HISTORY`, `TUNING_UPDATE_VERIFICATION`, `TUNING_UPDATE_HISTORY_VERIFICATION` + `EVENT_TUNING_SESSION_CHANGED`
 - Design doc: `docs/TUNING_WORKFLOW_REVISION.md`

@@ -142,6 +142,26 @@ export function startDebugServer(port: number = DEFAULT_PORT): void {
         case '/blackbox-logs':
           return json(res, await getBlackboxLogs());
 
+        case '/scroll': {
+          const win = getMainWindow();
+          if (!win) return json(res, { error: 'No window' });
+          const y = parseInt(url.searchParams.get('y') || '500', 10);
+          const sel = url.searchParams.get('selector') || 'html';
+          await win.webContents.executeJavaScript(`
+            document.querySelector('${sel}')?.scrollBy(0, ${y})
+          `);
+          return json(res, { scrolled: y, selector: sel });
+        }
+
+        case '/buttons': {
+          const win = getMainWindow();
+          if (!win) return json(res, { error: 'No window' });
+          const buttons = await win.webContents.executeJavaScript(`
+            [...document.querySelectorAll('button')].map(b => b.textContent.trim()).filter(Boolean)
+          `);
+          return json(res, { buttons });
+        }
+
         case '/analyze': {
           const logId = url.searchParams.get('logId') || undefined;
           const sessionIdx = parseInt(url.searchParams.get('session') || '0', 10);
@@ -167,6 +187,24 @@ export function startDebugServer(port: number = DEFAULT_PORT): void {
         case '/erase-flash':
           return handlePost(req, res, () => handleEraseFlash());
 
+        case '/restore-snapshot':
+          return handlePost(req, res, () => handleRestoreSnapshot(url));
+
+        case '/update-phase':
+          return handlePost(req, res, () => handleUpdatePhase(url));
+
+        case '/apply':
+          return handlePost(req, res, () => handleApply(url));
+
+        case '/open-wizard':
+          return handlePost(req, res, () => handleOpenWizard(url));
+
+        case '/click':
+          return handlePost(req, res, () => handleClick(url));
+
+        case '/wait-connected':
+          return handlePost(req, res, () => handleWaitConnected(url));
+
         default:
           res.statusCode = 404;
           return json(res, {
@@ -188,6 +226,12 @@ export function startDebugServer(port: number = DEFAULT_PORT): void {
               'POST /start-tuning?mode=filter|pid|flash',
               'POST /reset-session',
               'POST /erase-flash',
+              'POST /restore-snapshot?id=X&backup=true',
+              'POST /update-phase?phase=X&filterLogId=Y',
+              'POST /apply?logId=X&mode=filter|pid',
+              'POST /open-wizard?logId=X&mode=filter|pid',
+              'POST /click?text=ButtonText|selector=.css-selector',
+              'POST /wait-connected?timeout=30000',
             ],
           });
       }
@@ -222,7 +266,7 @@ async function getAppState() {
   const { mspClient, profileManager, tuningSessionManager } = deps;
 
   const connected = mspClient?.isConnected?.() ?? false;
-  const currentProfile = profileManager?.getCurrentProfile?.() ?? null;
+  const currentProfile = (await profileManager?.getCurrentProfile?.()) ?? null;
 
   let tuningSession = null;
   if (currentProfile) {
@@ -293,6 +337,13 @@ async function getAppState() {
 async function takeScreenshot() {
   const win = getMainWindow();
   if (!win) return { error: 'No window available' };
+
+  // Ensure window is visible and focused for accurate capture
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+  // Small delay to let renderer paint after focus
+  await new Promise((r) => setTimeout(r, 200));
 
   const image = await win.webContents.capturePage();
   const pngBuffer = image.toPNG();
@@ -376,7 +427,7 @@ async function getTuningHistory() {
   if (!deps) return { error: 'Dependencies not initialized' };
 
   const { tuningHistoryManager, profileManager } = deps;
-  const currentProfile = profileManager?.getCurrentProfile?.() ?? null;
+  const currentProfile = (await profileManager?.getCurrentProfile?.()) ?? null;
   if (!currentProfile) return { error: 'No active profile', records: [] };
 
   try {
@@ -406,7 +457,7 @@ async function getTuningSession() {
   if (!deps) return { error: 'Dependencies not initialized' };
 
   const { tuningSessionManager, profileManager } = deps;
-  const currentProfile = profileManager?.getCurrentProfile?.() ?? null;
+  const currentProfile = (await profileManager?.getCurrentProfile?.()) ?? null;
   if (!currentProfile) return { error: 'No active profile', session: null };
 
   try {
@@ -425,7 +476,7 @@ async function getSnapshots() {
   if (!deps) return { error: 'Dependencies not initialized' };
 
   const { snapshotManager, profileManager } = deps;
-  const currentProfile = profileManager?.getCurrentProfile?.() ?? null;
+  const currentProfile = (await profileManager?.getCurrentProfile?.()) ?? null;
   if (!currentProfile) return { error: 'No active profile', snapshots: [] };
 
   try {
@@ -458,7 +509,7 @@ async function runFullAnalysis(logId?: string, sessionIndex: number = 0) {
     if (logId) {
       logMeta = await blackboxManager.getLog(logId);
     } else {
-      const currentProfile = profileManager?.getCurrentProfile?.() ?? null;
+      const currentProfile = (await profileManager?.getCurrentProfile?.()) ?? null;
       if (!currentProfile) return { error: 'No active profile — specify logId parameter' };
       const logs = await blackboxManager.listLogs(currentProfile.id);
       if (logs.length === 0) return { error: 'No blackbox logs found for current profile' };
@@ -527,7 +578,7 @@ async function runFullAnalysis(logId?: string, sessionIndex: number = 0) {
   // Get flight style
   let flightStyle: 'smooth' | 'balanced' | 'aggressive' = 'balanced';
   try {
-    const profile = profileManager?.getCurrentProfile?.();
+    const profile = await profileManager?.getCurrentProfile?.();
     if (profile?.flightStyle) flightStyle = profile.flightStyle;
   } catch {
     /* ignore */
@@ -648,7 +699,7 @@ async function getBlackboxLogs() {
   if (!deps) return { error: 'Dependencies not initialized' };
 
   const { blackboxManager, profileManager } = deps;
-  const currentProfile = profileManager?.getCurrentProfile?.() ?? null;
+  const currentProfile = (await profileManager?.getCurrentProfile?.()) ?? null;
   if (!currentProfile) return { error: 'No active profile', logs: [] };
 
   try {
@@ -687,21 +738,26 @@ async function handlePost(
 }
 
 async function handleConnect(url: URL) {
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
   const mspClient = deps?.mspClient;
   if (!mspClient) return { error: 'No MSP client' };
   if (mspClient.isConnected()) return { status: 'already_connected' };
   const ports = await mspClient.listPorts();
   if (ports.length === 0) return { error: 'No BF ports found' };
   const portPath = url.searchParams.get('port') || ports[0].path;
-  await mspClient.connect(portPath);
-  return { status: 'connected', port: portPath };
+  // Connect via renderer IPC so UI gets connection events
+  const result = await win.webContents.executeJavaScript(
+    `window.betaflight.connect('${portPath}')`
+  );
+  return { status: 'connected', port: portPath, result };
 }
 
 async function handleDisconnect() {
-  const mspClient = deps?.mspClient;
-  if (!mspClient) return { error: 'No MSP client' };
-  if (!mspClient.isConnected()) return { status: 'already_disconnected' };
-  await mspClient.disconnect();
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
+  // Disconnect via renderer IPC so UI gets connection events
+  await win.webContents.executeJavaScript(`window.betaflight.disconnect()`);
   return { status: 'disconnected' };
 }
 
@@ -713,11 +769,12 @@ async function handleStartTuning(url: URL) {
   if (!validModes.includes(mode)) {
     return { error: `Invalid mode: ${mode}. Valid: ${validModes.join(', ')}` };
   }
-  // Invoke via renderer IPC bridge — same path as UI button click
-  const result = await win.webContents.executeJavaScript(
-    `window.betaflight.startTuningSession('${mode}')`
-  );
-  return result;
+  // Fire-and-forget: startTuningSession creates a snapshot (CLI + reboot)
+  // which can take 30+ seconds. Return immediately, poll /tuning-session.
+  win.webContents
+    .executeJavaScript(`window.betaflight.startTuningSession('${mode}')`)
+    .catch((err: any) => logger.warn('[DEBUG] startTuningSession failed:', err));
+  return { status: 'starting', mode, message: 'Poll /tuning-session for result' };
 }
 
 async function handleResetSession() {
@@ -732,6 +789,145 @@ async function handleEraseFlash() {
   if (!win) return { error: 'No window' };
   const result = await win.webContents.executeJavaScript(`window.betaflight.eraseBlackboxFlash()`);
   return result;
+}
+
+async function handleRestoreSnapshot(url: URL) {
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
+  const id = url.searchParams.get('id');
+  if (!id) return { error: 'Missing id parameter' };
+  const backup = url.searchParams.get('backup') !== 'false';
+  // Fire-and-forget: restore involves CLI commands + reboot (30+ seconds).
+  // Poll /wait-connected + /state for result.
+  win.webContents
+    .executeJavaScript(`window.betaflight.restoreSnapshot('${id}', ${backup})`)
+    .catch((err: any) => logger.warn('[DEBUG] restoreSnapshot failed:', err));
+  return { status: 'restoring', snapshotId: id, message: 'Poll /wait-connected for completion' };
+}
+
+async function handleUpdatePhase(url: URL) {
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
+  const phase = url.searchParams.get('phase');
+  if (!phase) return { error: 'Missing phase parameter' };
+  const data: Record<string, any> = {};
+  for (const field of [
+    'filterLogId',
+    'pidLogId',
+    'quickLogId',
+    'verificationLogId',
+    'eraseSkipped',
+    'eraseCompleted',
+  ]) {
+    const val = url.searchParams.get(field);
+    if (val != null) {
+      data[field] = field.endsWith('Skipped') || field.endsWith('Completed') ? val === 'true' : val;
+    }
+  }
+  const dataJson = JSON.stringify(data);
+  const result = await win.webContents.executeJavaScript(
+    `window.betaflight.updateTuningPhase('${phase}', ${dataJson})`
+  );
+  return result;
+}
+
+async function handleApply(url: URL) {
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
+  const logId = url.searchParams.get('logId');
+  if (!logId) return { error: 'Missing logId parameter' };
+  const mode = url.searchParams.get('mode') || 'filter';
+  const sessionIdx = parseInt(url.searchParams.get('session') || '0', 10);
+
+  // 1) Run analysis server-side
+  const analysis = await runFullAnalysis(logId, sessionIdx);
+  if (analysis.error) return { error: analysis.error, step: 'analysis' };
+
+  // 2) Extract recommendations based on mode
+  const filterRecs = mode !== 'pid' ? (analysis.filter?.recommendations ?? []) : [];
+  const allPidRecs = mode !== 'filter' ? (analysis.pid?.recommendations ?? []) : [];
+  const purePidRecs = allPidRecs.filter((r: any) => r.setting?.startsWith('pid_'));
+  const ffRecs = allPidRecs.filter((r: any) => r.setting && !r.setting.startsWith('pid_'));
+
+  // Only include actionable changed recommendations
+  const changed = (recs: any[]) =>
+    recs.filter((r: any) => r.currentValue !== r.recommendedValue && !r.informational);
+
+  const applyInput = {
+    filterRecommendations: changed(filterRecs),
+    pidRecommendations: changed(purePidRecs),
+    feedforwardRecommendations: changed(ffRecs),
+  };
+
+  // 3) Apply via renderer IPC — fire-and-forget (apply includes save+reboot)
+  // Poll /wait-connected + /tuning-session for result.
+  const inputJson = JSON.stringify(applyInput);
+  win.webContents
+    .executeJavaScript(`window.betaflight.applyRecommendations(${inputJson})`)
+    .catch((err: any) => logger.warn('[DEBUG] applyRecommendations failed:', err));
+
+  return {
+    status: 'applying',
+    message: 'Poll /wait-connected + /tuning-session for result',
+    recommendations: {
+      filter: applyInput.filterRecommendations.length,
+      pid: applyInput.pidRecommendations.length,
+      feedforward: applyInput.feedforwardRecommendations.length,
+      details: applyInput,
+    },
+  };
+}
+
+async function handleOpenWizard(url: URL) {
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
+  const logId = url.searchParams.get('logId');
+  const mode = url.searchParams.get('mode') || 'filter';
+  if (!logId) return { error: 'Missing logId parameter' };
+  await win.webContents.executeJavaScript(`
+    window.dispatchEvent(new CustomEvent('debug:open-wizard', {
+      detail: { logId: '${logId}', mode: '${mode}' }
+    }))
+  `);
+  return { status: 'ok', logId, mode };
+}
+
+async function handleClick(url: URL) {
+  const win = getMainWindow();
+  if (!win) return { error: 'No window' };
+  const text = url.searchParams.get('text');
+  const selector = url.searchParams.get('selector');
+  if (!text && !selector) return { error: 'Provide text= or selector= parameter' };
+
+  const script = text
+    ? `(function() {
+        const btns = [...document.querySelectorAll('button')];
+        const btn = btns.find(b => b.textContent.trim() === '${text.replace(/'/g, "\\'")}');
+        if (!btn) return { error: 'Button not found: ${text.replace(/'/g, "\\'")}' };
+        btn.click();
+        return { clicked: btn.textContent.trim() };
+      })()`
+    : `(function() {
+        const el = document.querySelector('${selector!.replace(/'/g, "\\'")}');
+        if (!el) return { error: 'Element not found: ${selector!.replace(/'/g, "\\'")}' };
+        el.click();
+        return { clicked: true };
+      })()`;
+
+  const result = await win.webContents.executeJavaScript(script);
+  return result;
+}
+
+async function handleWaitConnected(url: URL) {
+  const timeoutMs = parseInt(url.searchParams.get('timeout') || '30000', 10);
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (deps?.mspClient?.isConnected?.()) {
+      return { status: 'connected', waitedMs: Date.now() - start };
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return { error: 'Timeout waiting for FC connection', waitedMs: timeoutMs };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────

@@ -1,12 +1,17 @@
 import { ipcMain } from 'electron';
 import { app, net } from 'electron';
 import fs from 'fs/promises';
-import { IPCChannel } from '@shared/types/ipc.types';
+import { IPCChannel, IPCResponse } from '@shared/types/ipc.types';
 import { DIAGNOSTIC } from '@shared/constants';
-import type { DiagnosticReportInput, DiagnosticReportResult } from '@shared/types/diagnostic.types';
+import type {
+  DiagnosticReportInput,
+  DiagnosticReportResult,
+  DiagnosticPatchInput,
+} from '@shared/types/diagnostic.types';
 import type { HandlerDependencies } from './types';
 import { createResponse } from './types';
 import { buildDiagnosticBundle } from '../../diagnostic/DiagnosticBundleBuilder';
+import { patchReport } from '../../diagnostic/DiagnosticReportService';
 import { logger } from '../../utils/logger';
 import { getErrorMessage } from '../../utils/errors';
 
@@ -199,6 +204,32 @@ export function registerDiagnosticHandlers(deps: HandlerDependencies): void {
       } catch (error) {
         logger.error('Failed to send diagnostic report:', error);
         return createResponse<DiagnosticReportResult>(undefined, getErrorMessage(error));
+      }
+    }
+  );
+
+  // PATCH handler: merge user details into existing auto-report
+  ipcMain.handle(
+    IPCChannel.DIAGNOSTIC_PATCH_REPORT,
+    async (_event, input: DiagnosticPatchInput): Promise<IPCResponse<void>> => {
+      try {
+        const telemetrySettings = deps.telemetryManager?.getSettings?.() ?? null;
+        const installationId = telemetrySettings?.installationId;
+        if (!installationId) {
+          return createResponse(undefined, 'Installation ID not available');
+        }
+
+        await patchReport(installationId, input.reportId, input.userEmail, input.userNote);
+
+        deps.eventCollector?.emit('workflow', 'diagnostic_report_patched', {
+          reportId: input.reportId,
+          hasEmail: !!input.userEmail,
+        });
+
+        return createResponse(undefined);
+      } catch (error) {
+        logger.error('Failed to patch diagnostic report:', error);
+        return createResponse(undefined, getErrorMessage(error));
       }
     }
   );

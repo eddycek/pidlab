@@ -667,6 +667,15 @@ const betaflightAPI: BetaflightAPI = {
     return response.data;
   },
 
+  async patchDiagnosticReport(
+    input: import('@shared/types/diagnostic.types').DiagnosticPatchInput
+  ): Promise<void> {
+    const response = await ipcRenderer.invoke(IPCChannel.DIAGNOSTIC_PATCH_REPORT, input);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to patch diagnostic report');
+    }
+  },
+
   // App Logs
   async getAppLogs(lines?: number): Promise<string[]> {
     const response = await ipcRenderer.invoke(IPCChannel.APP_GET_LOGS, lines);

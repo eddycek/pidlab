@@ -38,6 +38,16 @@ export function StepResponseComparison({ before, after }: StepResponseComparison
         <TFStepResponseChart
           stepResponse={after.stepResponse}
           beforeStepResponse={before.stepResponse}
+          overshootAfterOverride={{
+            roll: after.roll.meanOvershoot,
+            pitch: after.pitch.meanOvershoot,
+            yaw: after.yaw.meanOvershoot,
+          }}
+          overshootBeforeOverride={{
+            roll: before.roll.meanOvershoot,
+            pitch: before.pitch.meanOvershoot,
+            yaw: before.yaw.meanOvershoot,
+          }}
         />
       )}
 

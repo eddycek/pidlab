@@ -353,6 +353,7 @@ export function TuningCompletionSummary({
                 session.verificationLogId
               )
             }
+            autoReportId={session.autoReportId}
             variant="button"
             className="report-issue-btn"
           />

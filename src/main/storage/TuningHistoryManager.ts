@@ -65,6 +65,7 @@ export class TuningHistoryManager {
       bfPidProfileIndex: session.bfPidProfileIndex,
       appVersion: APP_VERSION,
       ratesConfig: session.ratesConfig,
+      autoReportId: session.autoReportId,
     };
 
     const existing = await this.loadRecords(session.profileId);

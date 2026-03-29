@@ -112,6 +112,16 @@ export interface DiagnosticBundle {
   // Verification
   verification?: DiagnosticVerification;
 
+  // Apply verification (auto-report data)
+  autoReported?: boolean;
+  autoReportReason?: 'apply_mismatch';
+  applyVerification?: {
+    expected: Record<string, number>;
+    actual: Record<string, number>;
+    mismatches: string[];
+    suspicious: boolean;
+  };
+
   // Related telemetry events
   events: TelemetryEvent[];
 }
@@ -134,4 +144,14 @@ export interface DiagnosticReportResult {
   submitted: boolean;
   /** Whether BBL flight data was uploaded successfully */
   bblUploaded?: boolean;
+}
+
+/** Input for patching an existing diagnostic report with user details */
+export interface DiagnosticPatchInput {
+  /** Report ID to patch (from autoReportId on TuningSession) */
+  reportId: string;
+  /** User email for follow-up */
+  userEmail?: string;
+  /** User description of the issue */
+  userNote?: string;
 }

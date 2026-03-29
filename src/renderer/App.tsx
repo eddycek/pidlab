@@ -96,6 +96,19 @@ function AppContent() {
   const [showLicenseSettings, setShowLicenseSettings] = useState(false);
   const { isPro } = useLicense();
 
+  // Debug server: programmatic wizard opening via custom event
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.logId && detail?.mode) {
+        setWizardMode(detail.mode);
+        setActiveLogId(detail.logId);
+      }
+    };
+    window.addEventListener('debug:open-wizard', handler);
+    return () => window.removeEventListener('debug:open-wizard', handler);
+  }, []);
+
   const refreshAvailableLogIds = () => {
     window.betaflight
       .listBlackboxLogs()
@@ -613,12 +626,15 @@ function AppContent() {
     const phase = tuning.session?.phase;
     if (!phase) return;
 
-    // For flight_pending phases: transition to analysis with the selected log
-    if (phase === TUNING_PHASE.FILTER_FLIGHT_PENDING) {
+    // For flight_pending and log_ready phases: transition to analysis with the selected log
+    if (phase === TUNING_PHASE.FILTER_FLIGHT_PENDING || phase === TUNING_PHASE.FILTER_LOG_READY) {
       await tuning.updatePhase(TUNING_PHASE.FILTER_ANALYSIS, { filterLogId: logId });
-    } else if (phase === TUNING_PHASE.PID_FLIGHT_PENDING) {
+    } else if (phase === TUNING_PHASE.PID_FLIGHT_PENDING || phase === TUNING_PHASE.PID_LOG_READY) {
       await tuning.updatePhase(TUNING_PHASE.PID_ANALYSIS, { pidLogId: logId });
-    } else if (phase === TUNING_PHASE.FLASH_FLIGHT_PENDING) {
+    } else if (
+      phase === TUNING_PHASE.FLASH_FLIGHT_PENDING ||
+      phase === TUNING_PHASE.FLASH_LOG_READY
+    ) {
       await tuning.updatePhase(TUNING_PHASE.FLASH_ANALYSIS, { quickLogId: logId });
     } else if (
       phase === TUNING_PHASE.FILTER_VERIFICATION_PENDING ||

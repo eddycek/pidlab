@@ -115,6 +115,7 @@ global.window.betaflight = {
 
   // Diagnostic Reports
   sendDiagnosticReport: vi.fn().mockResolvedValue({ reportId: 'test-id', submitted: true }),
+  patchDiagnosticReport: vi.fn().mockResolvedValue(undefined),
 
   // App Logs
   getAppLogs: vi.fn().mockResolvedValue([]),

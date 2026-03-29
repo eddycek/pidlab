@@ -48,6 +48,7 @@ diagnostics/{reportId}/
 | Method | Path | Purpose |
 |--------|------|---------|
 | POST | `/v1/diagnostic` | Submit report (rate limit: 5/hr/install) |
+| PATCH | `/v1/diagnostic/{id}` | Merge user details into existing auto-report (auth: X-Installation-Id) |
 | PUT | `/v1/diagnostic/{id}/bbl` | Upload BBL flight data (auth: X-Installation-Id) |
 | GET | `/admin/diagnostics` | List reports (?status=new) |
 | GET | `/admin/diagnostics/{id}` | Full bundle + metadata |
@@ -92,6 +93,34 @@ Report button visible only when `licenseManager.isPro()` returns true:
 - Tester license — yes
 - Free (no key) — no
 - Demo/dev mode — yes (for testing)
+
+### Auto-Report on Apply Verification Failure
+
+When `verifyAppliedConfig()` detects mismatches after applying tuning changes, an auto-diagnostic report is submitted (Pro license required, skipped in demo mode).
+
+**Flow:**
+```
+Apply recommendations → FC reboots → reconnect → verifyAppliedConfig()
+  → Reads full PID + filter config via MSP (not just applied changes)
+  → Compares ALL readable values against expected state
+  → Runs sanity checks (P/I/D=0, filter bypassed)
+  → On PID mismatch: retries write+readback once via MSP
+  → If mismatches remain:
+    → sendAutoReport() in DiagnosticReportService.ts
+    → POST bundle with autoReported: true, applyVerification: {expected, actual, mismatches, suspicious}
+    → autoReportId stored on TuningSession
+    → If user later clicks "Report Issue", PATCH merges email/note into existing auto-report
+```
+
+**PATCH merge flow:** When a session already has `autoReportId`, the UI calls `DIAGNOSTIC_PATCH_REPORT` IPC instead of creating a new report. The worker's `PATCH /v1/diagnostic/{reportId}` endpoint merges `userEmail` and `userNote` into the existing report metadata (auth: X-Installation-Id must match the original creator).
+
+**Auto-report bundle contents:**
+- `autoReported: true` flag
+- `autoReportReason: 'apply_mismatch'`
+- `applyVerification: { expected, actual, mismatches, suspicious }` — full config maps
+- Session recommendations (from `recommendationTraces`)
+- Profile context (drone size, flight style, BF version, board target)
+- CLI diff before tuning (from baseline snapshot)
 
 ### `/diagnose` Skill
 

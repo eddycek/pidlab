@@ -144,6 +144,18 @@ export interface TuningSession {
   /** Settings that didn't match after read-back verification */
   applyMismatches?: string[];
 
+  /** Expected config values at time of apply (for diagnostic bundle) */
+  applyExpected?: Record<string, number>;
+
+  /** Actual config values read back from FC after apply (for diagnostic bundle) */
+  applyActual?: Record<string, number>;
+
+  /** Sanity check failed (e.g. P/I/D=0, filter bypassed) */
+  applySuspicious?: boolean;
+
+  /** Auto-generated diagnostic report ID (set when apply verification fails) */
+  autoReportId?: string;
+
   /** RC rates configuration at time of tuning (for telemetry) */
   ratesConfig?: RatesConfiguration;
 }

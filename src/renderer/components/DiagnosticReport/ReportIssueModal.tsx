@@ -7,6 +7,8 @@ interface ReportIssueModalProps {
   submitting: boolean;
   /** Whether flight data (BBL log) is available for this record */
   hasFlightData?: boolean;
+  /** When set, modal is in "merge" mode — adds details to existing auto-report */
+  mergeMode?: boolean;
 }
 
 export function ReportIssueModal({
@@ -14,6 +16,7 @@ export function ReportIssueModal({
   onClose,
   submitting,
   hasFlightData,
+  mergeMode,
 }: ReportIssueModalProps) {
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
@@ -31,7 +34,7 @@ export function ReportIssueModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="report-modal" onClick={(e) => e.stopPropagation()}>
         <div className="report-modal-header">
-          <h2>Report Tuning Issue</h2>
+          <h2>{mergeMode ? 'Add Details to Auto-Report' : 'Report Tuning Issue'}</h2>
           <button type="button" className="report-modal-close" onClick={onClose} aria-label="Close">
             &times;
           </button>
@@ -39,7 +42,9 @@ export function ReportIssueModal({
 
         <div className="report-modal-body">
           <p className="report-modal-description">
-            We'll send diagnostic data from this session to help us improve FPVPIDlab.
+            {mergeMode
+              ? 'A diagnostic report was sent automatically. Add your email or description to help us investigate.'
+              : "We'll send diagnostic data from this session to help us improve FPVPIDlab."}
           </p>
 
           <label className="report-field-label" htmlFor="report-email">
@@ -68,7 +73,7 @@ export function ReportIssueModal({
             disabled={submitting}
           />
 
-          {hasFlightData && (
+          {!mergeMode && hasFlightData && (
             <label className="report-flight-data-toggle">
               <input
                 type="checkbox"
@@ -83,20 +88,22 @@ export function ReportIssueModal({
             </label>
           )}
 
-          <div className="report-privacy-note">
-            <strong>What we'll send:</strong>
-            <ul>
-              <li>Analysis results &amp; recommendations</li>
-              <li>Flight controller settings</li>
-              <li>Data quality metrics</li>
-              {hasFlightData && includeFlightData && <li>Raw flight recording (BBL file)</li>}
-            </ul>
-            {hasFlightData && includeFlightData ? (
-              <p>No personal data or file paths.</p>
-            ) : (
-              <p>No personal data, file paths, or raw flight recordings.</p>
-            )}
-          </div>
+          {!mergeMode && (
+            <div className="report-privacy-note">
+              <strong>What we'll send:</strong>
+              <ul>
+                <li>Analysis results &amp; recommendations</li>
+                <li>Flight controller settings</li>
+                <li>Data quality metrics</li>
+                {hasFlightData && includeFlightData && <li>Raw flight recording (BBL file)</li>}
+              </ul>
+              {hasFlightData && includeFlightData ? (
+                <p>No personal data or file paths.</p>
+              ) : (
+                <p>No personal data, file paths, or raw flight recordings.</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="report-modal-footer">
@@ -112,7 +119,7 @@ export function ReportIssueModal({
             onClick={handleSubmit}
             disabled={submitting}
           >
-            {submitting ? 'Sending...' : 'Send Report'}
+            {submitting ? 'Sending...' : mergeMode ? 'Add Details' : 'Send Report'}
           </button>
         </div>
       </div>

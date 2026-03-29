@@ -30,6 +30,7 @@ import { TelemetryEventCollector } from './telemetry/TelemetryEventCollector';
 import { LicenseManager } from './license/LicenseManager';
 import { initAutoUpdater } from './updater';
 import { logger } from './utils/logger';
+import { verifyAppliedConfig } from './utils/verifyAppliedConfig';
 import { SNAPSHOT, PROFILE, TUNING_PHASE, TUNING_TYPE_LABELS } from '@shared/constants';
 import { MockMSPClient, DEMO_FC_SERIAL } from './demo/MockMSPClient';
 import { generateFilterDemoBBL } from './demo/DemoDataGenerator';
@@ -330,73 +331,26 @@ async function initialize(): Promise<void> {
                 session.phase === TUNING_PHASE.FLASH_VERIFICATION_PENDING;
               if (isAppliedOrVerification && session.applyVerified === undefined) {
                 try {
-                  const mismatches: string[] = [];
-
-                  let allChecked = true;
-
-                  // Verify PID changes (readable via MSP)
-                  if (session.appliedPIDChanges && session.appliedPIDChanges.length > 0) {
-                    const pidConfig = await mspClient.getPIDConfiguration();
-                    const pidMap: Record<string, number> = {
-                      pid_roll_p: pidConfig.roll.P,
-                      pid_roll_i: pidConfig.roll.I,
-                      pid_roll_d: pidConfig.roll.D,
-                      pid_pitch_p: pidConfig.pitch.P,
-                      pid_pitch_i: pidConfig.pitch.I,
-                      pid_pitch_d: pidConfig.pitch.D,
-                      pid_yaw_p: pidConfig.yaw.P,
-                      pid_yaw_i: pidConfig.yaw.I,
-                      pid_yaw_d: pidConfig.yaw.D,
-                    };
-                    for (const change of session.appliedPIDChanges) {
-                      const actual = pidMap[change.setting];
-                      if (actual === undefined) {
-                        allChecked = false; // Can't verify this setting via MSP
-                      } else if (actual !== change.newValue) {
-                        mismatches.push(
-                          `${change.setting}: expected ${change.newValue}, got ${actual}`
-                        );
-                      }
-                    }
-                  }
-
-                  // Verify filter changes (readable via MSP_FILTER_CONFIG)
-                  if (session.appliedFilterChanges && session.appliedFilterChanges.length > 0) {
-                    const filterConfig = await mspClient.getFilterConfiguration();
-                    const filterMap: Record<string, number | undefined> = {
-                      gyro_lpf1_static_hz: filterConfig.gyro_lpf1_static_hz,
-                      gyro_lpf2_static_hz: filterConfig.gyro_lpf2_static_hz,
-                      dterm_lpf1_static_hz: filterConfig.dterm_lpf1_static_hz,
-                      dterm_lpf2_static_hz: filterConfig.dterm_lpf2_static_hz,
-                      dyn_notch_min_hz: filterConfig.dyn_notch_min_hz,
-                      dyn_notch_max_hz: filterConfig.dyn_notch_max_hz,
-                      dyn_notch_q: filterConfig.dyn_notch_q,
-                      dyn_notch_count: filterConfig.dyn_notch_count,
-                    };
-                    for (const change of session.appliedFilterChanges) {
-                      const actual = filterMap[change.setting];
-                      if (actual === undefined) {
-                        allChecked = false; // CLI-only setting, can't verify via MSP
-                      } else if (actual !== change.newValue) {
-                        mismatches.push(
-                          `${change.setting}: expected ${change.newValue}, got ${actual}`
-                        );
-                      }
-                    }
-                  }
-
-                  // Only mark verified=true if all changes were actually checked
-                  const verified = mismatches.length === 0 && allChecked;
+                  const verifyResult = await verifyAppliedConfig(
+                    mspClient,
+                    session.tuningType,
+                    session.appliedPIDChanges,
+                    session.appliedFilterChanges
+                  );
                   await tuningSessionManager.updatePhase(existingProfile.id, session.phase, {
-                    applyVerified: verified,
-                    applyMismatches: mismatches.length > 0 ? mismatches : undefined,
+                    applyVerified: verifyResult.verified,
+                    applyMismatches:
+                      verifyResult.mismatches.length > 0 ? verifyResult.mismatches : undefined,
+                    applyExpected: verifyResult.expected,
+                    applyActual: verifyResult.actual,
+                    applySuspicious: verifyResult.suspicious || undefined,
                   });
-                  if (verified) {
+                  if (verifyResult.verified) {
                     logger.info('Post-apply verification: all settings match FC');
                   } else {
                     logger.warn(
-                      `Post-apply verification: ${mismatches.length} mismatches`,
-                      mismatches
+                      `Post-apply verification: ${verifyResult.mismatches.length} mismatches`,
+                      verifyResult.mismatches
                     );
                   }
                 } catch (verifyErr) {

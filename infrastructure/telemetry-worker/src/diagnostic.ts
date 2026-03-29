@@ -200,6 +200,116 @@ Let us know if you have any other issues!
   }
 }
 
+/** PATCH /v1/diagnostic/{reportId} — add user details to existing (auto) report */
+export async function handleDiagnosticPatch(request: Request, env: Env, reportId: string): Promise<Response> {
+  if (request.method !== 'PATCH') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  if (!isValidUUID(reportId)) {
+    return new Response('Invalid report ID', { status: 400 });
+  }
+
+  // Verify report exists
+  const prefix = `diagnostics/${reportId}`;
+  const metaObj = await env.TELEMETRY_BUCKET.get(`${prefix}/metadata.json`);
+  if (!metaObj) {
+    return new Response('Report not found', { status: 404 });
+  }
+
+  // Verify installation ID matches (only report creator can patch)
+  const metadata: DiagnosticMetadata = await metaObj.json();
+  const installationId = request.headers.get('X-Installation-Id');
+  if (!installationId || installationId !== metadata.installationId) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  // Parse patch body with size guard
+  const body = await request.text();
+  if (!checkPayloadSize(body)) {
+    return new Response('Payload too large', { status: 413 });
+  }
+
+  let patch: { userEmail?: string; userNote?: string };
+  try {
+    patch = JSON.parse(body);
+  } catch {
+    return new Response('Invalid JSON', { status: 400 });
+  }
+
+  // Enforce reasonable field lengths
+  const email = patch.userEmail?.substring(0, 320);
+  const note = patch.userNote?.substring(0, 2000);
+
+  // Update metadata
+  if (email) {
+    metadata.userEmail = email;
+  }
+  if (note) {
+    metadata.preview.userNote = note.substring(0, 200);
+  }
+
+  await env.TELEMETRY_BUCKET.put(`${prefix}/metadata.json`, JSON.stringify(metadata), {
+    httpMetadata: { contentType: 'application/json' },
+  });
+
+  // Also update the bundle with user details
+  const bundleObj = await env.TELEMETRY_BUCKET.get(`${prefix}/bundle.json`);
+  if (bundleObj) {
+    const bundle: Record<string, unknown> = await bundleObj.json();
+    if (email) bundle.userEmail = email;
+    if (note) bundle.userNote = note;
+    await env.TELEMETRY_BUCKET.put(`${prefix}/bundle.json`, JSON.stringify(bundle), {
+      httpMetadata: { contentType: 'application/json' },
+    });
+  }
+
+  // Send notification email about user-added details
+  if (patch.userEmail || patch.userNote) {
+    await sendPatchNotificationEmail(env, metadata);
+  }
+
+  return Response.json({ status: 'ok', reportId });
+}
+
+/** Send notification email when user adds details to auto-report */
+async function sendPatchNotificationEmail(
+  env: Env,
+  meta: DiagnosticMetadata
+): Promise<void> {
+  if (!env.RESEND_API_KEY || !env.REPORT_EMAIL || !env.REPORT_FROM_EMAIL) return;
+
+  const subject = `[FPVPIDlab] User added details to auto-report ${meta.reportId.slice(0, 8)}`;
+  const text = `User Details Added to Auto-Report
+${'═'.repeat(40)}
+Report ID:   ${meta.reportId}
+User Email:  ${meta.userEmail ?? '(not provided)'}
+User Note:   ${meta.preview.userNote ?? '(none)'}
+
+Original Mode: ${meta.preview.mode}
+Drone:         ${meta.preview.droneSize ?? 'N/A'}
+
+Review: /diagnose ${meta.reportId}`;
+
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: env.REPORT_FROM_EMAIL,
+        to: [env.REPORT_EMAIL],
+        subject,
+        text,
+      }),
+    });
+  } catch (err) {
+    console.error('Failed to send patch notification email:', err);
+  }
+}
+
 /** PUT /v1/diagnostic/{reportId}/bbl — upload BBL flight data */
 export async function handleBBLUpload(request: Request, env: Env, reportId: string): Promise<Response> {
   if (request.method !== 'PUT') {

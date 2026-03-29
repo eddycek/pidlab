@@ -229,6 +229,7 @@ export function TuningSessionDetail({ record, onReanalyzeVerification }: TuningS
               record.verificationLogId
             )
           }
+          autoReportId={record.autoReportId}
           variant="button"
           className="report-issue-btn"
         />

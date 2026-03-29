@@ -24,11 +24,22 @@ interface PerAxisStepResponse {
 
 type StepResponseData = PerAxisStepResponse | CompactStepResponse;
 
+/** Per-axis overshoot values (from PID metrics, more accurate than trace-derived) */
+interface AxisOvershoot {
+  roll: number;
+  pitch: number;
+  yaw: number;
+}
+
 interface TFStepResponseChartProps {
   /** Current / "after" step response data */
   stepResponse: StepResponseData;
   /** Optional "before" step response data for comparison mode */
   beforeStepResponse?: StepResponseData;
+  /** Override overshoot values (from PID metrics) instead of computing from trace */
+  overshootAfterOverride?: AxisOvershoot;
+  /** Override overshoot values for "before" data */
+  overshootBeforeOverride?: AxisOvershoot;
 }
 
 interface ChartDataPoint {
@@ -112,6 +123,8 @@ function buildChartData(
 export function TFStepResponseChart({
   stepResponse,
   beforeStepResponse,
+  overshootAfterOverride,
+  overshootBeforeOverride,
 }: TFStepResponseChartProps) {
   const [selectedAxis, setSelectedAxis] = useState<AxisSelection>('all');
 
@@ -149,26 +162,29 @@ export function TFStepResponseChart({
     return [Math.min(-0.1, dataMin - 0.05), Math.max(1.3, dataMax + 0.05)];
   }, [data]);
 
-  // Compute overshoot metrics
+  // Compute overshoot metrics — use overrides (from PID metrics) when provided,
+  // fall back to trace-derived computation (works for TF synthetic step responses)
   const overshootAfter = useMemo(
-    () => ({
-      roll: computeOvershoot(after.roll.response),
-      pitch: computeOvershoot(after.pitch.response),
-      yaw: computeOvershoot(after.yaw.response),
-    }),
-    [after]
+    () =>
+      overshootAfterOverride ?? {
+        roll: computeOvershoot(after.roll.response),
+        pitch: computeOvershoot(after.pitch.response),
+        yaw: computeOvershoot(after.yaw.response),
+      },
+    [after, overshootAfterOverride]
   );
 
   const overshootBefore = useMemo(
     () =>
-      before
+      overshootBeforeOverride ??
+      (before
         ? {
             roll: computeOvershoot(before.roll.response),
             pitch: computeOvershoot(before.pitch.response),
             yaw: computeOvershoot(before.yaw.response),
           }
-        : null,
-    [before]
+        : null),
+    [before, overshootBeforeOverride]
   );
 
   // Delta pill for comparison mode

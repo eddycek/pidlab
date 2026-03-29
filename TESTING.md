@@ -167,7 +167,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 
 ## Test Inventory
 
-**Total: 2822 unit tests across 134 files + 37 Playwright E2E tests across 7 spec files** (last verified: March 29, 2026)
+**Total: 2852 unit tests across 136 files + 37 Playwright E2E tests across 7 spec files** (last verified: March 29, 2026)
 
 ### UI Components
 
@@ -313,6 +313,12 @@ npm run test:ui           # Visual interface with DOM snapshots
 | File | Tests | Description |
 |------|-------|-------------|
 | `diagnostic/DiagnosticBundleBuilder.test.ts` | 12 | Diagnostic bundle building: profile/snapshot/telemetry assembly, recommendation extraction, filter/PID/TF analysis summary, verification metrics, event log, empty/missing data handling |
+
+### Main Process Utils
+
+| File | Tests | Description |
+|------|-------|-------------|
+| `utils/verifyAppliedConfig.test.ts` | 15 | Full-config apply verification: PID match/mismatch/retry, filter match/mismatch, flash combined, sanity checks (P/I/D=0, filter bypassed), expected/actual recording, mode-aware scope (PID-only, filter-only, both) |
 
 ### Auto-Updater
 

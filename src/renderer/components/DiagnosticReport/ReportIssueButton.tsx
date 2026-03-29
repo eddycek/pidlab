@@ -8,6 +8,8 @@ interface ReportIssueButtonProps {
   recordId: string;
   /** Whether flight data (BBL log) is available */
   hasFlightData?: boolean;
+  /** Auto-report ID — when set, modal uses merge mode (PATCH instead of POST) */
+  autoReportId?: string;
   /** Button style variant */
   variant?: 'button' | 'link';
   /** Custom class name */
@@ -17,6 +19,7 @@ interface ReportIssueButtonProps {
 export function ReportIssueButton({
   recordId,
   hasFlightData,
+  autoReportId,
   variant = 'link',
   className,
 }: ReportIssueButtonProps) {
@@ -28,17 +31,29 @@ export function ReportIssueButton({
   // Only visible for Pro/Tester users (and demo/dev mode)
   if (!isPro) return null;
 
+  const mergeMode = !!autoReportId;
+
   const handleSubmit = async (email?: string, note?: string, includeFlightData?: boolean) => {
     setSubmitting(true);
     try {
-      await window.betaflight.sendDiagnosticReport({
-        recordId,
-        userEmail: email,
-        userNote: note,
-        includeFlightData,
-      });
-      setShowModal(false);
-      toast.success('Diagnostic report sent — thank you!');
+      if (mergeMode) {
+        await window.betaflight.patchDiagnosticReport({
+          reportId: autoReportId!,
+          userEmail: email,
+          userNote: note,
+        });
+        setShowModal(false);
+        toast.success('Details added to auto-report — thank you!');
+      } else {
+        await window.betaflight.sendDiagnosticReport({
+          recordId,
+          userEmail: email,
+          userNote: note,
+          includeFlightData,
+        });
+        setShowModal(false);
+        toast.success('Diagnostic report sent — thank you!');
+      }
     } catch (err) {
       toast.error(`Failed to send report: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -54,7 +69,7 @@ export function ReportIssueButton({
   return (
     <>
       <button className={btnClass} onClick={() => setShowModal(true)}>
-        Report Issue
+        {mergeMode ? 'Add Details to Report' : 'Report Issue'}
       </button>
       {showModal && (
         <ReportIssueModal
@@ -62,6 +77,7 @@ export function ReportIssueButton({
           onClose={() => setShowModal(false)}
           submitting={submitting}
           hasFlightData={hasFlightData}
+          mergeMode={mergeMode}
         />
       )}
     </>
