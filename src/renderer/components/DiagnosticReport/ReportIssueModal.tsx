@@ -2,17 +2,29 @@ import React, { useState } from 'react';
 import './ReportIssueModal.css';
 
 interface ReportIssueModalProps {
-  onSubmit: (email?: string, note?: string) => void;
+  onSubmit: (email?: string, note?: string, includeFlightData?: boolean) => void;
   onClose: () => void;
   submitting: boolean;
+  /** Whether flight data (BBL log) is available for this record */
+  hasFlightData?: boolean;
 }
 
-export function ReportIssueModal({ onSubmit, onClose, submitting }: ReportIssueModalProps) {
+export function ReportIssueModal({
+  onSubmit,
+  onClose,
+  submitting,
+  hasFlightData,
+}: ReportIssueModalProps) {
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
+  const [includeFlightData, setIncludeFlightData] = useState(true);
 
   const handleSubmit = () => {
-    onSubmit(email.trim() || undefined, note.trim() || undefined);
+    onSubmit(
+      email.trim() || undefined,
+      note.trim() || undefined,
+      hasFlightData ? includeFlightData : undefined
+    );
   };
 
   return (
@@ -56,14 +68,34 @@ export function ReportIssueModal({ onSubmit, onClose, submitting }: ReportIssueM
             disabled={submitting}
           />
 
+          {hasFlightData && (
+            <label className="report-flight-data-toggle">
+              <input
+                type="checkbox"
+                checked={includeFlightData}
+                onChange={(e) => setIncludeFlightData(e.target.checked)}
+                disabled={submitting}
+              />
+              <span>Include flight data (BBL log)</span>
+              <span className="report-flight-data-hint">
+                Helps us reproduce the issue with your exact flight recording.
+              </span>
+            </label>
+          )}
+
           <div className="report-privacy-note">
             <strong>What we'll send:</strong>
             <ul>
               <li>Analysis results &amp; recommendations</li>
               <li>Flight controller settings</li>
               <li>Data quality metrics</li>
+              {hasFlightData && includeFlightData && <li>Raw flight recording (BBL file)</li>}
             </ul>
-            <p>No personal data, file paths, or raw flight recordings.</p>
+            {hasFlightData && includeFlightData ? (
+              <p>No personal data or file paths.</p>
+            ) : (
+              <p>No personal data, file paths, or raw flight recordings.</p>
+            )}
           </div>
         </div>
 

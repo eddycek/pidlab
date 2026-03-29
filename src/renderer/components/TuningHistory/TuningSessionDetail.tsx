@@ -219,7 +219,19 @@ export function TuningSessionDetail({ record, onReanalyzeVerification }: TuningS
       )}
 
       <div className="session-detail-actions">
-        <ReportIssueButton recordId={record.id} variant="button" className="report-issue-btn" />
+        <ReportIssueButton
+          recordId={record.id}
+          hasFlightData={
+            !!(
+              record.filterLogId ||
+              record.pidLogId ||
+              record.quickLogId ||
+              record.verificationLogId
+            )
+          }
+          variant="button"
+          className="report-issue-btn"
+        />
       </div>
     </div>
   );

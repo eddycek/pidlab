@@ -13,6 +13,8 @@ export interface Env {
   DIAGNOSTIC_RATE_LIMIT_WINDOW_MIN?: string;
   /** Max telemetry uploads per installation per window in minutes (default: 60) */
   TELEMETRY_RATE_LIMIT_WINDOW_MIN?: string;
+  /** Maximum BBL file size in bytes (default: 50 MB) */
+  BBL_MAX_SIZE_BYTES?: string;
 }
 
 /** Telemetry bundle schema (mirrors client-side TelemetryBundle) */

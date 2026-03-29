@@ -44,6 +44,19 @@ curl -sf -X PATCH -H "X-Admin-Key: $PIDLAB_TELEMETRY_ADMIN_KEY" \
   "$PIDLAB_TELEMETRY_API_URL/admin/diagnostics/<reportId>"
 ```
 
+Check if BBL flight data is available:
+```bash
+# Check metadata.hasBbl in the fetched report
+HAS_BBL=$(jq -r '.metadata.hasBbl // false' /tmp/diagnostic-report.json)
+if [ "$HAS_BBL" = "true" ]; then
+  echo "BBL available ($(jq -r '.metadata.bblSizeBytes' /tmp/diagnostic-report.json) bytes)"
+  curl -sf -H "X-Admin-Key: $PIDLAB_TELEMETRY_ADMIN_KEY" \
+    "$PIDLAB_TELEMETRY_API_URL/admin/diagnostics/<reportId>/bbl" \
+    -o /tmp/diagnostic-flight.bbl
+  echo "Downloaded to /tmp/diagnostic-flight.bbl"
+fi
+```
+
 ### Step 2: Read the report
 
 Read `/tmp/diagnostic-report.json` and extract:
@@ -61,6 +74,24 @@ Read `/tmp/diagnostic-report.json` and extract:
 - **BF version** → check `docs/BF_VERSION_POLICY.md` for compatibility notes
 - **Data quality** → if tier is "fair" or "poor", recommendations may be unreliable
 - **Flight style** → check if style-specific thresholds apply (e.g., `BANDWIDTH_LOW_HZ_BY_STYLE`)
+
+### Step 3b: Parse BBL data (if available)
+
+When BBL flight data was downloaded in Step 1, use it for deeper investigation:
+
+1. **Parse the BBL** using the app's parser for offline analysis:
+   - Run `npx vitest run src/main/blackbox/BlackboxParser.test.ts` to verify parser health
+   - The BBL file can be imported into Betaflight Blackbox Explorer for visual inspection
+   - Check gyro noise floor, motor traces, setpoint tracking quality
+
+2. **Cross-reference with analysis results**:
+   - Compare raw gyro spectrum against the `bundle.filterAnalysis.spectrum`
+   - Verify peak detection against actual BBL data
+   - Check if step response metrics match what the raw setpoint/gyro data shows
+
+3. **When BBL is NOT available** but needed:
+   - Set report status to `needs-bbl` — this notifies the user to re-submit with "Include flight data" checked
+   - The user will see the needs-bbl status and can re-submit from the same tuning session
 
 ### Step 4: Analyze each recommendation
 
@@ -170,4 +201,6 @@ curl -sf -X PATCH -H "X-Admin-Key: $PIDLAB_TELEMETRY_ADMIN_KEY" \
 - Always check data quality tier first — poor data → unreliable recommendations
 - Reference specific lines in analysis code when suggesting fixes
 - If the issue requires BBL file for reproduction, set status to `needs-bbl` instead of guessing
+- When BBL is available (`metadata.hasBbl: true`), always download and inspect it — raw data is the ground truth
+- BBL files have 30-day retention — if `metadata.bblExpiredAt` is set, the file has been cleaned up
 - Be honest about confidence level — if you're unsure, say so

@@ -129,6 +129,10 @@ export const DIAGNOSTIC = {
   UPLOAD_URL: 'https://telemetry.pidlab.app/v1/diagnostic',
   /** Development diagnostic endpoint */
   UPLOAD_URL_DEV: 'https://pidlab-telemetry-dev.eddycek-ve.workers.dev/v1/diagnostic',
+  /** Maximum BBL file size for upload (50 MB) */
+  BBL_MAX_SIZE_BYTES: 50 * 1024 * 1024,
+  /** BBL upload timeout in ms (2 minutes) */
+  BBL_UPLOAD_TIMEOUT_MS: 120_000,
 } as const;
 
 export const TELEMETRY = {

@@ -345,6 +345,14 @@ export function TuningCompletionSummary({
         {historyRecordId && (
           <ReportIssueButton
             recordId={historyRecordId}
+            hasFlightData={
+              !!(
+                session.filterLogId ||
+                session.pidLogId ||
+                session.quickLogId ||
+                session.verificationLogId
+              )
+            }
             variant="button"
             className="report-issue-btn"
           />

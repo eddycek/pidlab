@@ -72,6 +72,7 @@ describe('ReportIssueButton', () => {
       recordId: 'rec-1',
       userEmail: undefined,
       userNote: undefined,
+      includeFlightData: undefined,
     });
 
     // Modal closes on success
@@ -107,6 +108,39 @@ describe('ReportIssueButton', () => {
     await waitFor(() => {
       const btn = screen.getByText('Report Issue');
       expect(btn.className).toContain('wizard-btn');
+    });
+  });
+
+  it('passes hasFlightData to modal', async () => {
+    const user = userEvent.setup();
+    renderWithToast(<ReportIssueButton recordId="rec-1" hasFlightData={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Report Issue')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Report Issue'));
+
+    // Flight data checkbox should be visible
+    expect(screen.getByText('Include flight data (BBL log)')).toBeInTheDocument();
+  });
+
+  it('submits with includeFlightData when flight data available', async () => {
+    const user = userEvent.setup();
+    renderWithToast(<ReportIssueButton recordId="rec-1" hasFlightData={true} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Report Issue')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText('Report Issue'));
+    await user.click(screen.getByRole('button', { name: 'Send Report' }));
+
+    expect(window.betaflight.sendDiagnosticReport).toHaveBeenCalledWith({
+      recordId: 'rec-1',
+      userEmail: undefined,
+      userNote: undefined,
+      includeFlightData: true,
     });
   });
 });
