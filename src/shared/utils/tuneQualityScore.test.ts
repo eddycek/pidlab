@@ -827,7 +827,7 @@ describe('computeTuneQualityScore', () => {
       expect(spectrogramDelta(before, after)).toBeCloseTo(3, 1);
     });
 
-    it('spectrogramDelta excludes sentinel values', () => {
+    it('spectrogramDelta excludes -240 sentinel values', () => {
       const before = makeSpectrogram(-25);
       const after: CompactThrottleSpectrogram = {
         ...makeSpectrogram(-30),
@@ -848,6 +848,12 @@ describe('computeTuneQualityScore', () => {
       const delta = spectrogramDelta(beforeOneBand, after);
       // Only non-sentinel pairs counted: 8 cells × -5 dB = -5 avg
       expect(delta).toBeCloseTo(-5, 1);
+    });
+
+    it('spectrogramDelta does not exclude legitimately quiet values (e.g. -110 dB)', () => {
+      const before = makeSpectrogram(-100);
+      const after = makeSpectrogram(-110); // very quiet but valid
+      expect(spectrogramDelta(before, after)).toBeCloseTo(-10, 1);
     });
 
     it('uses spectrogram delta for Noise Delta when both have spectrograms', () => {

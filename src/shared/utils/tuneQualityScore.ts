@@ -57,31 +57,13 @@ function avgNoiseFloor(m: {
   return valid.reduce((a, b) => a + b, 0) / valid.length;
 }
 
-/**
- * Average spectral energy from throttle spectrogram across all axes, bands, and frequencies.
- * More representative than noise floor (25th percentile) because it captures the full
- * frequency range including where filters actually reduce noise.
- */
-function spectrogramEnergy(spec: CompactThrottleSpectrogram): number | undefined {
-  if (!spec || spec.bands.length === 0) return undefined;
-  let sum = 0;
-  let count = 0;
-  for (const band of spec.bands) {
-    for (const axis of ['roll', 'pitch', 'yaw'] as const) {
-      for (const val of band[axis]) {
-        if (val > NOISE_FLOOR_VALID_MIN) {
-          sum += val;
-          count++;
-        }
-      }
-    }
-  }
-  return count > 0 ? sum / count : undefined;
-}
+/** Sentinel value for bins with near-zero FFT magnitude (20*log10(1e-12)) */
+const DB_SENTINEL = -240;
 
 /**
  * Average spectrogram delta (after - before) across all axes, bands, and frequencies.
- * Matches the per-axis computation in SpectrogramComparisonChart but averaged across all axes.
+ * Same computation as SpectrogramComparisonChart.computeAvgDelta but across all axes.
+ * Filters only the -240 dB sentinel (near-zero FFT bins) to avoid biasing the average.
  * Negative = improvement, positive = regression.
  */
 export function spectrogramDelta(
@@ -98,7 +80,7 @@ export function spectrogramDelta(
       const afterBand = after.bands[b][axis];
       const minLen = Math.min(beforeBand.length, afterBand.length);
       for (let f = 0; f < minLen; f++) {
-        if (beforeBand[f] > NOISE_FLOOR_VALID_MIN && afterBand[f] > NOISE_FLOOR_VALID_MIN) {
+        if (beforeBand[f] > DB_SENTINEL && afterBand[f] > DB_SENTINEL) {
           sum += afterBand[f] - beforeBand[f];
           count++;
         }
