@@ -1,6 +1,6 @@
 # Architecture Overview
 
-**Last Updated:** March 29, 2026 | **Phase 4 Complete, Phase 6 Complete** | **2822 unit tests, 134 files + 37 Playwright E2E tests**
+**Last Updated:** March 29, 2026 | **Phase 4 Complete, Phase 6 Complete** | **2852 unit tests, 136 files + 37 Playwright E2E tests**
 
 ---
 
@@ -516,7 +516,7 @@ TuningSession {
 | Telemetry (3) | `get_settings`, `set_enabled`, `send_now` | Anonymous usage telemetry settings + manual upload |
 | License (4) | `activate`, `get_status`, `remove`, `validate` | License activation, status, removal |
 | Update (2) | `check`, `install` | Auto-update check, install |
-| Diagnostic (1) | `send_report` | Build diagnostic bundle, gzip, upload to CF Worker + fire-and-forget BBL upload (Pro only) |
+| Diagnostic (2) | `send_report`, `patch_report` | Build diagnostic bundle, upload to CF Worker + fire-and-forget BBL upload (Pro only) + PATCH auto-report with user details |
 
 **16 Event types** (Main → Renderer):
 
@@ -842,7 +842,7 @@ Hardware error (FC timeout, USB disconnect)
 
 ## Testing Strategy
 
-**2822 unit tests across 134 files + 37 Playwright E2E tests**. See [TESTING.md](./TESTING.md) for complete inventory.
+**2852 unit tests across 136 files + 37 Playwright E2E tests**. See [TESTING.md](./TESTING.md) for complete inventory.
 
 | Area | Files | Tests |
 |------|-------|-------|
