@@ -666,6 +666,7 @@ export class MSPClient extends EventEmitter {
         await this.connection.forceExitCLI();
 
         const pingStart = Date.now();
+        let pingOk = false;
         while (Date.now() - pingStart < MAX_WAIT_MS) {
           if (!this.connection.isOpen()) break;
           try {
@@ -675,11 +676,21 @@ export class MSPClient extends EventEmitter {
               PING_TIMEOUT_MS
             );
             logger.info('FC is MSP-responsive after save reboot');
+            pingOk = true;
             break;
           } catch {
             logger.debug('MSP ping after save reboot — FC still booting...');
             await new Promise((resolve) => setTimeout(resolve, PING_INTERVAL_MS));
           }
+        }
+
+        // Restore connected status so renderer reflects the reconnected state
+        if (pingOk && this.connection.isOpen()) {
+          this.connectionStatus = {
+            connected: true,
+            portPath: this.currentPort ?? undefined,
+          };
+          this.emit('connection-changed', this.connectionStatus);
         }
       }
 

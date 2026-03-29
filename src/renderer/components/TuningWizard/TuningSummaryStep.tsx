@@ -286,9 +286,14 @@ export function TuningSummaryStep({
 
       {applyState === 'applying' && (
         <div className="applying-overlay">
-          <div className="applying-overlay-modal">
+          <div
+            className="applying-overlay-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="applying-overlay-title"
+          >
             <div className="applying-overlay-spinner" />
-            <h3>Applying changes</h3>
+            <h3 id="applying-overlay-title">Applying changes</h3>
             <p>{applyProgress?.message ?? 'Preparing...'}</p>
             {applyProgress && (
               <div className="applying-overlay-progress">

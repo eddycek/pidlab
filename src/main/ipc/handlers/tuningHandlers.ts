@@ -284,11 +284,19 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
             const tuningType = (refreshedSession?.tuningType ??
               currentSession.tuningType) as keyof typeof TUNING_TYPE_LABELS;
             const label = `Post-tuning #${sessionNumber} (${TUNING_TYPE_LABELS[tuningType]})`;
-            const snapshot = await snapshotManager!.createSnapshot(label, 'auto', {
-              tuningSessionNumber: sessionNumber,
-              tuningType,
-              snapshotRole: 'post-tuning',
-            });
+            // createSnapshot → exportCLIDiff → exit → FC reboots.
+            // Guard with rebootPending so connected handler skips fallback work.
+            mspClient.setRebootPending();
+            let snapshot;
+            try {
+              snapshot = await snapshotManager!.createSnapshot(label, 'auto', {
+                tuningSessionNumber: sessionNumber,
+                tuningType,
+                snapshotRole: 'post-tuning',
+              });
+            } finally {
+              mspClient.clearRebootPending();
+            }
             await tuningSessionManager!.updatePhase(profileId, currentSession.phase, {
               postTuningSnapshotId: snapshot.id,
             });
