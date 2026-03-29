@@ -400,12 +400,22 @@ export function TuningStatusBanner({
           )}
         </button>
         {isDownloadAction && !downloading && (
-          <button
-            className="wizard-btn wizard-btn-secondary"
-            onClick={() => onAction('import_log')}
-          >
-            Import File
-          </button>
+          <>
+            <button
+              className="wizard-btn wizard-btn-secondary"
+              onClick={() => onAction('import_log')}
+            >
+              Import File
+            </button>
+            {hasDownloadedLogs && (
+              <button
+                className="wizard-btn wizard-btn-secondary"
+                onClick={() => onAction('use_existing_log')}
+              >
+                Use Existing Log
+              </button>
+            )}
+          </>
         )}
         {isEraseAction && !erasing && !downloading && (
           <button
