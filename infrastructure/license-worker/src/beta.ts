@@ -1,0 +1,263 @@
+import type { Env, BetaWhitelistRow } from './types';
+import { generateLicenseKey } from './keygen';
+import { sendEmail, confirmationEmail, approvalEmail, rejectionEmail } from './email';
+import { signupPage, thankYouPage, adminBetaPage } from './betaPages';
+import { isValidEmail } from './validation';
+
+const MAX_SIGNUPS_PER_IP_PER_HOUR = 3;
+
+/** GET /beta — public signup form */
+export function handleBetaSignup(): Response {
+  return htmlResponse(signupPage());
+}
+
+/** GET /beta/thankyou — confirmation page */
+export function handleBetaThankYou(): Response {
+  return htmlResponse(thankYouPage());
+}
+
+/** GET /admin/beta — admin dashboard HTML */
+export function handleAdminBetaPage(): Response {
+  return htmlResponse(adminBetaPage());
+}
+
+/** POST /beta/signup — process signup form */
+export async function handleBetaSignupSubmit(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  const formData = await request.formData().catch(() => null);
+  if (!formData) {
+    return htmlResponse(signupPage('Invalid form submission.'));
+  }
+
+  const name = (formData.get('name') as string || '').trim();
+  const email = (formData.get('email') as string || '').trim().toLowerCase();
+  const quadCount = parseInt(formData.get('quad_count') as string || '1', 10);
+  const platforms = formData.getAll('platform') as string[];
+  const comment = (formData.get('comment') as string || '').trim();
+
+  // Validate required fields
+  if (!name || name.length > 100) {
+    return htmlResponse(signupPage('Please provide a valid name (max 100 characters).'));
+  }
+  if (!email || !isValidEmail(email)) {
+    return htmlResponse(signupPage('Please provide a valid email address.'));
+  }
+  if (isNaN(quadCount) || quadCount < 1 || quadCount > 100) {
+    return htmlResponse(signupPage('Invalid quad count.'));
+  }
+  const validPlatforms = platforms.filter((p) =>
+    ['windows', 'macos', 'linux'].includes(p)
+  );
+  if (validPlatforms.length === 0) {
+    return htmlResponse(signupPage('Please select at least one platform.'));
+  }
+  if (!comment || comment.length > 1000) {
+    return htmlResponse(signupPage('Please provide a comment (max 1000 characters).'));
+  }
+
+  const platformStr = validPlatforms.join(',');
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+
+  // Rate limit: max 3 signups per IP per hour
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const rateCheck = await env.LICENSE_DB.prepare(
+    'SELECT COUNT(*) as count FROM beta_whitelist WHERE ip_address = ? AND created_at >= ?'
+  )
+    .bind(ip, oneHourAgo)
+    .first<{ count: number }>();
+
+  if (rateCheck && rateCheck.count >= MAX_SIGNUPS_PER_IP_PER_HOUR) {
+    return htmlResponse(signupPage('Too many signup attempts. Please try again later.'));
+  }
+
+  // Check for duplicate email
+  const existing = await env.LICENSE_DB.prepare(
+    'SELECT id, status FROM beta_whitelist WHERE email = ?'
+  )
+    .bind(email)
+    .first<{ id: string; status: string }>();
+
+  if (existing) {
+    if (existing.status === 'rejected') {
+      // Allow re-application: delete rejected entry
+      await env.LICENSE_DB.prepare('DELETE FROM beta_whitelist WHERE id = ?')
+        .bind(existing.id)
+        .run();
+    } else {
+      // Pending or approved — same response to prevent email enumeration
+      return redirect('/beta/thankyou');
+    }
+  }
+
+  // Insert new entry
+  await env.LICENSE_DB.prepare(
+    `INSERT INTO beta_whitelist (name, email, quad_count, platform, comment, ip_address)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  )
+    .bind(name, email, quadCount, platformStr, comment, ip)
+    .run();
+
+  // Send confirmation email (fire-and-forget)
+  const { subject, html } = confirmationEmail(name);
+  await sendEmail(env, { to: email, subject, html });
+
+  return redirect('/beta/thankyou');
+}
+
+/** GET /admin/beta/list — JSON list of applications */
+export async function handleAdminBetaList(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  const url = new URL(request.url);
+  const status = url.searchParams.get('status');
+
+  let query = 'SELECT * FROM beta_whitelist WHERE 1=1';
+  const params: unknown[] = [];
+
+  if (status) {
+    query += ' AND status = ?';
+    params.push(status);
+  }
+
+  query += ' ORDER BY created_at DESC';
+
+  const result = await env.LICENSE_DB.prepare(query)
+    .bind(...params)
+    .all<BetaWhitelistRow>();
+
+  // Stats
+  const [pending, approved, rejected, total] = await Promise.all([
+    env.LICENSE_DB.prepare("SELECT COUNT(*) as count FROM beta_whitelist WHERE status = 'pending'").first<{ count: number }>(),
+    env.LICENSE_DB.prepare("SELECT COUNT(*) as count FROM beta_whitelist WHERE status = 'approved'").first<{ count: number }>(),
+    env.LICENSE_DB.prepare("SELECT COUNT(*) as count FROM beta_whitelist WHERE status = 'rejected'").first<{ count: number }>(),
+    env.LICENSE_DB.prepare('SELECT COUNT(*) as count FROM beta_whitelist').first<{ count: number }>(),
+  ]);
+
+  return Response.json({
+    entries: result.results.map(formatBetaEntry),
+    stats: {
+      pending: pending?.count ?? 0,
+      approved: approved?.count ?? 0,
+      rejected: rejected?.count ?? 0,
+      total: total?.count ?? 0,
+    },
+  });
+}
+
+/** PUT /admin/beta/:id/approve — approve and generate license key */
+export async function handleAdminBetaApprove(
+  env: Env,
+  entryId: string
+): Promise<Response> {
+  const entry = await env.LICENSE_DB.prepare(
+    'SELECT * FROM beta_whitelist WHERE id = ?'
+  )
+    .bind(entryId)
+    .first<BetaWhitelistRow>();
+
+  if (!entry) {
+    return Response.json({ error: 'Application not found' }, { status: 404 });
+  }
+  if (entry.status === 'approved') {
+    return Response.json({ error: 'Already approved' }, { status: 400 });
+  }
+
+  // Generate license key
+  const licenseKey = generateLicenseKey();
+
+  // Insert license with whitelist_id
+  const license = await env.LICENSE_DB.prepare(
+    `INSERT INTO licenses (license_key, email, type, note, whitelist_id)
+     VALUES (?, ?, 'tester', ?, ?)
+     RETURNING id, license_key`
+  )
+    .bind(licenseKey, entry.email, `Beta tester: ${entry.name}`, entryId)
+    .first<{ id: string; license_key: string }>();
+
+  if (!license) {
+    return Response.json({ error: 'Failed to create license' }, { status: 500 });
+  }
+
+  // Update whitelist entry
+  await env.LICENSE_DB.prepare(
+    `UPDATE beta_whitelist SET status = 'approved', license_id = ?, reviewed_at = datetime('now')
+     WHERE id = ?`
+  )
+    .bind(license.id, entryId)
+    .run();
+
+  // Send approval email
+  const { subject, html } = approvalEmail(entry.name, licenseKey);
+  await sendEmail(env, { to: entry.email, subject, html });
+
+  return Response.json({
+    id: entryId,
+    status: 'approved',
+    licenseKey: licenseKey,
+    licenseId: license.id,
+  });
+}
+
+/** PUT /admin/beta/:id/reject — reject application */
+export async function handleAdminBetaReject(
+  env: Env,
+  entryId: string
+): Promise<Response> {
+  const entry = await env.LICENSE_DB.prepare(
+    'SELECT * FROM beta_whitelist WHERE id = ?'
+  )
+    .bind(entryId)
+    .first<BetaWhitelistRow>();
+
+  if (!entry) {
+    return Response.json({ error: 'Application not found' }, { status: 404 });
+  }
+  if (entry.status !== 'pending') {
+    return Response.json({ error: 'Can only reject pending applications' }, { status: 400 });
+  }
+
+  await env.LICENSE_DB.prepare(
+    `UPDATE beta_whitelist SET status = 'rejected', reviewed_at = datetime('now')
+     WHERE id = ?`
+  )
+    .bind(entryId)
+    .run();
+
+  // Send rejection email
+  const { subject, html } = rejectionEmail(entry.name);
+  await sendEmail(env, { to: entry.email, subject, html });
+
+  return Response.json({ id: entryId, status: 'rejected' });
+}
+
+function formatBetaEntry(row: BetaWhitelistRow) {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    quadCount: row.quad_count,
+    platform: row.platform,
+    comment: row.comment,
+    status: row.status,
+    licenseId: row.license_id,
+    createdAt: row.created_at,
+    reviewedAt: row.reviewed_at,
+  };
+}
+
+function htmlResponse(html: string, status = 200): Response {
+  return new Response(html, {
+    status,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
+}
+
+function redirect(url: string): Response {
+  return new Response(null, {
+    status: 302,
+    headers: { Location: url },
+  });
+}

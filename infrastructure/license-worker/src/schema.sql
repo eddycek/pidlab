@@ -19,3 +19,22 @@ CREATE INDEX IF NOT EXISTS idx_licenses_key ON licenses(license_key);
 CREATE INDEX IF NOT EXISTS idx_licenses_email ON licenses(email);
 CREATE INDEX IF NOT EXISTS idx_licenses_installation ON licenses(installation_id);
 CREATE INDEX IF NOT EXISTS idx_licenses_status ON licenses(status);
+
+-- Beta whitelist table
+CREATE TABLE IF NOT EXISTS beta_whitelist (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  quad_count INTEGER NOT NULL DEFAULT 1,
+  platform TEXT NOT NULL,
+  comment TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  license_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  reviewed_at TEXT,
+  ip_address TEXT,
+  UNIQUE(email)
+);
+
+CREATE INDEX IF NOT EXISTS idx_beta_whitelist_status ON beta_whitelist(status);
+CREATE INDEX IF NOT EXISTS idx_beta_whitelist_email ON beta_whitelist(email);

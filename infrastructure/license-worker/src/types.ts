@@ -4,6 +4,8 @@ export interface Env {
   ADMIN_KEY: string;
   ED25519_PRIVATE_KEY: string;
   ED25519_PUBLIC_KEY: string;
+  RESEND_API_KEY: string;
+  RESEND_FROM_EMAIL: string;
 }
 
 /** D1 row for the licenses table */
@@ -22,6 +24,7 @@ export interface LicenseRow {
   last_validated_at: string | null;
   reset_count: number;
   max_resets: number;
+  whitelist_id: string | null;
 }
 
 /** Signed license object returned to the Electron app on activation */
@@ -74,4 +77,19 @@ export interface KeyStats {
   tester: number;
   activatedLast24h: number;
   activatedLast7d: number;
+}
+
+/** D1 row for the beta_whitelist table */
+export interface BetaWhitelistRow {
+  id: string;
+  name: string;
+  email: string;
+  quad_count: number;
+  platform: string;
+  comment: string;
+  status: 'pending' | 'approved' | 'rejected';
+  license_id: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+  ip_address: string | null;
 }
