@@ -6,6 +6,8 @@ import { ReportIssueModal } from './ReportIssueModal';
 interface ReportIssueButtonProps {
   /** Tuning history record ID to report */
   recordId: string;
+  /** Whether flight data (BBL log) is available */
+  hasFlightData?: boolean;
   /** Button style variant */
   variant?: 'button' | 'link';
   /** Custom class name */
@@ -14,6 +16,7 @@ interface ReportIssueButtonProps {
 
 export function ReportIssueButton({
   recordId,
+  hasFlightData,
   variant = 'link',
   className,
 }: ReportIssueButtonProps) {
@@ -25,13 +28,14 @@ export function ReportIssueButton({
   // Only visible for Pro/Tester users (and demo/dev mode)
   if (!isPro) return null;
 
-  const handleSubmit = async (email?: string, note?: string) => {
+  const handleSubmit = async (email?: string, note?: string, includeFlightData?: boolean) => {
     setSubmitting(true);
     try {
       await window.betaflight.sendDiagnosticReport({
         recordId,
         userEmail: email,
         userNote: note,
+        includeFlightData,
       });
       setShowModal(false);
       toast.success('Diagnostic report sent — thank you!');
@@ -57,6 +61,7 @@ export function ReportIssueButton({
           onSubmit={handleSubmit}
           onClose={() => setShowModal(false)}
           submitting={submitting}
+          hasFlightData={hasFlightData}
         />
       )}
     </>

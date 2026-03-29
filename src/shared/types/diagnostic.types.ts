@@ -124,10 +124,14 @@ export interface DiagnosticReportInput {
   userEmail?: string;
   /** Optional description of the issue */
   userNote?: string;
+  /** Whether to include the BBL flight log file */
+  includeFlightData?: boolean;
 }
 
 /** Result returned after submitting a report */
 export interface DiagnosticReportResult {
   reportId: string;
   submitted: boolean;
+  /** Whether BBL flight data was uploaded successfully */
+  bblUploaded?: boolean;
 }

@@ -119,6 +119,12 @@ Avg Quality Score: ${avgQuality}
 Diagnostic Reports:
 ${await getDiagnosticSummary(env)}`;
 
+  // Cleanup expired BBL files (30-day retention)
+  const bblCleanupCount = await cleanupExpiredBBLFiles(env);
+  if (bblCleanupCount > 0) {
+    console.log(`Cron: cleaned up ${bblCleanupCount} expired BBL files`);
+  }
+
   // Send via Resend
   if (!env.RESEND_API_KEY || !env.REPORT_EMAIL || !env.REPORT_FROM_EMAIL) {
     console.log('Cron: missing RESEND_API_KEY or REPORT_EMAIL, skipping email');
@@ -146,6 +152,66 @@ ${await getDiagnosticSummary(env)}`;
   } else {
     console.log(`Cron: daily report sent to ${env.REPORT_EMAIL}`);
   }
+}
+
+const BBL_RETENTION_DAYS = 30;
+
+/** Delete BBL files older than 30 days, preserve metadata and bundle */
+async function cleanupExpiredBBLFiles(env: Env): Promise<number> {
+  const cutoff = Date.now() - BBL_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  let cleaned = 0;
+
+  let cursor: string | undefined;
+  try {
+    do {
+      const listed = await env.TELEMETRY_BUCKET.list({
+        prefix: 'diagnostics/',
+        delimiter: '/',
+        cursor,
+      });
+
+      for (const prefix of listed.delimitedPrefixes) {
+        if (prefix.includes('_rate')) continue;
+        const id = prefix.replace('diagnostics/', '').replace('/', '');
+
+        try {
+          const metaObj = await env.TELEMETRY_BUCKET.get(`diagnostics/${id}/metadata.json`);
+          if (!metaObj) continue;
+
+          const meta: { hasBbl?: boolean; bblUploadedAt?: string; bblExpiredAt?: string } =
+            await metaObj.json();
+
+          if (!meta.hasBbl || !meta.bblUploadedAt) continue;
+
+          const uploadedAt = new Date(meta.bblUploadedAt).getTime();
+          if (uploadedAt >= cutoff) continue;
+
+          // Delete the BBL file
+          await env.TELEMETRY_BUCKET.delete(`diagnostics/${id}/flight.bbl`);
+
+          // Update metadata
+          meta.hasBbl = false;
+          meta.bblExpiredAt = new Date().toISOString();
+
+          await env.TELEMETRY_BUCKET.put(
+            `diagnostics/${id}/metadata.json`,
+            JSON.stringify(meta),
+            { httpMetadata: { contentType: 'application/json' } }
+          );
+
+          cleaned++;
+        } catch {
+          // Skip individual failures
+        }
+      }
+
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
+  } catch {
+    console.error('Cron: BBL cleanup failed');
+  }
+
+  return cleaned;
 }
 
 /** Get diagnostic reports summary for cron email */

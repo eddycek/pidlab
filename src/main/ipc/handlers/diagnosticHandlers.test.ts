@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// Mock fs/promises
+const mockReadFile = vi.fn();
+vi.mock('fs/promises', () => ({
+  default: { readFile: (...args: any[]) => mockReadFile(...args) },
+  readFile: (...args: any[]) => mockReadFile(...args),
+}));
+
 // Mock electron
 vi.mock('electron', () => {
   const handlers = new Map<string, (...args: any[]) => any>();
@@ -32,7 +39,7 @@ vi.mock('crypto', () => ({
   default: { randomUUID: () => 'test-report-uuid' },
 }));
 
-import { ipcMain } from 'electron';
+import { ipcMain, net } from 'electron';
 import { registerDiagnosticHandlers } from './diagnosticHandlers';
 import { IPCChannel } from '@shared/types/ipc.types';
 import type { HandlerDependencies } from './types';
@@ -48,10 +55,10 @@ describe('diagnosticHandlers', () => {
     baselineSnapshotId: null,
     postFilterSnapshotId: null,
     postTuningSnapshotId: null,
-    filterLogId: null,
+    filterLogId: 'log-filter-1',
     pidLogId: null,
     quickLogId: null,
-    verificationLogId: null,
+    verificationLogId: 'log-verify-1',
     appliedFilterChanges: [],
     appliedPIDChanges: [],
     appliedFeedforwardChanges: [],
@@ -65,6 +72,7 @@ describe('diagnosticHandlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (ipcMain as any)._handlers.clear();
+    mockReadFile.mockReset();
 
     deps = {
       mspClient: null,
@@ -73,7 +81,13 @@ describe('diagnosticHandlers', () => {
         getCurrentProfileId: vi.fn().mockReturnValue('p-1'),
         getProfile: vi.fn().mockResolvedValue(null),
       },
-      blackboxManager: null,
+      blackboxManager: {
+        getLog: vi.fn().mockResolvedValue({
+          id: 'log-verify-1',
+          filepath: '/data/logs/flight.bbl',
+          filename: 'flight.bbl',
+        }),
+      },
       tuningSessionManager: null,
       tuningHistoryManager: {
         getHistory: vi.fn().mockResolvedValue([mockRecord]),
@@ -154,7 +168,6 @@ describe('diagnosticHandlers', () => {
   });
 
   it('handles upload failure gracefully', async () => {
-    const { net } = await import('electron');
     vi.mocked(net.fetch).mockResolvedValueOnce({
       ok: false,
       status: 500,
@@ -165,5 +178,135 @@ describe('diagnosticHandlers', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('Upload failed');
+  });
+
+  describe('BBL upload', () => {
+    it('uploads BBL when includeFlightData is true', async () => {
+      const bblBuffer = Buffer.alloc(1024);
+      mockReadFile.mockResolvedValue(bblBuffer);
+
+      // First call: bundle upload. Second call: BBL upload.
+      vi.mocked(net.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ reportId: 'rpt-1' }),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ status: 'ok' }),
+        } as any);
+
+      const result = await invokeHandler({
+        recordId: 'rec-1',
+        includeFlightData: true,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.bblUploaded).toBe(true);
+
+      // Verify BBL upload call
+      const bblCall = vi.mocked(net.fetch).mock.calls[1];
+      expect(bblCall[0]).toContain('/rpt-1/bbl');
+      expect(bblCall[1]).toMatchObject({ method: 'PUT' });
+    });
+
+    it('skips BBL upload when includeFlightData is false', async () => {
+      const result = await invokeHandler({
+        recordId: 'rec-1',
+        includeFlightData: false,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.bblUploaded).toBeFalsy();
+
+      // Only one fetch call (bundle upload)
+      expect(net.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns bblUploaded=false when log not on disk', async () => {
+      mockReadFile.mockRejectedValue(new Error('ENOENT'));
+
+      vi.mocked(net.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ reportId: 'rpt-1' }),
+      } as any);
+
+      const result = await invokeHandler({
+        recordId: 'rec-1',
+        includeFlightData: true,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.bblUploaded).toBe(false);
+    });
+
+    it('returns bblUploaded=false when BBL upload fails', async () => {
+      const bblBuffer = Buffer.alloc(1024);
+      mockReadFile.mockResolvedValue(bblBuffer);
+
+      vi.mocked(net.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ reportId: 'rpt-1' }),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 413,
+          text: () => Promise.resolve('Too large'),
+        } as any);
+
+      const result = await invokeHandler({
+        recordId: 'rec-1',
+        includeFlightData: true,
+      });
+
+      // Report still succeeds — BBL is optional
+      expect(result.success).toBe(true);
+      expect(result.data.submitted).toBe(true);
+      expect(result.data.bblUploaded).toBe(false);
+    });
+
+    it('selects verification log over analysis log', async () => {
+      const bblBuffer = Buffer.alloc(512);
+      mockReadFile.mockResolvedValue(bblBuffer);
+
+      vi.mocked(net.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ reportId: 'rpt-1' }),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ status: 'ok' }),
+        } as any);
+
+      await invokeHandler({ recordId: 'rec-1', includeFlightData: true });
+
+      // Should request verification log (log-verify-1), not filter log
+      expect(deps.blackboxManager!.getLog).toHaveBeenCalledWith('log-verify-1');
+    });
+
+    it('includes bblUploaded in telemetry event', async () => {
+      const bblBuffer = Buffer.alloc(1024);
+      mockReadFile.mockResolvedValue(bblBuffer);
+
+      vi.mocked(net.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ reportId: 'rpt-1' }),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ status: 'ok' }),
+        } as any);
+
+      await invokeHandler({ recordId: 'rec-1', includeFlightData: true });
+
+      expect(deps.eventCollector!.emit).toHaveBeenCalledWith(
+        'workflow',
+        'diagnostic_report_sent',
+        expect.objectContaining({ bblUploaded: true })
+      );
+    });
   });
 });

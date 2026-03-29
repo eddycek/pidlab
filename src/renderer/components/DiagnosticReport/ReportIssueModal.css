@@ -99,6 +99,31 @@
   color: #666;
 }
 
+.report-flight-data-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.report-flight-data-toggle input[type='checkbox'] {
+  accent-color: #2563eb;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.report-flight-data-hint {
+  width: 100%;
+  font-size: 11px;
+  color: #777;
+  margin-left: 21px;
+}
+
 .report-privacy-note {
   background: #252525;
   border: 1px solid #333;

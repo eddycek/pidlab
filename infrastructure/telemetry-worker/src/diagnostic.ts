@@ -13,6 +13,14 @@ interface DiagnosticMetadata {
   resolution?: 'fixed' | 'user-error' | 'known-limitation' | 'wontfix';
   resolutionMessage?: string;
   internalNote?: string;
+  /** Whether BBL flight data is attached */
+  hasBbl?: boolean;
+  /** BBL file size in bytes */
+  bblSizeBytes?: number;
+  /** When BBL was uploaded */
+  bblUploadedAt?: string;
+  /** When BBL was expired by retention cron */
+  bblExpiredAt?: string;
   preview: {
     mode: string;
     droneSize?: string;
@@ -22,6 +30,8 @@ interface DiagnosticMetadata {
     userNote?: string;
   };
 }
+
+const DEFAULT_BBL_MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 
 const DEFAULT_RATE_LIMIT_WINDOW_MIN = 60;
 const DEFAULT_RATE_LIMIT_MAX = 5;
@@ -190,6 +200,64 @@ Let us know if you have any other issues!
   }
 }
 
+/** PUT /v1/diagnostic/{reportId}/bbl — upload BBL flight data */
+export async function handleBBLUpload(request: Request, env: Env, reportId: string): Promise<Response> {
+  if (request.method !== 'PUT') {
+    return new Response('Method not allowed', { status: 405 });
+  }
+
+  if (!isValidUUID(reportId)) {
+    return new Response('Invalid report ID', { status: 400 });
+  }
+
+  // Verify report exists
+  const metaObj = await env.TELEMETRY_BUCKET.get(`diagnostics/${reportId}/metadata.json`);
+  if (!metaObj) {
+    return new Response('Report not found', { status: 404 });
+  }
+
+  // Verify installation ID matches (only report creator can upload BBL)
+  const metadata: DiagnosticMetadata = await metaObj.json();
+  const installationId = request.headers.get('X-Installation-Id');
+  if (!installationId || installationId !== metadata.installationId) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  // Check Content-Length
+  const contentLength = parseInt(request.headers.get('Content-Length') ?? '0', 10);
+  const maxSize = parseInt(env.BBL_MAX_SIZE_BYTES ?? '', 10) || DEFAULT_BBL_MAX_SIZE;
+  if (contentLength > maxSize) {
+    return new Response(`BBL file too large (max ${Math.round(maxSize / 1024 / 1024)} MB)`, { status: 413 });
+  }
+
+  // Check if already uploaded (idempotent)
+  if (metadata.hasBbl) {
+    return Response.json({ status: 'ok', message: 'BBL already uploaded' });
+  }
+
+  // Stream request body directly to R2
+  if (!request.body) {
+    return new Response('No body', { status: 400 });
+  }
+
+  await env.TELEMETRY_BUCKET.put(`diagnostics/${reportId}/flight.bbl`, request.body, {
+    httpMetadata: { contentType: 'application/octet-stream' },
+  });
+
+  // Update metadata
+  metadata.hasBbl = true;
+  metadata.bblSizeBytes = contentLength;
+  metadata.bblUploadedAt = new Date().toISOString();
+
+  await env.TELEMETRY_BUCKET.put(
+    `diagnostics/${reportId}/metadata.json`,
+    JSON.stringify(metadata),
+    { httpMetadata: { contentType: 'application/json' } }
+  );
+
+  return Response.json({ status: 'ok' });
+}
+
 /** Authenticate admin requests */
 function authenticateAdmin(request: Request, env: Env): boolean {
   const key = request.headers.get('X-Admin-Key');
@@ -222,6 +290,12 @@ export async function handleDiagnosticAdmin(
     return handleDiagnosticsSummary(env);
   }
 
+  // GET /admin/diagnostics/{reportId}/bbl — download BBL file
+  const bblMatch = pathname.match(/^\/admin\/diagnostics\/([0-9a-f-]+)\/bbl$/);
+  if (bblMatch && request.method === 'GET') {
+    return handleAdminBBLDownload(env, bblMatch[1]);
+  }
+
   // GET/PATCH /admin/diagnostics/{reportId}
   const match = pathname.match(/^\/admin\/diagnostics\/([0-9a-f-]+)$/);
   if (match) {
@@ -235,6 +309,21 @@ export async function handleDiagnosticAdmin(
   }
 
   return new Response('Not found', { status: 404 });
+}
+
+/** GET /admin/diagnostics/{reportId}/bbl — download BBL file */
+async function handleAdminBBLDownload(env: Env, reportId: string): Promise<Response> {
+  const bblObj = await env.TELEMETRY_BUCKET.get(`diagnostics/${reportId}/flight.bbl`);
+  if (!bblObj) {
+    return Response.json({ error: 'BBL file not found' }, { status: 404 });
+  }
+
+  return new Response(bblObj.body, {
+    headers: {
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': `attachment; filename="diagnostic-${reportId}.bbl"`,
+    },
+  });
 }
 
 /** GET /admin/diagnostics — list all reports */
