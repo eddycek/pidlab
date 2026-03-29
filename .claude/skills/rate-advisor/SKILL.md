@@ -2,10 +2,10 @@
 name: rate-advisor
 description: >
   Evaluates FPV drone rate profiles against community benchmarks and flight style requirements.
-  Analyzes RC Rate, Rate (srate), Expo, and Rate Limit for ACTUAL, BETAFLIGHT, and QUICK rate types.
+  Analyzes RC Rate, Rate (srate), and Expo for ACTUAL, BETAFLIGHT, and QUICK rate types.
   Provides recommendations based on flight style (freestyle, race, cinematic, whoop).
 user-invocable: true
-allowed-tools: Read, Grep, Glob, Bash, Agent, WebFetch
+allowed-tools: Read, Grep, Glob, Bash, Agent
 ---
 
 # FPV Rate Profile Advisor
@@ -50,7 +50,16 @@ Note: `srate` in ACTUAL is literally max_rate / 10.
 ### BETAFLIGHT rates
 ```
 max_rate = ((200 * rc_rate / 100) * (1 / (1 - (srate / 100)))) deg/s (approximate)
+center_sensitivity ≈ rc_rate * 2  (deg/s at center, approximate)
 ```
+
+### QUICK rates
+```
+max_rate = rc_rate * 10  (deg/s, same concept as ACTUAL but rc_rate encodes max rate directly)
+center_sensitivity is derived from the curve shape — QUICK uses rc_rate as the max rate
+```
+Note: QUICK rates use `rc_rate` as max rate (÷10) and `srate` controls the curve shape.
+If the user provides QUICK rates, ask them to confirm their max rate or compute it from `rc_rate * 10`.
 
 ## Community Benchmark Database
 
@@ -70,6 +79,7 @@ max_rate = ((200 * rc_rate / 100) * (1 / (1 - (srate / 100)))) deg/s (approximat
 | Volker (RubberQuads) | 6/6/6 | 40/40/40 | 70/70/55 | 700 → 550 |
 | Settek (RubberQuads) | 11/11/11 | 50/50/50 | 70/70/65 | 700 → 650 |
 | Davide FPV | 18/18/15 | 35/35/35 | 51/51/49 | 510 → 490 |
+| IllusionFpv (QUICK) | 108/106/100 | — | 100/95/70 | 1000/950 → 700 |
 
 ### Race Pilots (ACTUAL rates)
 
@@ -79,7 +89,7 @@ max_rate = ((200 * rc_rate / 100) * (1 / (1 - (srate / 100)))) deg/s (approximat
 
 ### Freestyle Pilots (BETAFLIGHT rates)
 
-| Pilot | rc_rate R/P/Y | expo R/P/Y | srate R/P/Y | Max Rate (approx) |
+| Pilot | rc_rate R/P/Y | expo R/P/Y | srate R/P/Y | Max Rate R/P → Y |
 |---|---|---|---|---|
 | Joshua Bardwell | 127/127/100 | 40/40/0 | 72/72/75 | 907 → 800 |
 | Feisar | 206/206/203 | 60/60/60 | 35/35/32 | 902 → 725 |
@@ -107,7 +117,13 @@ Score each aspect 1-5 and provide overall rating:
 
 ### 2. Center Sensitivity Assessment
 
-| Flight Style | Ideal rc_rate (ACTUAL) | Notes |
+These ranges are for ACTUAL rates. For BETAFLIGHT or QUICK rate profiles, first normalize
+to an ACTUAL-equivalent center sensitivity before scoring. Approximate normalization:
+- **BETAFLIGHT → ACTUAL**: `actual_equiv ≈ bf_rc_rate / 10` (e.g., BF 150 ≈ ACTUAL 15)
+- **QUICK → ACTUAL**: QUICK center sensitivity depends on curve shape; provide qualitative
+  guidance only and do **not** assign a numeric center-sensitivity score if normalization is uncertain.
+
+| Flight Style | Ideal rc_rate (ACTUAL or ACTUAL-equivalent) | Notes |
 |---|---|---|
 | Freestyle | 7-18 | Higher for snappy, lower for smooth |
 | Cinematic | 3-10 | Very soft center for smooth pans |
@@ -116,7 +132,11 @@ Score each aspect 1-5 and provide overall rating:
 
 ### 3. Expo Assessment
 
-| Flight Style | Ideal Expo (ACTUAL) | Notes |
+These ranges are for ACTUAL rates. For BETAFLIGHT rates, expo values are roughly comparable
+(0-100 scale in both). For QUICK rates, expo behaves differently — provide qualitative
+guidance only if the rate type is QUICK.
+
+| Flight Style | Ideal Expo (ACTUAL / BETAFLIGHT) | Notes |
 |---|---|---|
 | Freestyle | 30-65 | Moderate — smooth center, fast edges |
 | Cinematic | 50-85 | High — very soft center |
@@ -181,7 +201,7 @@ Roll and Pitch should be identical for most pilots. Asymmetry is valid but shoul
 - Expo compensates for high center sensitivity — evaluate them together
 - A pilot who has flown the same rates for months has muscle memory invested — suggest gradual changes
 - For beginners, recommend starting conservative and increasing over time
-- Rate limit 1998 is the BF default (essentially unlimited) — only flag if significantly lower
+- Rate limit 1998 is the BF default (essentially unlimited) — only mention if the user provides a significantly lower value
 
 ## Updating Benchmarks
 
