@@ -210,11 +210,8 @@ function AppContent() {
           const phaseForErase = tuning.session?.phase ?? null;
           setErasedForPhase(phaseForErase);
           setFlashUsedSize(0);
-          // Delay BB panel refresh — flash chip needs time after erase before
-          // MSP_DATAFLASH_SUMMARY returns valid data (otherwise storageType="none")
-          // Flash chip needs recovery time after erase before MSP_DATAFLASH_SUMMARY is valid
-          const FLASH_RECOVERY_DELAY_MS = 2000;
-          setTimeout(() => setBbRefreshKey((k) => k + 1), FLASH_RECOVERY_DELAY_MS);
+          // Refresh BB panel — eraseBlackboxFlash() already waits for flash recovery
+          setBbRefreshKey((k) => k + 1);
 
           // Persist eraseCompleted so the state survives MSC disconnect/reconnect.
           // For flash this is redundant (flashUsedSize===0 works), but it's harmless
@@ -402,9 +399,8 @@ function AppContent() {
           await window.betaflight.eraseBlackboxFlash();
           setErasedForPhase(verPhase);
           setFlashUsedSize(0);
-          // Flash chip needs recovery time after erase before MSP_DATAFLASH_SUMMARY is valid
-          const FLASH_RECOVERY_DELAY_MS = 2000;
-          setTimeout(() => setBbRefreshKey((k) => k + 1), FLASH_RECOVERY_DELAY_MS);
+          // Refresh BB panel — eraseBlackboxFlash() already waits for flash recovery
+          setBbRefreshKey((k) => k + 1);
           // Persist eraseCompleted for SD card MSC disconnect survival
           await tuning.updatePhase(verPhase, { eraseCompleted: true });
           toast.success(storageType === 'sdcard' ? 'Logs erased!' : 'Flash erased!');

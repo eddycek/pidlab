@@ -33,6 +33,7 @@ export class MSPClient extends EventEmitter {
   private _rebootPending: boolean = false;
   /** Cached storage type from last getBlackboxInfo() call */
   private _lastStorageType: 'flash' | 'sdcard' | 'none' = 'none';
+  private _eraseInProgress: boolean = false;
 
   constructor() {
     super();
@@ -829,6 +830,18 @@ export class MSPClient extends EventEmitter {
       throw new ConnectionError('Flight controller not connected');
     }
 
+    // If erase is in progress, wait for it to complete (up to 65s)
+    if (this._eraseInProgress) {
+      logger.info('getBlackboxInfo() waiting for erase to complete...');
+      const waitStart = Date.now();
+      while (this._eraseInProgress && Date.now() - waitStart < 65000) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      if (this._eraseInProgress) {
+        logger.warn('getBlackboxInfo() timed out waiting for erase');
+      }
+    }
+
     const unsupported: BlackboxInfo = {
       supported: false,
       storageType: 'none',
@@ -902,7 +915,7 @@ export class MSPClient extends EventEmitter {
    * Get dataflash-specific storage info (internal helper).
    * Returns BlackboxInfo with storageType='flash'.
    */
-  private async getDataflashInfo(): Promise<BlackboxInfo> {
+  private async getDataflashInfo(timeout?: number): Promise<BlackboxInfo> {
     const unsupported: BlackboxInfo = {
       supported: false,
       storageType: 'flash',
@@ -913,7 +926,11 @@ export class MSPClient extends EventEmitter {
       usagePercent: 0,
     };
 
-    const response = await this.connection.sendCommand(MSPCommand.MSP_DATAFLASH_SUMMARY);
+    const response = await this.connection.sendCommand(
+      MSPCommand.MSP_DATAFLASH_SUMMARY,
+      Buffer.alloc(0),
+      timeout
+    );
 
     logger.debug('Blackbox response:', {
       error: response.error,
@@ -1417,41 +1434,52 @@ export class MSPClient extends EventEmitter {
       }
 
       // Poll MSP_DATAFLASH_SUMMARY until usedSize === 0 (erase complete)
-      const POLL_INTERVAL = 1000;
+      // Flash chip needs recovery time after erase — use longer delays and timeouts
+      const INITIAL_DELAY = 3000; // Wait 3s before first poll (flash chip recovery)
+      const POLL_INTERVAL = 2000; // 2s between polls (less aggressive than 1s)
+      const POLL_TIMEOUT = 5000; // 5s per-poll timeout (flash may be slow to respond)
       const MAX_POLL_TIME = 60000;
       const start = Date.now();
 
-      while (Date.now() - start < MAX_POLL_TIME) {
-        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
+      this._eraseInProgress = true;
+      try {
+        // Initial delay: flash chip is busy erasing, don't hammer it
+        await new Promise((resolve) => setTimeout(resolve, INITIAL_DELAY));
 
-        if (!this.isConnected()) {
-          throw new ConnectionError('FC disconnected during erase');
-        }
-
-        try {
-          // Use getDataflashInfo() directly — NOT getBlackboxInfo() which falls back
-          // to SD card and returns usedSize=0 on timeout (false positive erase success)
-          const info = await this.getDataflashInfo();
-          if (info.supported && info.usedSize === 0) {
-            logger.info('Blackbox flash erased successfully (verified via poll)');
-            return;
-          }
-          logger.debug(`Erase in progress: ${info.usedSize} bytes remaining`);
-        } catch (pollError) {
-          if (!this.connection.isOpen()) {
+        while (Date.now() - start < MAX_POLL_TIME) {
+          if (!this.isConnected()) {
             throw new ConnectionError('FC disconnected during erase');
           }
-          if (pollError instanceof TimeoutError) {
-            // FC may be busy erasing and not responding to MSP — retry
-            logger.debug('Poll failed (FC busy / timeout), retrying...');
-          } else {
-            // Non-timeout errors (connection problems, etc.) should surface immediately
-            throw pollError;
-          }
-        }
-      }
 
-      throw new MSPError('Blackbox flash erase timed out after 60s');
+          try {
+            // Use getDataflashInfo() directly — NOT getBlackboxInfo() which falls back
+            // to SD card and returns usedSize=0 on timeout (false positive erase success)
+            const info = await this.getDataflashInfo(POLL_TIMEOUT);
+            if (info.supported && info.usedSize === 0) {
+              logger.info('Blackbox flash erased successfully (verified via poll)');
+              return;
+            }
+            logger.debug(`Erase in progress: ${info.usedSize} bytes remaining`);
+          } catch (pollError) {
+            if (!this.connection.isOpen()) {
+              throw new ConnectionError('FC disconnected during erase');
+            }
+            if (pollError instanceof TimeoutError) {
+              // FC may be busy erasing and not responding to MSP — retry
+              logger.debug('Poll failed (FC busy / timeout), retrying...');
+            } else {
+              // Non-timeout errors (connection problems, etc.) should surface immediately
+              throw pollError;
+            }
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
+        }
+
+        throw new MSPError('Blackbox flash erase timed out after 60s');
+      } finally {
+        this._eraseInProgress = false;
+      }
     } catch (error) {
       logger.error('Failed to erase Blackbox flash:', error);
       throw error;
