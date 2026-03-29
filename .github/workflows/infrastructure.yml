@@ -144,7 +144,10 @@ jobs:
           npx wrangler secret put ADMIN_KEY <<< "${{ secrets.LICENSE_ADMIN_KEY_DEV }}"
           npx wrangler secret put ED25519_PRIVATE_KEY <<< "${{ secrets.LICENSE_ED25519_PRIVATE_KEY }}"
           npx wrangler secret put ED25519_PUBLIC_KEY <<< "${{ secrets.LICENSE_ED25519_PUBLIC_KEY }}"
+          npx wrangler secret put RESEND_API_KEY <<< "${{ secrets.RESEND_API_KEY }}"
+          npx wrangler secret put RESEND_FROM_EMAIL <<< "${{ secrets.LICENSE_RESEND_FROM_EMAIL }}"
           npx wrangler d1 execute pidlab-license-dev --file=src/schema.sql --remote
+          npx wrangler d1 execute pidlab-license-dev --file=src/migration-beta.sql --remote || echo "Migration already applied (whitelist_id column exists)"
 
   deploy-prod:
     name: Deploy prod
@@ -203,4 +206,7 @@ jobs:
           npx wrangler secret put ADMIN_KEY --env prod <<< "${{ secrets.LICENSE_ADMIN_KEY_PROD }}"
           npx wrangler secret put ED25519_PRIVATE_KEY --env prod <<< "${{ secrets.LICENSE_ED25519_PRIVATE_KEY }}"
           npx wrangler secret put ED25519_PUBLIC_KEY --env prod <<< "${{ secrets.LICENSE_ED25519_PUBLIC_KEY }}"
+          npx wrangler secret put RESEND_API_KEY --env prod <<< "${{ secrets.RESEND_API_KEY }}"
+          npx wrangler secret put RESEND_FROM_EMAIL --env prod <<< "${{ secrets.LICENSE_RESEND_FROM_EMAIL }}"
           npx wrangler d1 execute pidlab-license --env prod --file=src/schema.sql --remote
+          npx wrangler d1 execute pidlab-license --env prod --file=src/migration-beta.sql --remote || echo "Migration already applied (whitelist_id column exists)"

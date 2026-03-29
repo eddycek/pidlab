@@ -1,6 +1,7 @@
 import type { Env } from './types';
 import { handleAdmin } from './admin';
 import { handleActivate, handleValidate, handleSelfReset } from './license';
+import { handleBetaSignup, handleBetaSignupSubmit, handleBetaThankYou } from './beta';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -22,8 +23,16 @@ export default {
     let response: Response;
 
     try {
+      // Beta signup (public HTML pages)
+      if (pathname === '/beta' && request.method === 'GET') {
+        response = handleBetaSignup();
+      } else if (pathname === '/beta/signup' && request.method === 'POST') {
+        response = await handleBetaSignupSubmit(request, env);
+      } else if (pathname === '/beta/thankyou' && request.method === 'GET') {
+        response = handleBetaThankYou();
+      }
       // License endpoints (public)
-      if (pathname === '/license/activate' && request.method === 'POST') {
+      else if (pathname === '/license/activate' && request.method === 'POST') {
         response = await handleActivate(request, env);
       } else if (pathname === '/license/validate' && request.method === 'POST') {
         response = await handleValidate(request, env);

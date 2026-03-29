@@ -1,6 +1,12 @@
 import type { Env, LicenseRow, KeyStats } from './types';
 import { generateLicenseKey } from './keygen';
 import { validateGenerateRequest } from './validation';
+import {
+  handleAdminBetaPage,
+  handleAdminBetaList,
+  handleAdminBetaApprove,
+  handleAdminBetaReject,
+} from './beta';
 
 /** Authenticate admin requests via X-Admin-Key header (constant-time) */
 function authenticateAdmin(request: Request, env: Env): boolean {
@@ -192,6 +198,7 @@ function formatKeyResponse(row: LicenseRow) {
     lastValidatedAt: row.last_validated_at,
     resetCount: row.reset_count,
     maxResets: row.max_resets,
+    whitelistId: row.whitelist_id,
   };
 }
 
@@ -201,8 +208,30 @@ export async function handleAdmin(
   env: Env,
   pathname: string
 ): Promise<Response> {
+  // Admin beta page is public (just a shell — data endpoints require auth)
+  if (pathname === '/admin/beta' && request.method === 'GET') {
+    return handleAdminBetaPage();
+  }
+
   if (!authenticateAdmin(request, env)) {
     return new Response('Unauthorized', { status: 401 });
+  }
+
+  // Beta admin API endpoints
+  if (pathname === '/admin/beta/list' && request.method === 'GET') {
+    return handleAdminBetaList(request, env);
+  }
+
+  const betaIdMatch = pathname.match(/^\/admin\/beta\/([a-f0-9]+)\/(approve|reject)$/);
+  if (betaIdMatch && request.method === 'PUT') {
+    const entryId = betaIdMatch[1];
+    const action = betaIdMatch[2];
+    if (action === 'approve') {
+      return handleAdminBetaApprove(env, entryId);
+    }
+    if (action === 'reject') {
+      return handleAdminBetaReject(env, entryId);
+    }
   }
 
   // POST /admin/keys/generate
