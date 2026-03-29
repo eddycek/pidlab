@@ -1,7 +1,7 @@
 import type { Env } from './types';
 import { handleUpload } from './upload';
 import { handleAdmin } from './admin';
-import { handleDiagnosticUpload, handleDiagnosticAdmin, handleBBLUpload } from './diagnostic';
+import { handleDiagnosticUpload, handleDiagnosticAdmin, handleBBLUpload, handleDiagnosticPatch } from './diagnostic';
 import { handleCron } from './cron';
 
 export default {
@@ -32,6 +32,9 @@ export default {
       } else if (pathname.match(/^\/v1\/diagnostic\/[0-9a-f-]+\/bbl$/)) {
         const reportId = pathname.split('/')[3];
         response = await handleBBLUpload(request, env, reportId);
+      } else if (pathname.match(/^\/v1\/diagnostic\/[0-9a-f-]+$/) && request.method === 'PATCH') {
+        const reportId = pathname.split('/')[3];
+        response = await handleDiagnosticPatch(request, env, reportId);
       } else if (pathname.startsWith('/admin/diagnostics')) {
         response = await handleDiagnosticAdmin(request, env, pathname);
       } else if (pathname.startsWith('/admin/')) {

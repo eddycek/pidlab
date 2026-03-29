@@ -227,4 +227,7 @@ export interface CompletedTuningRecord {
 
   /** RC rates configuration at time of tuning (for telemetry correlation) */
   ratesConfig?: RatesConfiguration;
+
+  /** Auto-generated diagnostic report ID (from apply verification failure) */
+  autoReportId?: string;
 }

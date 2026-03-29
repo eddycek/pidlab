@@ -21,6 +21,8 @@ import { getMainWindow } from '../../window';
 import { logger } from '../../utils/logger';
 import { getErrorMessage } from '../../utils/errors';
 import { validateCLIResponse } from '../../msp/cliUtils';
+import { verifyAppliedConfig } from '../../utils/verifyAppliedConfig';
+import { sendAutoReport } from '../../diagnostic/DiagnosticReportService';
 import { MockMSPClient } from '../../demo/MockMSPClient';
 
 export function registerTuningHandlers(deps: HandlerDependencies): void {
@@ -203,66 +205,69 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
             percent: 90,
           });
           try {
-            const mismatches: string[] = [];
-            let allChecked = true;
-
-            if (currentSession.appliedPIDChanges && currentSession.appliedPIDChanges.length > 0) {
-              const pidConfig = await mspClient.getPIDConfiguration();
-              const pidMap: Record<string, number> = {
-                pid_roll_p: pidConfig.roll.P,
-                pid_roll_i: pidConfig.roll.I,
-                pid_roll_d: pidConfig.roll.D,
-                pid_pitch_p: pidConfig.pitch.P,
-                pid_pitch_i: pidConfig.pitch.I,
-                pid_pitch_d: pidConfig.pitch.D,
-                pid_yaw_p: pidConfig.yaw.P,
-                pid_yaw_i: pidConfig.yaw.I,
-                pid_yaw_d: pidConfig.yaw.D,
-              };
-              for (const change of currentSession.appliedPIDChanges) {
-                const actual = pidMap[change.setting];
-                if (actual === undefined) {
-                  allChecked = false;
-                } else if (actual !== change.newValue) {
-                  mismatches.push(`${change.setting}: expected ${change.newValue}, got ${actual}`);
-                }
-              }
-            }
-
-            if (
-              currentSession.appliedFilterChanges &&
-              currentSession.appliedFilterChanges.length > 0
-            ) {
-              const filterConfig = await mspClient.getFilterConfiguration();
-              const filterMap: Record<string, number | undefined> = {
-                gyro_lpf1_static_hz: filterConfig.gyro_lpf1_static_hz,
-                gyro_lpf2_static_hz: filterConfig.gyro_lpf2_static_hz,
-                dterm_lpf1_static_hz: filterConfig.dterm_lpf1_static_hz,
-                dterm_lpf2_static_hz: filterConfig.dterm_lpf2_static_hz,
-                dyn_notch_min_hz: filterConfig.dyn_notch_min_hz,
-                dyn_notch_max_hz: filterConfig.dyn_notch_max_hz,
-                dyn_notch_q: filterConfig.dyn_notch_q,
-                dyn_notch_count: filterConfig.dyn_notch_count,
-              };
-              for (const change of currentSession.appliedFilterChanges) {
-                const actual = filterMap[change.setting];
-                if (actual === undefined) {
-                  allChecked = false;
-                } else if (actual !== change.newValue) {
-                  mismatches.push(`${change.setting}: expected ${change.newValue}, got ${actual}`);
-                }
-              }
-            }
-
-            const verified = mismatches.length === 0 && allChecked;
+            const verifyResult = await verifyAppliedConfig(
+              mspClient,
+              currentSession.tuningType,
+              currentSession.appliedPIDChanges,
+              currentSession.appliedFilterChanges
+            );
             await tuningSessionManager!.updatePhase(profileId, currentSession.phase, {
-              applyVerified: verified,
-              applyMismatches: mismatches.length > 0 ? mismatches : undefined,
+              applyVerified: verifyResult.verified,
+              applyMismatches:
+                verifyResult.mismatches.length > 0 ? verifyResult.mismatches : undefined,
+              applyExpected: verifyResult.expected,
+              applyActual: verifyResult.actual,
+              applySuspicious: verifyResult.suspicious || undefined,
             });
-            if (verified) {
+            if (verifyResult.verified) {
               logger.info('Apply verify: all settings match FC');
             } else {
-              logger.warn(`Apply verify: ${mismatches.length} mismatches`, mismatches);
+              logger.warn(
+                `Apply verify: ${verifyResult.mismatches.length} mismatches`,
+                verifyResult.mismatches
+              );
+              if (verifyResult.retried) {
+                logger.info('Apply verify: PID retry was attempted');
+              }
+
+              // Fire-and-forget auto-report on verification failure
+              const refreshedForReport = await tuningSessionManager!.getSession(profileId);
+              if (refreshedForReport) {
+                sendAutoReport(
+                  {
+                    profileManager: profileManager!,
+                    snapshotManager: snapshotManager!,
+                    telemetrySettings: deps.telemetryManager?.getSettings?.() ?? null,
+                    eventCollector: deps.eventCollector ?? null,
+                    licenseManager: deps.licenseManager ?? null,
+                    isDemoMode: mspClient instanceof MockMSPClient,
+                  },
+                  refreshedForReport,
+                  verifyResult.mismatches,
+                  verifyResult.expected,
+                  verifyResult.actual,
+                  verifyResult.suspicious
+                )
+                  .then(async (autoReportId) => {
+                    if (autoReportId && profileId) {
+                      try {
+                        await tuningSessionManager!.updatePhase(
+                          profileId,
+                          refreshedForReport.phase,
+                          {
+                            autoReportId,
+                          }
+                        );
+                        logger.info(`Auto-report ID saved to session: ${autoReportId}`);
+                      } catch (saveErr) {
+                        logger.warn('Failed to save autoReportId to session:', saveErr);
+                      }
+                    }
+                  })
+                  .catch((err) => {
+                    logger.warn('Auto-report submission failed:', err);
+                  });
+              }
             }
           } catch (verifyErr) {
             logger.warn('Apply verification failed (non-fatal):', verifyErr);
