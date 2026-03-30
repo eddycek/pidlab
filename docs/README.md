@@ -12,6 +12,7 @@ Overview of all design documents in this directory. Completed documents are arch
 
 | Document | Status | Description |
 |----------|--------|-------------|
+| [BLACKBOX_DOWNLOAD_OPTIMIZATION](./BLACKBOX_DOWNLOAD_OPTIMIZATION.md) | **Proposed** | MSC mode for flash storage (10–50× speedup) with MSP pipelining fallback (1.5–2×). Larger chunks deprioritized (already tested, poor results) |
 | [CHIRP_FLIGHT_ANALYSIS](./CHIRP_FLIGHT_ANALYSIS.md) | **Proposed** | Chirp signal system identification for BF 4.6+ — exponential frequency sweep, per-axis sequential execution, coherence validation, high-precision transfer functions |
 | [UX_IMPROVEMENT_IDEAS](./UX_IMPROVEMENT_IDEAS.md) | **Active** | Backlog of UX improvement ideas (4/7 done, rest are future work) |
 | [PAYMENT_AND_INVOICING](./PAYMENT_AND_INVOICING.md) | **Proposed** | Stripe payment gateway + Trivi API invoicing. End-to-end purchase → invoice → license delivery flow |
