@@ -1,6 +1,6 @@
 # Dynamic Lowpass MSP Fix
 
-> **Status**: Proposed
+> **Status**: Complete (PRs #365–#366). Task 8 (DemoDataGenerator) in follow-up. Task 9 (dyn_notch_count apply failure) deferred to live FC testing.
 
 ## Problem
 

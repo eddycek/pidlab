@@ -1204,3 +1204,92 @@ describe('recommendDtermDynExpo', () => {
     expect(recommendDtermDynExpo(settings, 'smooth')).toBeUndefined();
   });
 });
+
+describe('dynamic lowpass awareness in recommend()', () => {
+  /** Helper: noise profile with specific level */
+  function makeNoiseWithLevel(
+    level: 'high' | 'medium' | 'low',
+    floorDb: number = -30
+  ): NoiseProfile {
+    const axis: AxisNoiseProfile = { noiseFloorDb: floorDb, peakCount: 1, peaks: [] };
+    return {
+      overallLevel: level,
+      roll: axis,
+      pitch: axis,
+      yaw: axis,
+    };
+  }
+
+  it('should recommend dyn_min/max instead of static when gyro dynamic is active', () => {
+    const settings: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      gyro_lpf1_static_hz: 200,
+      gyro_lpf1_dyn_min_hz: 250,
+      gyro_lpf1_dyn_max_hz: 500,
+    };
+    const recs = recommend(makeNoiseWithLevel('high', -20), settings);
+
+    const gyroRecs = recs.filter((r) => r.setting.includes('gyro_lpf1'));
+    // Should target dyn_min_hz, not static_hz
+    const dynMinRec = gyroRecs.find((r) => r.setting === 'gyro_lpf1_dyn_min_hz');
+    const staticRec = gyroRecs.find((r) => r.setting === 'gyro_lpf1_static_hz');
+
+    expect(dynMinRec).toBeDefined();
+    expect(dynMinRec!.currentValue).toBe(250);
+    // Static rec may exist only if needed for floor constraint
+    if (staticRec) {
+      expect(staticRec.recommendedValue).toBeLessThanOrEqual(dynMinRec!.recommendedValue);
+    }
+  });
+
+  it('should recommend dyn_min/max for dterm when dterm dynamic is active', () => {
+    const settings: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      dterm_lpf1_static_hz: 100,
+      dterm_lpf1_dyn_min_hz: 75,
+      dterm_lpf1_dyn_max_hz: 150,
+    };
+    const recs = recommend(makeNoiseWithLevel('high', -20), settings);
+
+    const dtermDynMin = recs.find((r) => r.setting === 'dterm_lpf1_dyn_min_hz');
+    expect(dtermDynMin).toBeDefined();
+    expect(dtermDynMin!.currentValue).toBe(75);
+  });
+
+  it('should also recommend dyn_max_hz proportionally', () => {
+    const settings: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      gyro_lpf1_static_hz: 200,
+      gyro_lpf1_dyn_min_hz: 200,
+      gyro_lpf1_dyn_max_hz: 400, // ratio = 2.0
+    };
+    const recs = recommend(makeNoiseWithLevel('high', -20), settings);
+
+    const dynMinRec = recs.find((r) => r.setting === 'gyro_lpf1_dyn_min_hz');
+    const dynMaxRec = recs.find((r) => r.setting === 'gyro_lpf1_dyn_max_hz');
+
+    if (dynMinRec && dynMaxRec) {
+      // Max should maintain roughly 2:1 ratio
+      const ratio = dynMaxRec.recommendedValue / dynMinRec.recommendedValue;
+      expect(ratio).toBeGreaterThanOrEqual(1.5);
+      expect(ratio).toBeLessThanOrEqual(3.0);
+    }
+  });
+
+  it('should recommend static_hz when dynamic is off', () => {
+    const settings: CurrentFilterSettings = {
+      ...DEFAULT_FILTER_SETTINGS,
+      gyro_lpf1_static_hz: 500,
+      gyro_lpf1_dyn_min_hz: 0,
+      gyro_lpf1_dyn_max_hz: 0,
+    };
+    const recs = recommend(makeNoiseWithLevel('high', -20), settings);
+
+    const staticRec = recs.find((r) => r.setting === 'gyro_lpf1_static_hz');
+    expect(staticRec).toBeDefined();
+    expect(staticRec!.currentValue).toBe(500);
+    // No dyn_min/max recs (dynamic is off, DynamicLowpassRecommender handles enabling)
+    const dynMinRec = recs.find((r) => r.setting === 'gyro_lpf1_dyn_min_hz');
+    expect(dynMinRec).toBeUndefined();
+  });
+});

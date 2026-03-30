@@ -379,6 +379,13 @@ function buildDemoSession(config: DemoSessionConfig): Buffer {
     'H dyn_notch_q:300',
     'H dyn_notch_min_hz:100',
     'H dyn_notch_max_hz:600',
+    // Dynamic lowpass (gyro + dterm)
+    'H gyro_lowpass_dyn_min_hz:250',
+    'H gyro_lowpass_dyn_max_hz:500',
+    'H dterm_lpf1_dyn_min_hz:150',
+    'H dterm_lpf1_dyn_max_hz:300',
+    'H dterm_lpf1_dyn_expo:5',
+    'H rpm_filter_q:500',
     // Field definitions
     'H Field I name:loopIteration,time,gyroADC[0],gyroADC[1],gyroADC[2],setpoint[0],setpoint[1],setpoint[2],setpoint[3]',
     'H Field I signed:0,0,1,1,1,1,1,1,1',
