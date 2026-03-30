@@ -165,6 +165,7 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
                 percent: 50 + Math.round((appliedFilters / actionableFilterRecs.length) * 25),
               });
               const response = await mspClient.connection.sendCLICommand(cmd);
+              logger.info(`CLI: ${cmd} → ${JSON.stringify(response).slice(0, 200)}`);
               validateCLIResponse(cmd, response);
               appliedFilters++;
             }
