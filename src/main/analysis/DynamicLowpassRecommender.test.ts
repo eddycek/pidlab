@@ -351,7 +351,7 @@ describe('community preset validation', () => {
       expect(gyroMin).toBeLessThanOrEqual(500);
       // DTerm dyn_min should be reasonable (50-200 Hz)
       expect(dtermMin).toBeGreaterThanOrEqual(50);
-      expect(dtermMax).toBeLessThanOrEqual(500);
+      expect(dtermMin).toBeLessThanOrEqual(200);
       // 2:1 ratio always holds
       expect(gyroMax / gyroMin).toBe(DYNAMIC_LOWPASS_RATIO);
       expect(dtermMax / dtermMin).toBe(DYNAMIC_LOWPASS_RATIO);
