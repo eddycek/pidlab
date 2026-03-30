@@ -52,4 +52,18 @@ export interface FeedforwardConfiguration {
   jitterFactor: number;
   /** Predictive overshoot prevention (default 100) */
   maxRateLimit: number;
+  /** D-min per-axis values (0 = disabled) */
+  dMinRoll?: number;
+  dMinPitch?: number;
+  dMinYaw?: number;
+  /** D-min boost gain (how fast D ramps up during propwash/stick input) */
+  dMinGain?: number;
+  /** D-min advance (predictive D boost, 0 = best for most quads) */
+  dMinAdvance?: number;
+  /** I-term relax mode: 0=OFF, 1=RP, 2=RPY */
+  itermRelax?: number;
+  /** I-term relax type: 0=GYRO, 1=SETPOINT */
+  itermRelaxType?: number;
+  /** I-term relax cutoff frequency (Hz) */
+  itermRelaxCutoff?: number;
 }

@@ -880,6 +880,14 @@ export class MSPClient extends EventEmitter {
       smoothFactor: readField(response.data, PID_ADVANCED.FF_SMOOTH_FACTOR), // feedforward_smooth_factor
       jitterFactor: readField(response.data, PID_ADVANCED.FF_JITTER_FACTOR), // feedforward_jitter_factor
       maxRateLimit: readField(response.data, PID_ADVANCED.FF_MAX_RATE_LIMIT), // feedforward_max_rate_limit
+      dMinRoll: readField(response.data, PID_ADVANCED.DMIN_ROLL), // d_min_roll
+      dMinPitch: readField(response.data, PID_ADVANCED.DMIN_PITCH), // d_min_pitch
+      dMinYaw: readField(response.data, PID_ADVANCED.DMIN_YAW), // d_min_yaw
+      dMinGain: readField(response.data, PID_ADVANCED.DMIN_GAIN), // d_min_gain
+      dMinAdvance: readField(response.data, PID_ADVANCED.DMIN_ADVANCE), // d_min_advance
+      itermRelax: readField(response.data, PID_ADVANCED.ITERM_RELAX), // iterm_relax
+      itermRelaxType: readField(response.data, PID_ADVANCED.ITERM_RELAX_TYPE), // iterm_relax_type
+      itermRelaxCutoff: readField(response.data, PID_ADVANCED.ITERM_RELAX_CUTOFF), // iterm_relax_cutoff
     };
 
     logger.info('Feedforward configuration read:', config);

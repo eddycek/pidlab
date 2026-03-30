@@ -9,6 +9,7 @@ import {
   buildBoardInfoData,
   buildUIDData,
   buildPIDData,
+  buildPIDAdvancedData,
   buildDataflashSummaryData,
 } from './test/mspResponseFactory';
 import {
@@ -335,6 +336,14 @@ describe('MSPClient.getFeedforwardConfiguration', () => {
       smoothFactor: 37,
       jitterFactor: 7,
       maxRateLimit: 100,
+      dMinRoll: 0,
+      dMinPitch: 0,
+      dMinYaw: 0,
+      dMinGain: 0,
+      dMinAdvance: 0,
+      itermRelax: 0,
+      itermRelaxType: 0,
+      itermRelaxCutoff: 0,
     });
   });
 
@@ -356,6 +365,44 @@ describe('MSPClient.getFeedforwardConfiguration', () => {
     expect(result.boost).toBe(0);
     expect(result.rollGain).toBe(0);
     expect(result.transition).toBe(0);
+    expect(result.dMinRoll).toBe(0);
+    expect(result.dMinGain).toBe(0);
+    expect(result.itermRelax).toBe(0);
+    expect(result.itermRelaxCutoff).toBe(0);
+  });
+
+  it('reads d_min and iterm_relax fields from MSP_PID_ADVANCED', async () => {
+    const buf = buildPIDAdvancedData({
+      ffTransition: 0,
+      ffRoll: 120,
+      ffPitch: 120,
+      ffYaw: 80,
+      ffBoost: 15,
+      ffSmoothFactor: 37,
+      ffJitterFactor: 7,
+      ffMaxRateLimit: 100,
+      dMinRoll: 30,
+      dMinPitch: 34,
+      dMinYaw: 0,
+      dMinGain: 20,
+      dMinAdvance: 20,
+      itermRelax: 1,
+      itermRelaxType: 1,
+      itermRelaxCutoff: 15,
+    });
+
+    mockSendCommand.mockResolvedValue({ command: MSPCommand.MSP_PID_ADVANCED, data: buf });
+
+    const result = await client.getFeedforwardConfiguration();
+
+    expect(result.dMinRoll).toBe(30);
+    expect(result.dMinPitch).toBe(34);
+    expect(result.dMinYaw).toBe(0);
+    expect(result.dMinGain).toBe(20);
+    expect(result.dMinAdvance).toBe(20);
+    expect(result.itermRelax).toBe(1);
+    expect(result.itermRelaxType).toBe(1);
+    expect(result.itermRelaxCutoff).toBe(15);
   });
 });
 
