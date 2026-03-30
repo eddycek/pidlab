@@ -169,7 +169,7 @@ describe('MSPClient.getFilterConfiguration', () => {
     // 26: U16 dterm_lpf2          39: U16 dyn_notch_q
     // 41: U16 dyn_notch_min       43: U8  rpm_notch_harmonics
     // 44: U8  rpm_notch_min_hz    45: U16 dyn_notch_max
-    const buf = Buffer.alloc(47, 0);
+    const buf = Buffer.alloc(49, 0);
     buf.writeUInt8(1, 17); // dterm_lpf1_type (BIQUAD)
     buf.writeUInt16LE(250, 20); // gyro_lpf1_static_hz
     buf.writeUInt16LE(150, 1); // dterm_lpf1_static_hz
@@ -187,6 +187,8 @@ describe('MSPClient.getFilterConfiguration', () => {
     buf.writeUInt8(3, 43); // rpm_filter_harmonics
     buf.writeUInt8(100, 44); // rpm_filter_min_hz
     buf.writeUInt16LE(600, 45); // dyn_notch_max_hz
+    buf.writeUInt8(5, 47); // dterm_lpf1_dyn_expo
+    buf.writeUInt8(3, 48); // dyn_notch_count
 
     mockSendCommand.mockResolvedValue({ command: MSPCommand.MSP_FILTER_CONFIG, data: buf });
 
@@ -211,6 +213,8 @@ describe('MSPClient.getFilterConfiguration', () => {
       gyro_lpf1_dyn_max_hz: 500,
       dterm_lpf1_dyn_min_hz: 100,
       dterm_lpf1_dyn_max_hz: 250,
+      dterm_lpf1_dyn_expo: 5,
+      dyn_notch_count: 3,
     });
   });
 
@@ -250,8 +254,8 @@ describe('MSPClient.getFilterConfiguration', () => {
     });
   });
 
-  it('reads dyn_notch_count from extended response (byte 47+)', async () => {
-    const buf = Buffer.alloc(48, 0);
+  it('reads dyn_lpf_curve_expo from byte 47 and dyn_notch_count from byte 48', async () => {
+    const buf = Buffer.alloc(49, 0);
     buf.writeUInt16LE(250, 20); // gyro_lpf1_static_hz
     buf.writeUInt16LE(150, 1); // dterm_lpf1_static_hz
     buf.writeUInt16LE(500, 22); // gyro_lpf2_static_hz
@@ -261,13 +265,15 @@ describe('MSPClient.getFilterConfiguration', () => {
     buf.writeUInt8(3, 43); // rpm_filter_harmonics
     buf.writeUInt8(100, 44); // rpm_filter_min_hz
     buf.writeUInt16LE(600, 45); // dyn_notch_max_hz
-    buf.writeUInt8(1, 47); // dyn_notch_count
+    buf.writeUInt8(7, 47); // dterm_lpf1_dyn_expo (NOT dyn_notch_count!)
+    buf.writeUInt8(3, 48); // dyn_notch_count (correct offset)
 
     mockSendCommand.mockResolvedValue({ command: MSPCommand.MSP_FILTER_CONFIG, data: buf });
 
     const result = await client.getFilterConfiguration();
 
-    expect(result.dyn_notch_count).toBe(1);
+    expect(result.dterm_lpf1_dyn_expo).toBe(7);
+    expect(result.dyn_notch_count).toBe(3);
     expect(result.rpm_filter_harmonics).toBe(3);
   });
 
