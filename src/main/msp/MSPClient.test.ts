@@ -162,13 +162,14 @@ describe('MSPClient.getFilterConfiguration', () => {
   });
 
   it('parses valid MSP_FILTER_CONFIG response into correct CurrentFilterSettings', async () => {
-    // Build a 47-byte response buffer matching Betaflight 4.4+ layout
-    // Layout (from betaflight-configurator MSPHelper.js):
-    //  0: U8  gyro_lpf1 (legacy)   1: U16 dterm_lpf1
-    // 20: U16 gyro_lpf1 (full)    22: U16 gyro_lpf2
-    // 26: U16 dterm_lpf2          39: U16 dyn_notch_q
-    // 41: U16 dyn_notch_min       43: U8  rpm_notch_harmonics
-    // 44: U8  rpm_notch_min_hz    45: U16 dyn_notch_max
+    // Build a 49-byte response buffer matching Betaflight 4.3+ layout
+    // (from betaflight-configurator MSPHelper.js):
+    //  0: U8  gyro_lpf1 (legacy)   1: U16 dterm_lpf1    17: U8  dterm_lpf1_type
+    // 20: U16 gyro_lpf1 (full)    22: U16 gyro_lpf2     24: U8  gyro_lpf1_type
+    // 26: U16 dterm_lpf2          29: U16 gyro_dyn_min   31: U16 gyro_dyn_max
+    // 33: U16 dterm_dyn_min       35: U16 dterm_dyn_max  39: U16 dyn_notch_q
+    // 41: U16 dyn_notch_min       43: U8  rpm_harmonics  44: U8  rpm_min_hz
+    // 45: U16 dyn_notch_max       47: U8  dyn_lpf_expo   48: U8  dyn_notch_count
     const buf = Buffer.alloc(49, 0);
     buf.writeUInt8(1, 17); // dterm_lpf1_type (BIQUAD)
     buf.writeUInt16LE(250, 20); // gyro_lpf1_static_hz
