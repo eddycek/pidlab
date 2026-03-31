@@ -144,7 +144,7 @@ npm run rebuild
 - `UnsupportedVersionError` in `src/main/utils/errors.ts`
 - **DEBUG_GYRO_SCALED**: Removed in BF 2025.12 (4.6+). Header validation and FCInfoDisplay skip debug mode check for 4.6+
 - **CLI naming**: All `feedforward_*` (4.3+ naming only). No `ff_*` (4.2) support needed
-- **MSP_FILTER_CONFIG**: 47-byte layout stable from 4.3 onward. Dynamic lowpass fields: `gyro_lpf1_dyn_min_hz` (offset 29, U16), `gyro_lpf1_dyn_max_hz` (offset 31, U16), `dterm_lpf1_dyn_min_hz` (offset 33, U16), `dterm_lpf1_dyn_max_hz` (offset 35, U16)
+- **MSP_FILTER_CONFIG**: 49-byte layout (47-byte base + 2-byte extension) stable from 4.3 onward. Dynamic lowpass fields: `gyro_lpf1_dyn_min_hz` (offset 29, U16), `gyro_lpf1_dyn_max_hz` (offset 31, U16), `dterm_lpf1_dyn_min_hz` (offset 33, U16), `dterm_lpf1_dyn_max_hz` (offset 35, U16)
 - Full policy: `docs/BF_VERSION_POLICY.md`
 
 ### IPC Architecture (Modular Handlers)

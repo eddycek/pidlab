@@ -707,7 +707,7 @@ Default bounds (used when drone size is unknown) match standard 5" values. When 
 | 7" | 20 | 120 | 15 | 100 | 40 | 120 | 50 |
 | 10" | 20 | 120 | 15 | 100 | 40 | 120 | 50 |
 
-> **Note**: FPVPIDlab supports 1"/2.5"/3"/4"/5"/6"/7" sizes only. The 2" and 10" rows are community references not implemented in the app (2" uses 1" bounds, 10" uses 7" bounds as fallback).
+> **Note**: FPVPIDlab supports 1"/2.5"/3"/4"/5"/6"/7" sizes only. The 2" and 10" rows are community reference values and are not selectable in the app. If an unsupported size is requested in code, it falls back to the standard 5" bounds.
 
 | Parameter | Rationale |
 |-----------|-----------|
