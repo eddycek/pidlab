@@ -144,7 +144,7 @@ npm run rebuild
 - `UnsupportedVersionError` in `src/main/utils/errors.ts`
 - **DEBUG_GYRO_SCALED**: Removed in BF 2025.12 (4.6+). Header validation and FCInfoDisplay skip debug mode check for 4.6+
 - **CLI naming**: All `feedforward_*` (4.3+ naming only). No `ff_*` (4.2) support needed
-- **MSP_FILTER_CONFIG**: 47-byte layout stable from 4.3 onward. Dynamic lowpass fields: gyro (offsets 17,24,25), D-term (offsets 28,29-36)
+- **MSP_FILTER_CONFIG**: 49-byte layout (47-byte base + 2-byte extension) stable from 4.3 onward. Dynamic lowpass fields: `gyro_lpf1_dyn_min_hz` (offset 29, U16), `gyro_lpf1_dyn_max_hz` (offset 31, U16), `dterm_lpf1_dyn_min_hz` (offset 33, U16), `dterm_lpf1_dyn_max_hz` (offset 35, U16)
 - Full policy: `docs/BF_VERSION_POLICY.md`
 
 ### IPC Architecture (Modular Handlers)
@@ -417,7 +417,7 @@ Completed tuning sessions are archived with self-contained metrics for compariso
 
 **MSP Filter Config** (`MSP_FILTER_CONFIG`, command 92):
 - Reads current filter settings directly from FC (gyro LPF1/2, D-term LPF1/2, dynamic notch, dynamic lowpass)
-- Dynamic lowpass fields: `gyro_lpf1_dyn_min_hz` (offset 17), `gyro_lpf1_dyn_max_hz` (24-25), `dterm_lpf1_dyn_min_hz` (28), `dterm_lpf1_dyn_max_hz` (29-36)
+- Dynamic lowpass fields: `gyro_lpf1_dyn_min_hz` (offset 29, U16), `gyro_lpf1_dyn_max_hz` (offset 31, U16), `dterm_lpf1_dyn_min_hz` (offset 33, U16), `dterm_lpf1_dyn_max_hz` (offset 35, U16)
 - Auto-read in analysis handlers when FC connected and settings not provided
 - Byte layout verified against betaflight-configurator MSPHelper.js
 

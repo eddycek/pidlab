@@ -228,6 +228,7 @@ When dynamic lowpass is enabled (dyn_min > 0), the **2:1 ratio** (max = 2 × min
 - SupaflyFPV uses HIGHER multipliers for smaller quads (140 for 3-4" vs 80 for 7") — smaller quads have higher-frequency noise
 - D-term multiplier tends to be higher than gyro multiplier (SupaflyFPV: dterm=140 across all sizes)
 - UAV Tech uses the most conservative gyro filtering (mult=60 → dyn_min=150 Hz)
+- **FPVPIDlab 7" D-term**: Uses multiplier 120 (between BF default 100 and SupaflyFPV 140). Rationale: 7" quads have higher inertia needing more D-term filtering than 5" default, but SupaflyFPV's 140 is aggressive for long-range where latency matters less
 
 **FPVPIDlab rule**: When enabling dynamic lowpass, use `dyn_min = current static_hz`, `dyn_max = static_hz × 2` (matching BF 2:1 convention). Source: betaflight/firmware-presets.
 
@@ -258,7 +259,8 @@ RPM filter Q controls notch bandwidth — lower Q = wider notch = catches more n
 
 | Size | rpm_filter_q | rpm_filter_weights | Reasoning |
 |------|-------------|-------------------|-----------|
-| 1-3" | 700-1000 | 100,50,100 | Small motors — narrow harmonics |
+| 1-2.5" | 700-1000 | 100,50,100 | Small motors — narrow harmonics |
+| 3-4" | 600-900 | 100,50,100 | Oversized motors (1404-1507) — broader harmonic spread than micros |
 | 5" | 700-1000 | 90,50,90 | Standard — narrow harmonics |
 | 6" | 600-800 | 90,50,90 | Larger props — wider harmonic spread |
 | 7"+ | 500-700 | 90,60,90 | Widest spread, needs broad Q |
@@ -539,7 +541,7 @@ FPVPIDlab's noise-to-cutoff interpolation range: **-70 dB (cleanest) to -10 dB (
 - Scope: Roll and pitch axes
 - **High noise** (> -30 dB): full-confidence noise-to-cutoff interpolation
 - **Medium noise** (-50 to -30 dB): 20 Hz deadzone, low confidence recommendations (avoids churn)
-- **Low noise** (< -50 dB): skipped (no recommendation needed)
+- **Low noise** (< -50 dB): recommend raising cutoffs toward latency-optimal values (medium confidence). Clean quads benefit from higher cutoffs that reduce group delay without meaningful noise penalty
 - Linear interpolation from noise floor (dB) to cutoff (Hz):
   ```
   t = (noiseFloorDb - (-10)) / ((-70) - (-10))
@@ -580,7 +582,7 @@ FPVPIDlab's noise-to-cutoff interpolation range: **-70 dB (cleanest) to -10 dB (
 
 **Rule 6: LPF2 Recommendations** (new)
 - **Disable gyro LPF2**: When RPM filter active AND noise floor < -45 dB (very clean). Reduces filter delay.
-- **Disable D-term LPF2**: When noise floor < -45 dB (very clean). Reduces D-term latency.
+- **Disable D-term LPF2**: When RPM filter active AND noise floor < -45 dB (very clean). Reduces D-term latency. RPM filter required as safety net before removing LPF2.
 - **Enable gyro LPF2**: When no RPM filter AND noise floor ≥ -30 dB (noisy). Extra filtering protects motors.
 - **Enable D-term LPF2**: When noise floor ≥ -30 dB AND LPF2 currently disabled. Extra D-term protection.
 - *Rationale*: LPF2 adds significant phase delay — only worth it when noise level justifies it. With RPM filter + clean noise, LPF2 is counterproductive.
@@ -704,6 +706,8 @@ Default bounds (used when drone size is unknown) match standard 5" values. When 
 | 6" | 20 | 120 | 15 | 90 | 40 | 120 | 50 |
 | 7" | 20 | 120 | 15 | 100 | 40 | 120 | 50 |
 | 10" | 20 | 120 | 15 | 100 | 40 | 120 | 50 |
+
+> **Note**: FPVPIDlab supports 1"/2.5"/3"/4"/5"/6"/7" sizes only. The 2" and 10" rows are community reference values and are not selectable in the app. If an unsupported size is requested in code, it falls back to the standard 5" bounds.
 
 | Parameter | Rationale |
 |-----------|-----------|
