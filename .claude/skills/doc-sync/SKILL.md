@@ -43,6 +43,12 @@ Run `/doc-sync` before merging any PR that changes:
 - `docs/README.md`
 - `docs/*.md`
 
+### Analysis & MSP modules
+- `src/main/msp/mspLayouts.ts`
+- `src/main/analysis/PropWashDetector.ts`
+- `src/main/analysis/headerValidation.ts`
+- `docs/TUNING_SESSION_EVALUATION.md`
+
 ### Infrastructure docs
 - `infrastructure/README.md`
 - `infrastructure/ENDPOINTS.md`
@@ -116,6 +122,23 @@ Read `PIDRecommender.ts` function `generateFrequencyDomainRecs`:
 - DC gain threshold
 - Step sizes
 
+**Propwash Rules** (README "PID Decision Table" post-processing):
+
+Read `src/main/analysis/PIDRecommender.ts` propwash functions:
+- `recommendPropWashDMin()` — PW-DMIN-GAIN, PW-DMIN-GAP, PW-DMIN-ENABLE rules
+- `recommendItermRelaxCutoff()` with propwash — PW-IRELAX-CUTOFF, PW-IRELAX-ENABLE
+- `recommendTPA()` with propwash — PW-TPA-MODE, PW-TPA-BREAKPOINT, PW-TPA-RATE
+
+Verify thresholds match constants: DMIN_GAIN_FREESTYLE, DMIN_GAP_MIN_FRACTION, PROPWASH_IRELAX_CUTOFF_FLOOR, PROPWASH_TPA_BREAKPOINT_MIN, PROPWASH_TPA_RATE_MAX
+
+**Size-Aware Noise Thresholds:**
+
+Compare `NOISE_LEVEL_BY_SIZE` in constants.ts against any noise threshold tables in README/TUNING_SESSION_EVALUATION.md.
+
+**Dynamic Lowpass:**
+
+Verify `DYNAMIC_LOWPASS_RATIO` (should be 2) and `DYNAMIC_LOWPASS_BY_SIZE` match README Filter Decision Table.
+
 **Flight Style Thresholds Table:**
 
 Compare README table against `PID_STYLE_THRESHOLDS` in constants.ts — every cell.
@@ -140,6 +163,11 @@ Read the Features section of README and check each bullet against actual impleme
 - Prop wash frequency range vs `PROPWASH_FREQ_MIN_HZ`, `PROPWASH_FREQ_MAX_HZ`
 - Dynamic lowpass thresholds (6 dB, Pearson 0.6) vs `DynamicLowpassRecommender.ts`
 - Ringing SNR filter threshold vs `RINGING_MIN_AMPLITUDE_FRACTION`
+- Size-aware noise classification (`NOISE_LEVEL_BY_SIZE` per drone size) vs docs
+- Propwash-aware d_min/iterm_relax/TPA recommendations vs PID decision table
+- MSP layout typed constants (`mspLayouts.ts` readField/writeField) vs CLAUDE.md MSP section
+- BBL headers as primary source for analysis (not MSP) vs TUNING_SESSION_EVALUATION.md
+- Dynamic lowpass BF 2:1 ratio (`DYNAMIC_LOWPASS_RATIO`) vs Filter Decision Table
 
 ### Step 4: Cross-file count consistency
 
@@ -345,3 +373,5 @@ For each issue found:
 - **Broken links are bugs** — a link to a deleted doc is confusing for contributors
 - **Infrastructure docs lag behind code** — workers change frequently, always verify both directions
 - **Every script must be documented** — undocumented scripts become tribal knowledge
+- **Logic changes need full MD audit** — if changing how analysis WORKS (not just parameters), audit ALL MD files for description accuracy, not just counts and thresholds
+- **BBL header format matters** — verify CSV formats (d_min:30,34,0) and BF naming (d_max_gain not d_min_gain) match headerValidation.ts

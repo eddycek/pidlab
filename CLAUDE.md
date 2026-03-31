@@ -703,6 +703,8 @@ Design docs follow a lifecycle: **Proposed → Complete**. See `docs/README.md` 
 ### Autonomous Repo Operations
 Claude has **full autonomous access** exclusively to `eddycek/pidlab` repo:
 - **NEVER push directly to main** — always create a feature branch, open a PR, then merge with `gh pr merge --admin`
+- **Merge workflow**: After creating PR: (1) wait for CI, (2) wait for CodePilot Agent check, (3) poll 6 min for comments (15s intervals), (4) fix any comments, (5) ask user before merging — NEVER auto-merge
+- **CodePilot comments can be delayed** — always poll for 6 minutes after Agent check completes, filtering by latest commit SHA
 - PR create, merge (with `--admin` flag to bypass branch protection), close
 - All gh CLI operations allowed
 
@@ -772,12 +774,16 @@ Investigates user-submitted diagnostic reports. Downloads the report bundle from
 
 **Skill definition:** `.claude/skills/diagnose/SKILL.md`
 
-### PostToolUse Hooks
+### Hooks
 
-Two PostToolUse hooks registered in `.claude/settings.json` under `hooks.PostToolUse`:
+**PostToolUse** — Two hooks registered in `.claude/settings.json` under `hooks.PostToolUse`:
 
 1. **Tuning Logic Check** (`.claude/hooks/tuning-logic-check.sh`) — triggers on Edit/Write to `src/main/analysis/` or `src/main/demo/DemoDataGenerator*`. Reminds to run `/tuning-advisor review`.
 2. **Doc Sync Check** (`.claude/hooks/doc-sync-check.sh`) — triggers on Edit/Write to analysis code, constants, types, IPC handlers, hooks, and test files. Reminds to run `/doc-sync`.
+
+**PreToolUse** — One hook registered in `.claude/settings.json` under `hooks.PreToolUse`:
+
+1. **Pre-Push Review** (`.claude/hooks/pre-push-review.sh`) — triggers before `git push`. Non-blocking reminder to run `/code-review` before pushing analysis changes.
 
 ## Platform-Specific Notes
 

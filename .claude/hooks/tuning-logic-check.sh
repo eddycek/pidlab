@@ -36,6 +36,9 @@ case "$FILE_PATH" in
   */src/main/ipc/handlers/tuningHandlers*)
     echo "⚠️ Tuning IPC handlers modified — consider running /tuning-advisor review before committing." >&2
     ;;
+  */src/main/msp/mspLayouts*)
+    echo "⚠️ MSP layouts modified — consider running /tuning-advisor review to validate byte offsets." >&2
+    ;;
 esac
 
 exit 0
