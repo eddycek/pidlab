@@ -348,6 +348,47 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
           percent: 85,
         });
 
+        // Stage 4b: Write PID profile name if needed (auto-name or user label sync)
+        if (needsCLI && profileManager && tuningSessionManager) {
+          try {
+            const pId = profileManager.getCurrentProfileId();
+            if (pId) {
+              const session = await tuningSessionManager.getSession(pId);
+              const bfIdx = session?.bfPidProfileIndex ?? 0;
+              const profile = await profileManager.getProfile(pId);
+              const userLabel = profile?.bfPidProfileLabels?.[bfIdx];
+
+              // Determine target name: user label > auto-name (pidlab_N)
+              let targetName: string | undefined;
+              if (userLabel) {
+                targetName = userLabel.slice(0, 8); // BF max 8 chars
+              } else {
+                // Auto-name: pidlab_N (fits 8 chars for indices 1-9)
+                const autoName = bfIdx < 9 ? `pidlab_${bfIdx + 1}` : `plab_${bfIdx + 1}`;
+                targetName = autoName.slice(0, 8);
+              }
+
+              if (targetName) {
+                // Sanitize: BF CLI allows alphanumeric + underscore + hyphen
+                const sanitized = targetName.replace(/[^a-zA-Z0-9_-]/g, '_');
+                const cmd = `set profile_name = ${sanitized}`;
+                const response = await mspClient.connection.sendCLICommand(cmd);
+                try {
+                  validateCLIResponse(cmd, response);
+                  logger.info(`Set BF PID profile name: "${targetName}" (profile ${bfIdx})`);
+                } catch {
+                  // profile_name may not be supported on older BF — non-fatal
+                  logger.warn(
+                    `Failed to set profile_name (non-fatal, may be unsupported BF version)`
+                  );
+                }
+              }
+            }
+          } catch (err) {
+            logger.warn('Failed to set PID profile name (non-fatal):', err);
+          }
+        }
+
         // Stage 5: Save and reboot — saveAndReboot() now blocks until FC reconnects
         sendProgress({ stage: 'save', message: 'Saving and rebooting FC...', percent: 85 });
         await mspClient.saveAndReboot();

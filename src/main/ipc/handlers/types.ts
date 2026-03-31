@@ -47,3 +47,42 @@ export function parseDiffSetting(cliDiff: string, key: string): string | undefin
   }
   return undefined;
 }
+
+/**
+ * Parse PID profile names from `diff all` CLI output.
+ * BF `diff all` has sections like `# profile 0`, `# profile 1`, etc.
+ * Each section may contain `set profile_name = <name>`.
+ * Returns a map of profile index → name (only for profiles with non-empty names).
+ */
+export function parseProfileNamesFromDiff(cliDiff: string): Record<number, string> {
+  const names: Record<number, string> = {};
+  let currentProfile = -1;
+
+  for (const line of cliDiff.split('\n')) {
+    // Detect profile section headers: "profile 0", "# profile 0", etc.
+    const profileMatch = line.match(/^#?\s*profile\s+(\d+)/i);
+    if (profileMatch) {
+      currentProfile = parseInt(profileMatch[1], 10);
+      continue;
+    }
+
+    // Detect rateprofile section — stop looking for profile_name
+    if (/^#?\s*rateprofile\s+/i.test(line)) {
+      currentProfile = -1;
+      continue;
+    }
+
+    // Parse profile_name within a profile section
+    if (currentProfile >= 0) {
+      const nameMatch = line.match(/^set\s+profile_name\s*=\s*(.+)/i);
+      if (nameMatch) {
+        const name = nameMatch[1].trim();
+        if (name) {
+          names[currentProfile] = name;
+        }
+      }
+    }
+  }
+
+  return names;
+}
