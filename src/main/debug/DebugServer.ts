@@ -176,37 +176,37 @@ export function startDebugServer(port: number = DEFAULT_PORT): void {
         // autonomous testing without needing UI interaction or browser tools.
 
         case '/connect':
-          return handlePost(req, res, () => handleConnect(url));
+          return await handlePost(req, res, () => handleConnect(url));
 
         case '/disconnect':
-          return handlePost(req, res, () => handleDisconnect());
+          return await handlePost(req, res, () => handleDisconnect());
 
         case '/start-tuning':
-          return handlePost(req, res, () => handleStartTuning(url));
+          return await handlePost(req, res, () => handleStartTuning(url));
 
         case '/reset-session':
-          return handlePost(req, res, () => handleResetSession());
+          return await handlePost(req, res, () => handleResetSession());
 
         case '/erase-flash':
-          return handlePost(req, res, () => handleEraseFlash());
+          return await handlePost(req, res, () => handleEraseFlash());
 
         case '/restore-snapshot':
-          return handlePost(req, res, () => handleRestoreSnapshot(url));
+          return await handlePost(req, res, () => handleRestoreSnapshot(url));
 
         case '/update-phase':
-          return handlePost(req, res, () => handleUpdatePhase(url));
+          return await handlePost(req, res, () => handleUpdatePhase(url));
 
         case '/apply':
-          return handlePost(req, res, () => handleApply(url));
+          return await handlePost(req, res, () => handleApply(url));
 
         case '/open-wizard':
-          return handlePost(req, res, () => handleOpenWizard(url));
+          return await handlePost(req, res, () => handleOpenWizard(url));
 
         case '/click':
-          return handlePost(req, res, () => handleClick(url));
+          return await handlePost(req, res, () => handleClick(url));
 
         case '/wait-connected':
-          return handlePost(req, res, () => handleWaitConnected(url));
+          return await handlePost(req, res, () => handleWaitConnected(url));
 
         default:
           res.statusCode = 404;
