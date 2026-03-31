@@ -167,7 +167,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 
 ## Test Inventory
 
-**Total: 2952 unit tests across 137 files + 37 Playwright E2E tests across 7 spec files** (last verified: March 31, 2026)
+**Total: 2957 unit tests across 137 files + 37 Playwright E2E tests across 7 spec files** (last verified: March 31, 2026)
 
 ### UI Components
 
@@ -347,7 +347,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 | `analysis/FFTCompute.test.ts` | 20 | Hanning window, Welch's method, sine detection |
 | `analysis/SegmentSelector.test.ts` | 29 | Hover detection, throttle sweep detection, throttle normalization |
 | `analysis/NoiseAnalyzer.test.ts` | 25 | Peak detection, classification, noise floor |
-| `analysis/FilterRecommender.test.ts` | 92 | Noise-based targets, convergence, safety bounds, RPM-aware bounds, dynamic notch, propwash floor, medium noise handling, notch-aware resonance, LPF2 recommendations, conditional Q, structured ruleId on all recommendations, iterm_relax, anti-gravity, thrust linear, RPM Q, D-max, dyn idle, TPA, D-term expo, pidsum limit, FF rate limit, FF-dominated noise guard |
+| `analysis/FilterRecommender.test.ts` | 97 | Noise-based targets, convergence, safety bounds, RPM-aware bounds, dynamic notch, propwash floor, medium noise handling, notch-aware resonance, LPF2 recommendations, conditional Q, motor harmonic diagnostic (F-MOTOR-DIAG), structured ruleId on all recommendations, iterm_relax, anti-gravity, thrust linear, RPM Q, D-max, dyn idle, TPA, D-term expo, pidsum limit, FF rate limit, FF-dominated noise guard |
 | `analysis/DataQualityScorer.test.ts` | 39 | Filter/PID data quality scoring, tier mapping, warnings, confidence adjustment, TF data quality, low coherence warning |
 | `analysis/FilterAnalyzer.test.ts` | 20 | End-to-end pipeline, progress reporting, segment fallback warnings, RPM context propagation, data quality scoring, throttle spectrogram, group delay |
 | `analysis/ThrottleSpectrogramAnalyzer.test.ts` | 17 | Throttle-dependent spectrogram analysis, frequency-throttle mapping, noise source tracking |
