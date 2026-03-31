@@ -152,6 +152,28 @@ describe('validateBBLHeader', () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0].code).toBe('wrong_debug_mode');
   });
+
+  it('parses BBL-format firmware revision with "Betaflight" prefix', () => {
+    // BBL headers have: "Betaflight 4.6.0 (abc123) STM32F405" — not plain "4.6.0"
+    const header = createHeader({
+      firmwareRevision: 'Betaflight 4.6.0 (024f8e13d) STM32F405',
+      looptime: 500,
+    });
+    header.rawHeaders.set('debug_mode', '0'); // Should be fine on 4.6+
+    const warnings = validateBBLHeader(header);
+    expect(warnings).toHaveLength(0); // No debug_mode warning for 4.6+
+  });
+
+  it('parses BBL-format firmware revision for BF 4.5.2 (still warns)', () => {
+    const header = createHeader({
+      firmwareRevision: 'Betaflight 4.5.2 (024f8e13d) STM32F405',
+      looptime: 500,
+    });
+    header.rawHeaders.set('debug_mode', '0');
+    const warnings = validateBBLHeader(header);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].code).toBe('wrong_debug_mode');
+  });
 });
 
 describe('enrichSettingsFromBBLHeaders', () => {

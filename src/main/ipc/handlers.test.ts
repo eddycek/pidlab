@@ -1230,14 +1230,36 @@ describe('IPC Handlers', () => {
       expect(callOrder).toEqual(['setPID', 'enterCLI', 'sendCLI', 'save']);
     });
 
-    it('clamps PID values to 0-255', async () => {
+    it('rejects PID values outside safety bounds', async () => {
       const input = {
         ...baseInput,
         pidRecommendations: [
           {
             setting: 'pid_roll_p',
             currentValue: 45,
-            recommendedValue: 300,
+            recommendedValue: 300, // Exceeds pMax (120)
+            reason: '',
+            impact: 'response' as const,
+            confidence: 'high' as const,
+          },
+        ],
+      };
+      const { event } = createMockEvent();
+      const result = await invokeWithEvent(IPCChannel.TUNING_APPLY_RECOMMENDATIONS, event, input);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('PID validation failed');
+      expect(result.error).toContain('pid_roll_p');
+    });
+
+    it('clamps PID values within bounds to integer range 0-255', async () => {
+      const input = {
+        ...baseInput,
+        pidRecommendations: [
+          {
+            setting: 'pid_roll_p',
+            currentValue: 45,
+            recommendedValue: 50.7, // Within bounds, fractional
             reason: '',
             impact: 'response' as const,
             confidence: 'high' as const,
@@ -1248,7 +1270,7 @@ describe('IPC Handlers', () => {
       await invokeWithEvent(IPCChannel.TUNING_APPLY_RECOMMENDATIONS, event, input);
 
       const setCall = mockMSP.setPIDConfiguration.mock.calls[0][0];
-      expect(setCall.roll.P).toBe(255); // Clamped
+      expect(setCall.roll.P).toBe(51); // Rounded
     });
 
     it('reports progress per stage', async () => {
