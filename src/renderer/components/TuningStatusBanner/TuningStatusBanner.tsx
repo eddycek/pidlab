@@ -432,7 +432,7 @@ export function TuningStatusBanner({
             className="wizard-btn wizard-btn-secondary"
             onClick={() => onAction('use_existing_log')}
           >
-            Use Existing Log
+            Use Existing Log (Latest)
           </button>
         )}
         {ui!.guideTip && !erasing && !downloading && (

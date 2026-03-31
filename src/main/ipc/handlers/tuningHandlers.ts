@@ -276,20 +276,48 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
         // Stage 3b: Apply feedforward recommendations via CLI
         let appliedFeedforward = 0;
         if (ffRecs.length > 0) {
-          for (const rec of ffRecs) {
-            const value = Math.round(rec.recommendedValue);
-            const cmd = `set ${rec.setting} = ${value}`;
-            sendProgress({
-              stage: 'feedforward',
-              message: `Setting ${rec.setting} = ${value}...`,
-              percent: 75 + Math.round((appliedFeedforward / ffRecs.length) * 10),
-            });
-            const response = await mspClient.connection.sendCLICommand(cmd);
-            validateCLIResponse(cmd, response);
-            appliedFeedforward++;
-          }
+          try {
+            for (const rec of ffRecs) {
+              const value = Math.round(rec.recommendedValue);
+              const cmd = `set ${rec.setting} = ${value}`;
+              sendProgress({
+                stage: 'feedforward',
+                message: `Setting ${rec.setting} = ${value}...`,
+                percent: 75 + Math.round((appliedFeedforward / ffRecs.length) * 10),
+              });
+              const response = await mspClient.connection.sendCLICommand(cmd);
+              validateCLIResponse(cmd, response);
+              appliedFeedforward++;
+            }
 
-          logger.info(`Applied ${appliedFeedforward} feedforward changes via CLI`);
+            logger.info(`Applied ${appliedFeedforward} feedforward changes via CLI`);
+          } catch (ffError) {
+            // Feedforward CLI commands failed. FC has PIDs + filters in RAM but save NOT called.
+            // Attempt PID rollback before surfacing error.
+            let pidRolledBack = false;
+            if (appliedPIDs > 0 && currentConfig) {
+              try {
+                logger.info('Attempting PID rollback after feedforward failure...');
+                await mspClient.connection.exitCLI();
+                await mspClient.setPIDConfiguration(currentConfig);
+                pidRolledBack = true;
+                logger.info('PID rollback successful — FC restored to pre-apply PID values');
+              } catch (rollbackError) {
+                logger.error('PID rollback failed — FC still has mixed state:', rollbackError);
+              }
+            }
+
+            logger.error(
+              `Feedforward apply failed after ${appliedPIDs} PIDs + ${appliedFilters} filters were already written. ` +
+                `PID rollback ${pidRolledBack ? 'succeeded' : 'failed'}. Save was NOT called.`,
+              ffError
+            );
+            throw new Error(
+              `Feedforward changes failed (${appliedFeedforward}/${ffRecs.length} applied). ` +
+                `${appliedPIDs > 0 ? (pidRolledBack ? 'PID values were automatically rolled back. ' : `${appliedPIDs} PID changes are still in FC RAM. `) : ''}` +
+                `FC was NOT saved — power cycle to discard, or restore from pre-tuning snapshot.`
+            );
+          }
         }
 
         sendProgress({

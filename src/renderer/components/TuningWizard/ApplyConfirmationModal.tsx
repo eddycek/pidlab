@@ -11,8 +11,10 @@ interface ChangePreview {
 interface ApplyConfirmationModalProps {
   filterCount: number;
   pidCount: number;
+  feedforwardCount?: number;
   filterChanges?: ChangePreview[];
   pidChanges?: ChangePreview[];
+  feedforwardChanges?: ChangePreview[];
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -20,14 +22,20 @@ interface ApplyConfirmationModalProps {
 export function ApplyConfirmationModal({
   filterCount,
   pidCount,
+  feedforwardCount = 0,
   filterChanges,
   pidChanges,
+  feedforwardChanges,
   onConfirm,
   onCancel,
 }: ApplyConfirmationModalProps) {
-  const totalChanges = filterCount + pidCount;
+  const totalChanges = filterCount + pidCount + feedforwardCount;
   const [showDetails, setShowDetails] = useState(false);
-  const allChanges = [...(filterChanges ?? []), ...(pidChanges ?? [])];
+  const allChanges = [
+    ...(filterChanges ?? []),
+    ...(pidChanges ?? []),
+    ...(feedforwardChanges ?? []),
+  ];
 
   return (
     <div className="profile-wizard-overlay" onClick={onCancel}>
@@ -52,6 +60,11 @@ export function ApplyConfirmationModal({
           {pidCount > 0 && (
             <span className="analysis-meta-pill">
               {pidCount} PID change{pidCount !== 1 ? 's' : ''} (via MSP)
+            </span>
+          )}
+          {feedforwardCount > 0 && (
+            <span className="analysis-meta-pill">
+              {feedforwardCount} feedforward change{feedforwardCount !== 1 ? 's' : ''} (via CLI)
             </span>
           )}
         </div>

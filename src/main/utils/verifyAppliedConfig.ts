@@ -243,6 +243,10 @@ export async function verifyAppliedConfig(
 
     // PID retry on mismatch (1 attempt, 10s overall timeout)
     if (mismatches.length > 0) {
+      // Save originals before retry — if timeout fires after mismatches.length=0
+      // but before re-population, the originals would be lost.
+      const originalMismatches = [...mismatches];
+
       const retryPromise = async () => {
         // Rebuild the full expected config and re-write
         const retryConfig: PIDConfiguration = JSON.parse(JSON.stringify(pidConfig));
@@ -288,8 +292,10 @@ export async function verifyAppliedConfig(
           ),
         ]);
       } catch {
-        // Timeout or retry failure — keep original mismatches
+        // Timeout or retry failure — restore original mismatches if retry
+        // cleared them before the timeout race was lost.
         if (mismatches.length === 0) {
+          mismatches.push(...originalMismatches);
           mismatches.push('PID retry timed out — verification incomplete');
         }
       }
