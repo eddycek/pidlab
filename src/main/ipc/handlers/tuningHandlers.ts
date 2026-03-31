@@ -58,6 +58,7 @@ const BF_SETTING_RANGES: Record<string, { min: number; max: number }> = {
   tpa_rate: { min: 0, max: 100 },
   tpa_breakpoint: { min: 1000, max: 2000 },
   tpa_low_always: { min: 0, max: 1 },
+  tpa_mode: { min: 0, max: 1 },
 };
 
 /**
