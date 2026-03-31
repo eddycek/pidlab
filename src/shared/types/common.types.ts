@@ -35,6 +35,7 @@ export interface FCInfo {
   apiVersion: ApiVersionInfo;
   pidProfileIndex?: number; // 0-based, from MSP_STATUS_EX byte 10
   pidProfileCount?: number; // number of available PID profiles (typically 4 for BF 4.5+)
+  pidProfileNames?: Record<number, string>; // Profile names from FC (parsed from CLI diff), e.g. {0: "pidlab_1"}
 }
 
 export interface Configuration {

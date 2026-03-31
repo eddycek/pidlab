@@ -25,6 +25,7 @@ import {
   sendTuningSessionChanged,
   consumePendingSettingsSnapshot,
 } from './ipc/handlers';
+import { parseProfileNamesFromDiff } from './ipc/handlers/types';
 import { TelemetryManager } from './telemetry/TelemetryManager';
 import { TelemetryEventCollector } from './telemetry/TelemetryEventCollector';
 import { LicenseManager } from './license/LicenseManager';
@@ -197,6 +198,29 @@ async function initialize(): Promise<void> {
         // For new FCs, baseline will be created after profile is created
         logger.info('Creating baseline for existing profile...');
         await snapshotManager.createBaselineIfMissing();
+
+        // Extract PID profile names from baseline CLI diff
+        try {
+          const snapshotIds = existingProfile.snapshotIds ?? [];
+          for (const snapId of snapshotIds) {
+            const snap = await snapshotManager.loadSnapshot(snapId);
+            if (snap?.configuration?.cliDiff) {
+              const profileNames = parseProfileNamesFromDiff(snap.configuration.cliDiff);
+              if (Object.keys(profileNames).length > 0) {
+                // Update app profile with FC-sourced profile names (don't overwrite user labels)
+                const existingLabels = existingProfile.bfPidProfileLabels ?? {};
+                const merged = { ...profileNames, ...existingLabels };
+                await profileManager.updateProfile(existingProfile.id, {
+                  bfPidProfileLabels: merged,
+                });
+                logger.info('Extracted PID profile names from CLI diff:', profileNames);
+              }
+              break; // Only need one snapshot with diff
+            }
+          }
+        } catch (err) {
+          logger.warn('Failed to extract PID profile names (non-fatal):', err);
+        }
 
         // After a settings fix/reset, the FC reboots and reconnects.
         // Create a clean snapshot now (MSP + CLI available, no mode conflicts).

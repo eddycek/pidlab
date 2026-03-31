@@ -233,28 +233,11 @@ describe('StartTuningModal', () => {
     expect(screen.getAllByText('unused')).toHaveLength(3);
   });
 
-  it('shows default pidlab_N names when no user labels provided', () => {
+  it('shows no profile names when no labels provided', () => {
     render(<StartTuningModal onStart={vi.fn()} onCancel={vi.fn()} fcInfo={DEMO_FC_INFO} />);
 
-    expect(screen.getByText('pidlab_1')).toBeInTheDocument();
-    expect(screen.getByText('pidlab_2')).toBeInTheDocument();
-    expect(screen.getByText('pidlab_3')).toBeInTheDocument();
-    expect(screen.getByText('pidlab_4')).toBeInTheDocument();
-  });
-
-  it('shows user labels where provided, pidlab_N for the rest', () => {
-    render(
-      <StartTuningModal
-        onStart={vi.fn()}
-        onCancel={vi.fn()}
-        fcInfo={DEMO_FC_INFO}
-        pidProfileLabels={{ 0: 'Stock' }}
-      />
-    );
-
-    expect(screen.getByText('Stock')).toBeInTheDocument();
-    expect(screen.getByText('pidlab_2')).toBeInTheDocument();
-    expect(screen.getByText('pidlab_3')).toBeInTheDocument();
-    expect(screen.getByText('pidlab_4')).toBeInTheDocument();
+    // Profile numbers shown, but no name spans rendered
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.queryByText('pidlab_1')).not.toBeInTheDocument();
   });
 });
