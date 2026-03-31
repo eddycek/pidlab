@@ -252,6 +252,14 @@ export function buildPIDAdvancedData(
     ffBoost?: number;
     ffMaxRateLimit?: number;
     ffJitterFactor?: number;
+    dMinRoll?: number;
+    dMinPitch?: number;
+    dMinYaw?: number;
+    dMinGain?: number;
+    dMinAdvance?: number;
+    itermRelax?: number;
+    itermRelaxType?: number;
+    itermRelaxCutoff?: number;
   } = {}
 ): Buffer {
   const buf = Buffer.alloc(55, 0);
@@ -267,6 +275,16 @@ export function buildPIDAdvancedData(
     writeField(buf, PID_ADVANCED.FF_MAX_RATE_LIMIT, opts.ffMaxRateLimit);
   if (opts.ffJitterFactor !== undefined)
     writeField(buf, PID_ADVANCED.FF_JITTER_FACTOR, opts.ffJitterFactor);
+  if (opts.dMinRoll !== undefined) writeField(buf, PID_ADVANCED.DMIN_ROLL, opts.dMinRoll);
+  if (opts.dMinPitch !== undefined) writeField(buf, PID_ADVANCED.DMIN_PITCH, opts.dMinPitch);
+  if (opts.dMinYaw !== undefined) writeField(buf, PID_ADVANCED.DMIN_YAW, opts.dMinYaw);
+  if (opts.dMinGain !== undefined) writeField(buf, PID_ADVANCED.DMIN_GAIN, opts.dMinGain);
+  if (opts.dMinAdvance !== undefined) writeField(buf, PID_ADVANCED.DMIN_ADVANCE, opts.dMinAdvance);
+  if (opts.itermRelax !== undefined) writeField(buf, PID_ADVANCED.ITERM_RELAX, opts.itermRelax);
+  if (opts.itermRelaxType !== undefined)
+    writeField(buf, PID_ADVANCED.ITERM_RELAX_TYPE, opts.itermRelaxType);
+  if (opts.itermRelaxCutoff !== undefined)
+    writeField(buf, PID_ADVANCED.ITERM_RELAX_CUTOFF, opts.itermRelaxCutoff);
   return buf;
 }
 

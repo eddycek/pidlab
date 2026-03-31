@@ -386,6 +386,20 @@ function buildDemoSession(config: DemoSessionConfig): Buffer {
     'H dterm_lpf1_dyn_max_hz:300',
     'H dterm_lpf1_dyn_expo:5',
     'H rpm_filter_q:500',
+    // D-min (propwash D boost)
+    'H d_min_roll:30',
+    'H d_min_pitch:34',
+    'H d_min_yaw:0',
+    'H d_min_gain:20',
+    'H d_min_advance:20',
+    // I-term relax
+    'H iterm_relax:1',
+    'H iterm_relax_type:1',
+    'H iterm_relax_cutoff:15',
+    // TPA
+    'H tpa_rate:65',
+    'H tpa_breakpoint:1350',
+    'H tpa_mode:0',
     // Field definitions
     'H Field I name:loopIteration,time,gyroADC[0],gyroADC[1],gyroADC[2],setpoint[0],setpoint[1],setpoint[2],setpoint[3]',
     'H Field I signed:0,0,1,1,1,1,1,1,1',

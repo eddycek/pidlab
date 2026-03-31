@@ -691,6 +691,57 @@ export const FF_MAX_RATE_LIMIT_DEFAULT = 90;
 /** Recommended feedforward_max_rate_limit for racing */
 export const FF_MAX_RATE_LIMIT_RACE_RECOMMENDED = 100;
 
+// ---- D-Min Per-Size Defaults ----
+// Source: BF wiki D_MIN guide, community presets (BF defaults, Karate Race)
+// Freestyle: d_min close to D, gain 30-35. Racing: gain 20.
+
+export interface DMinSizeProfile {
+  /** d_min_roll (0 = disabled) */
+  roll: number;
+  /** d_min_pitch */
+  pitch: number;
+  /** d_min_boost_gain (how fast D ramps up during propwash/stick input) */
+  gain: number;
+}
+
+export const DMIN_BY_SIZE: Record<DroneSize, DMinSizeProfile> = {
+  '1"': { roll: 20, pitch: 22, gain: 20 },
+  '2.5"': { roll: 22, pitch: 24, gain: 20 },
+  '3"': { roll: 25, pitch: 27, gain: 25 },
+  '4"': { roll: 27, pitch: 30, gain: 30 },
+  '5"': { roll: 30, pitch: 34, gain: 30 },
+  '6"': { roll: 30, pitch: 34, gain: 25 },
+  '7"': { roll: 28, pitch: 32, gain: 20 },
+};
+
+/** BF default d_min_gain */
+export const DMIN_GAIN_DEFAULT = 20;
+
+/** Freestyle-recommended d_min_gain (more aggressive propwash D boost) */
+export const DMIN_GAIN_FREESTYLE = 35;
+
+/** Minimum d_min/d_max gap as fraction of d_max (below this = not enough propwash headroom) */
+export const DMIN_GAP_MIN_FRACTION = 0.2;
+
+/** d_min_advance: BF default is 20. 0 is better for most quads per BF wiki, but we use the BF default as reference. */
+export const DMIN_ADVANCE_DEFAULT = 20;
+
+// ---- Propwash I-term Relax ----
+
+/** Propwash-specific iterm_relax cutoff reduction (lower = more I suppression during oscillation) */
+export const PROPWASH_IRELAX_CUTOFF_REDUCTION = 5;
+
+/** Minimum iterm_relax_cutoff floor when propwash is severe (won't reduce below this) */
+export const PROPWASH_IRELAX_CUTOFF_FLOOR = 15;
+
+// ---- Propwash TPA ----
+
+/** Minimum TPA breakpoint when propwash is severe (don't attenuate D during climb-out) */
+export const PROPWASH_TPA_BREAKPOINT_MIN = 1300;
+
+/** Maximum TPA rate when propwash is severe (preserve D damping) */
+export const PROPWASH_TPA_RATE_MAX = 65;
+
 // ---- TPA (Throttle PID Attenuation) Advisory ----
 // Source: docs/PID_TUNING_KNOWLEDGE.md Section 10
 // Community preset values by size and author.
