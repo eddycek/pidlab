@@ -119,8 +119,8 @@ export function TuningWizard({ logId, mode = 'full', onExit, onApplyComplete }: 
 
       // Auto-close wizard after apply completes — FC is already reconnected,
       // session phase is updated, user returns to dashboard with Erase & Verify banner.
-      // Use ref (not useEffect cleanup) so re-renders don't cancel the timer.
-      autoCloseTimer.current = setTimeout(() => onExitRef.current(), 500);
+      // 2s delay gives user time to see "Apply successful" before wizard closes.
+      autoCloseTimer.current = setTimeout(() => onExitRef.current(), 2000);
     }
 
     if (wizard.applyState === 'idle' || wizard.applyState === 'error') {
@@ -254,6 +254,20 @@ export function TuningWizard({ logId, mode = 'full', onExit, onApplyComplete }: 
         <ApplyConfirmationModal
           filterCount={wizard.filterResult?.recommendations.length ?? 0}
           pidCount={wizard.pidResult?.recommendations.length ?? 0}
+          filterChanges={wizard.filterResult?.recommendations
+            .filter((r) => !r.informational && r.currentValue !== r.recommendedValue)
+            .map((r) => ({
+              setting: r.setting,
+              currentValue: r.currentValue,
+              recommendedValue: r.recommendedValue,
+            }))}
+          pidChanges={wizard.pidResult?.recommendations
+            .filter((r) => !r.informational && r.currentValue !== r.recommendedValue)
+            .map((r) => ({
+              setting: r.setting,
+              currentValue: r.currentValue,
+              recommendedValue: r.recommendedValue,
+            }))}
           onConfirm={wizard.confirmApply}
           onCancel={wizard.cancelApply}
         />
