@@ -7,7 +7,7 @@
  * This test ensures our BBL parser + header enrichment + extractor functions
  * produce correct values from actual flight controller output — not synthetic data.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { BlackboxParser } from '../blackbox/BlackboxParser';
