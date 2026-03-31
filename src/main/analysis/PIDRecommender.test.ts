@@ -7,7 +7,7 @@ import {
   extractDMinContext,
   extractTPAContext,
   extractItermRelaxCutoff,
-  extractItermRelaxType,
+  extractItermRelaxMode,
   recommendItermRelaxCutoff,
   recommendPropWashDMin,
   extractDynIdleMinRpm,
@@ -2990,7 +2990,7 @@ describe('recommendItermRelaxCutoff propwash-aware (Task 4)', () => {
     expect(rec!.reason).toContain('prop wash');
   });
 
-  it('PW-IRELAX-CUTOFF: should cap at PROPWASH_IRELAX_CUTOFF_MAX', () => {
+  it('PW-IRELAX-CUTOFF: should cap at PROPWASH_IRELAX_CUTOFF_FLOOR', () => {
     // currentCutoff=18, severe propwash → target = max(15, 18-5) = 15
     const rec = recommendItermRelaxCutoff(18, 'balanced', severePropWash);
     expect(rec).toBeDefined();
@@ -3000,7 +3000,7 @@ describe('recommendItermRelaxCutoff propwash-aware (Task 4)', () => {
 
   it('PW-IRELAX-CUTOFF: should not fire when cutoff is already <= max', () => {
     const rec = recommendItermRelaxCutoff(15, 'balanced', severePropWash);
-    // cutoff=15 is not > PROPWASH_IRELAX_CUTOFF_MAX(15), so propwash rule skips
+    // cutoff=15 is not > PROPWASH_IRELAX_CUTOFF_FLOOR(15), so propwash rule skips
     // Fall through to style-based check — 15 vs typical 12: deviation = 3/12 = 0.25 < 0.5
     expect(rec).toBeUndefined();
   });
@@ -3038,15 +3038,15 @@ describe('recommendItermRelaxCutoff propwash-aware (Task 4)', () => {
   });
 });
 
-describe('extractItermRelaxType', () => {
+describe('extractItermRelaxMode', () => {
   it('should extract iterm_relax type from BBL headers', () => {
     const headers = new Map([['iterm_relax', '1']]);
-    expect(extractItermRelaxType(headers)).toBe(1);
+    expect(extractItermRelaxMode(headers)).toBe(1);
   });
 
   it('should return undefined when header is missing', () => {
     const headers = new Map<string, string>();
-    expect(extractItermRelaxType(headers)).toBeUndefined();
+    expect(extractItermRelaxMode(headers)).toBeUndefined();
   });
 });
 

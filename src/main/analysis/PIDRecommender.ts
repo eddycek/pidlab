@@ -51,7 +51,7 @@ import {
   DMIN_GAIN_FREESTYLE,
   DMIN_GAP_MIN_FRACTION,
   PROPWASH_IRELAX_CUTOFF_REDUCTION,
-  PROPWASH_IRELAX_CUTOFF_MAX,
+  PROPWASH_IRELAX_CUTOFF_FLOOR,
   PROPWASH_TPA_BREAKPOINT_MIN,
   PROPWASH_TPA_RATE_MAX,
   PROPWASH_SEVERITY_SEVERE,
@@ -630,7 +630,7 @@ export function recommendPropWashDMin(
   if (isSevere && propWash && dMinContext.active && dMinContext.gain !== undefined) {
     const sizeProfile = droneSize ? DMIN_BY_SIZE[droneSize] : undefined;
     const targetGain = sizeProfile?.gain ?? DMIN_GAIN_FREESTYLE;
-    if (dMinContext.gain < DMIN_GAIN_FREESTYLE) {
+    if (dMinContext.gain < DMIN_GAIN_FREESTYLE && targetGain > (dMinContext.gain ?? 0)) {
       recs.push({
         setting: 'd_min_gain',
         currentValue: dMinContext.gain,
@@ -1125,11 +1125,11 @@ export function extractItermRelaxCutoff(rawHeaders: Map<string, string>): number
 }
 
 /**
- * Extract iterm_relax type from BBL raw headers.
+ * Extract iterm_relax mode from BBL raw headers.
  * Returns undefined if the header is not present.
  * Values: 0=OFF, 1=RP, 2=RPY, 3=SETPOINT
  */
-export function extractItermRelaxType(rawHeaders: Map<string, string>): number | undefined {
+export function extractItermRelaxMode(rawHeaders: Map<string, string>): number | undefined {
   return parseIntOr(rawHeaders.get('iterm_relax'));
 }
 
@@ -1149,12 +1149,12 @@ export function recommendItermRelaxCutoff(
   currentCutoff: number | undefined,
   flightStyle: FlightStyle,
   propWash?: PropWashAnalysis,
-  itermRelaxType?: number
+  itermRelaxMode?: number
 ): PIDRecommendation | undefined {
   // Rule PW-IRELAX-ENABLE: propwash detected + iterm_relax disabled → enable
   if (
-    itermRelaxType !== undefined &&
-    itermRelaxType === 0 &&
+    itermRelaxMode !== undefined &&
+    itermRelaxMode === 0 &&
     propWash &&
     propWash.meanSeverity >= PROPWASH_SEVERITY_MINIMAL
   ) {
@@ -1178,10 +1178,10 @@ export function recommendItermRelaxCutoff(
   if (
     propWash &&
     propWash.meanSeverity >= PROPWASH_SEVERITY_SEVERE &&
-    currentCutoff > PROPWASH_IRELAX_CUTOFF_MAX
+    currentCutoff > PROPWASH_IRELAX_CUTOFF_FLOOR
   ) {
     const targetCutoff = Math.max(
-      PROPWASH_IRELAX_CUTOFF_MAX,
+      PROPWASH_IRELAX_CUTOFF_FLOOR,
       currentCutoff - PROPWASH_IRELAX_CUTOFF_REDUCTION
     );
     return {
@@ -1495,7 +1495,7 @@ export function recommendTPA(
       currentValue: tpaContext.mode,
       recommendedValue: TPA_MODE_D_ONLY,
       reason:
-        `Severe prop wash detected (${propWash.meanSeverity.toFixed(1)}× baseline). ` +
+        `Severe prop wash detected (${propWash!.meanSeverity.toFixed(1)}× baseline). ` +
         'TPA mode is PD (attenuates both P and D at high throttle). ' +
         'Switching to D-only mode preserves full P authority during climb-out after descents, ' +
         'helping the quad recover from prop wash more effectively.',
@@ -1516,7 +1516,7 @@ export function recommendTPA(
       currentValue: tpaContext.breakpoint,
       recommendedValue: 1350,
       reason:
-        `Severe prop wash detected (${propWash.meanSeverity.toFixed(1)}× baseline) and TPA breakpoint is ${tpaContext.breakpoint}. ` +
+        `Severe prop wash detected (${propWash!.meanSeverity.toFixed(1)}× baseline) and TPA breakpoint is ${tpaContext.breakpoint}. ` +
         `A low breakpoint starts D attenuation too early, reducing damping authority during prop wash recovery. ` +
         'Raising to 1350 preserves full D-term through more of the throttle range.',
       impact: 'stability',
@@ -1532,7 +1532,7 @@ export function recommendTPA(
       currentValue: tpaContext.rate,
       recommendedValue: PROPWASH_TPA_RATE_MAX,
       reason:
-        `Severe prop wash detected (${propWash.meanSeverity.toFixed(1)}× baseline) and TPA rate is ${tpaContext.rate}. ` +
+        `Severe prop wash detected (${propWash!.meanSeverity.toFixed(1)}× baseline) and TPA rate is ${tpaContext.rate}. ` +
         `High TPA rate reduces D authority at high throttle, weakening prop wash damping. ` +
         `Lowering to ${PROPWASH_TPA_RATE_MAX} preserves enough D-term for effective prop wash control.`,
       impact: 'stability',

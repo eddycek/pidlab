@@ -38,7 +38,7 @@ import {
   extractDMinContext,
   extractTPAContext,
   extractItermRelaxCutoff,
-  extractItermRelaxType,
+  extractItermRelaxMode,
   recommendItermRelaxCutoff,
   extractDynIdleMinRpm,
   extractRpmFilterActive,
@@ -385,12 +385,12 @@ async function analyzePIDCore(params: CoreParams): Promise<PIDAnalysisResult> {
 
   // I-term relax cutoff recommendation (flight-style + propwash-aware advisory)
   const itermRelaxCutoff = rawHeaders ? extractItermRelaxCutoff(rawHeaders) : undefined;
-  const itermRelaxType = rawHeaders ? extractItermRelaxType(rawHeaders) : undefined;
+  const itermRelaxMode = rawHeaders ? extractItermRelaxMode(rawHeaders) : undefined;
   const itermRelaxRec = recommendItermRelaxCutoff(
     itermRelaxCutoff,
     flightStyle,
     propWash,
-    itermRelaxType
+    itermRelaxMode
   );
   if (itermRelaxRec) {
     rawRecommendations.push(itermRelaxRec);

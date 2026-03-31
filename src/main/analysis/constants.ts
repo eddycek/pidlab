@@ -723,7 +723,7 @@ export const DMIN_GAIN_FREESTYLE = 35;
 /** Minimum d_min/d_max gap as fraction of d_max (below this = not enough propwash headroom) */
 export const DMIN_GAP_MIN_FRACTION = 0.2;
 
-/** d_min_advance default (0 = best for most quads per BF wiki) */
+/** d_min_advance: BF default is 20. 0 is better for most quads per BF wiki, but we use the BF default as reference. */
 export const DMIN_ADVANCE_DEFAULT = 20;
 
 // ---- Propwash I-term Relax ----
@@ -731,8 +731,8 @@ export const DMIN_ADVANCE_DEFAULT = 20;
 /** Propwash-specific iterm_relax cutoff reduction (lower = more I suppression during oscillation) */
 export const PROPWASH_IRELAX_CUTOFF_REDUCTION = 5;
 
-/** Maximum iterm_relax_cutoff when propwash is severe (freestyle standard) */
-export const PROPWASH_IRELAX_CUTOFF_MAX = 15;
+/** Minimum iterm_relax_cutoff floor when propwash is severe (won't reduce below this) */
+export const PROPWASH_IRELAX_CUTOFF_FLOOR = 15;
 
 // ---- Propwash TPA ----
 

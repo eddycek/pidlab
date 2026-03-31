@@ -411,7 +411,7 @@ Propwash oscillation occurs during throttle transitions (descent → climb) when
 - `d_min` = minimum D value. `D` in PID config = maximum (d_max)
 - `d_min_gain` controls how fast D ramps up (20 = default/racing, 30-35 = freestyle)
 - During propwash, D typically climbs about halfway to d_max
-- BF defaults: d_min_roll=23, d_min_pitch=25, d_min_yaw=0, gain=20, advance=20
+- BF firmware defaults: d_min_roll=23, d_min_pitch=25, d_min_yaw=0, gain=20, advance=20
 - Freestyle recommendation: d_min close to D, d_max 20-40% higher, gain=30-35
 
 **iterm_relax (BF 3.4+)**
@@ -431,7 +431,7 @@ Propwash oscillation occurs during throttle transitions (descent → climb) when
 
 | Preset | d_min R/P | d_min gain | iterm_relax_cutoff | tpa_rate | tpa_breakpoint |
 |--------|-----------|------------|-------------------|----------|---------------|
-| BF defaults | 30/34 | 20 | 15 | 65 | 1350 |
+| BF tune defaults (simplified tuning) | 30/34 | 20 | 15 | 65 | 1350 |
 | Karate Race | 22/22 | 20 | 20 | 70 | 1250 |
 | Karate Race Spicy | 26/26 | 20 | 20 | 70 | 1250 |
 
