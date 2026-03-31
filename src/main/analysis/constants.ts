@@ -324,6 +324,10 @@ export const DAMPING_RATIO_MAX = 0.85;
  * Prevents trivial 1-point adjustments from rounding. */
 export const DAMPING_RATIO_DEADZONE = 3;
 
+/** Minimum classified steps required for FF-dominated axis classification.
+ * Prevents single-step noise from overriding PID recommendations for entire axis. */
+export const FF_DOMINATED_MIN_STEPS = 3;
+
 /** Minimum I gain. 40 prevents dangerous hover drift (BF defaults I=60-90).
  * I=30 causes poor wind rejection and attitude drift. */
 export const I_GAIN_MIN = 40;
