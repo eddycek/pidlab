@@ -23,7 +23,7 @@ const GYRO_SCALED_DEBUG_MODE = 6;
  * Returns [major, minor, patch] or null if unparseable.
  */
 function parseFirmwareVersion(version: string): [number, number, number] | null {
-  const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
+  const match = version.match(/(\d+)\.(\d+)\.(\d+)/);
   if (!match) return null;
   return [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10)];
 }
@@ -49,7 +49,11 @@ function isGyroScaledRemoved(firmwareVersion: string): boolean {
 export function validateBBLHeader(header: BBLLogHeader): AnalysisWarning[] {
   const warnings: AnalysisWarning[] = [];
 
-  // Check logging rate
+  // Check logging rate — looptime is gyro loop period in microseconds.
+  // This gives the gyro sampling rate, not the actual blackbox log rate
+  // (which also depends on pid_process_denom and blackbox_sample_rate).
+  // The MIN_LOGGING_RATE_HZ threshold is intentionally lenient to only
+  // flag severely undersampled logs where Nyquist is below motor noise.
   if (header.looptime > 0) {
     const loggingRateHz = 1_000_000 / header.looptime;
     if (loggingRateHz < MIN_LOGGING_RATE_HZ) {

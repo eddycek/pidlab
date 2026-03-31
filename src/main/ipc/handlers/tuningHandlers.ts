@@ -15,6 +15,7 @@ import {
   TransferFunctionMetricsSummary,
 } from '@shared/types/tuning-history.types';
 import { PIDConfiguration } from '@shared/types/pid.types';
+import { DEFAULT_QUAD_SIZE_BOUNDS } from '../../analysis/constants';
 import { HandlerDependencies, createResponse } from './types';
 import { sendTuningSessionChanged, sendProfileChanged } from './events';
 import { getMainWindow } from '../../window';
@@ -26,8 +27,10 @@ import { sendAutoReport } from '../../diagnostic/DiagnosticReportService';
 import { MockMSPClient } from '../../demo/MockMSPClient';
 
 /**
- * Betaflight-valid ranges for CLI filter/FF settings.
- * Used for pre-apply validation to catch recommender bugs before they reach the FC.
+ * Pre-apply validation ranges for recommended values.
+ * Filter/FF entries use Betaflight firmware limits (0-1000 Hz, etc.).
+ * PID entries use safety bounds from QUAD_SIZE_BOUNDS (tighter than BF's 0-255)
+ * to catch recommender bugs before they reach the FC.
  */
 const BF_SETTING_RANGES: Record<string, { min: number; max: number }> = {
   gyro_lpf1_static_hz: { min: 0, max: 1000 },
@@ -59,10 +62,22 @@ const BF_SETTING_RANGES: Record<string, { min: number; max: number }> = {
   tpa_breakpoint: { min: 1000, max: 2000 },
   tpa_low_always: { min: 0, max: 1 },
   tpa_mode: { min: 0, max: 1 },
+  // PID bounds — uses default (5") safety bounds as defense-in-depth.
+  // Per-size bounds are enforced in the recommender; these catch truly dangerous values.
+  pid_roll_p: { min: DEFAULT_QUAD_SIZE_BOUNDS.pMin, max: DEFAULT_QUAD_SIZE_BOUNDS.pMax },
+  pid_roll_i: { min: DEFAULT_QUAD_SIZE_BOUNDS.iMin, max: DEFAULT_QUAD_SIZE_BOUNDS.iMax },
+  pid_roll_d: { min: DEFAULT_QUAD_SIZE_BOUNDS.dMin, max: DEFAULT_QUAD_SIZE_BOUNDS.dMax },
+  pid_pitch_p: { min: DEFAULT_QUAD_SIZE_BOUNDS.pMin, max: DEFAULT_QUAD_SIZE_BOUNDS.pMax },
+  pid_pitch_i: { min: DEFAULT_QUAD_SIZE_BOUNDS.iMin, max: DEFAULT_QUAD_SIZE_BOUNDS.iMax },
+  pid_pitch_d: { min: DEFAULT_QUAD_SIZE_BOUNDS.dMin, max: DEFAULT_QUAD_SIZE_BOUNDS.dMax },
+  pid_yaw_p: { min: DEFAULT_QUAD_SIZE_BOUNDS.pMin, max: DEFAULT_QUAD_SIZE_BOUNDS.pMax },
+  pid_yaw_i: { min: DEFAULT_QUAD_SIZE_BOUNDS.iMin, max: DEFAULT_QUAD_SIZE_BOUNDS.iMax },
+  pid_yaw_d: { min: 0, max: DEFAULT_QUAD_SIZE_BOUNDS.dMax }, // Yaw D can be 0 (common config)
 };
 
 /**
- * Validate all CLI recommendations are within Betaflight-valid ranges.
+ * Validate all recommendations are within valid ranges before applying.
+ * Filter/FF: Betaflight firmware limits. PID: safety bounds from constants.
  * Throws before any MSP/CLI interaction if any value is out of range.
  */
 function validateRecommendationBounds(
@@ -80,7 +95,7 @@ function validateRecommendationBounds(
   }
   if (violations.length > 0) {
     throw new Error(
-      `${label} validation failed — values out of Betaflight range: ${violations.join(', ')}`
+      `${label} validation failed — values out of safe range: ${violations.join(', ')}`
     );
   }
 }
@@ -162,6 +177,7 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
         const actionableFilters = input.filterRecommendations.filter((r) => !r.informational);
         validateRecommendationBounds(actionableFilters, 'Filter');
         validateRecommendationBounds(ffRecs, 'Feedforward');
+        validateRecommendationBounds(input.pidRecommendations, 'PID');
 
         // Order matters: MSP commands first (PIDs), then CLI operations
         // (filters, save). The apply flow enters CLI explicitly for filter/FF
