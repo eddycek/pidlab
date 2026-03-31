@@ -5,7 +5,6 @@
 echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║  REMINDER: Run /code-review before pushing analysis changes ║"
-echo "║  Use developer:code-reviewer agent for local code review    ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 exit 0

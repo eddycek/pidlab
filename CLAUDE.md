@@ -774,12 +774,16 @@ Investigates user-submitted diagnostic reports. Downloads the report bundle from
 
 **Skill definition:** `.claude/skills/diagnose/SKILL.md`
 
-### PostToolUse Hooks
+### Hooks
 
-Two PostToolUse hooks registered in `.claude/settings.json` under `hooks.PostToolUse`:
+**PostToolUse** — Two hooks registered in `.claude/settings.json` under `hooks.PostToolUse`:
 
 1. **Tuning Logic Check** (`.claude/hooks/tuning-logic-check.sh`) — triggers on Edit/Write to `src/main/analysis/` or `src/main/demo/DemoDataGenerator*`. Reminds to run `/tuning-advisor review`.
 2. **Doc Sync Check** (`.claude/hooks/doc-sync-check.sh`) — triggers on Edit/Write to analysis code, constants, types, IPC handlers, hooks, and test files. Reminds to run `/doc-sync`.
+
+**PreToolUse** — One hook registered in `.claude/settings.json` under `hooks.PreToolUse`:
+
+1. **Pre-Push Review** (`.claude/hooks/pre-push-review.sh`) — triggers before `git push`. Non-blocking reminder to run `/code-review` before pushing analysis changes.
 
 ## Platform-Specific Notes
 

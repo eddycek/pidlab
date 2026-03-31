@@ -1,6 +1,6 @@
 #!/bin/bash
 # PostToolUse hook: reminds to run /doc-sync when files affecting documentation are changed.
-# Triggers on Edit/Write to analysis code, constants, types, IPC handlers, hooks, and test files.
+# Triggers on Edit/Write to analysis code, constants, types, IPC handlers, MSP layouts, hooks, and test files.
 
 FILE="${CLAUDE_FILE_PATH:-}"
 

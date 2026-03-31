@@ -39,12 +39,6 @@ case "$FILE_PATH" in
   */src/main/msp/mspLayouts*)
     echo "⚠️ MSP layouts modified — consider running /tuning-advisor review to validate byte offsets." >&2
     ;;
-  */src/main/analysis/PropWashDetector*)
-    echo "⚠️ PropWash detector modified — consider running /tuning-advisor review before committing." >&2
-    ;;
-  */src/main/analysis/headerValidation*)
-    echo "⚠️ Header validation modified — consider running /tuning-advisor review before committing." >&2
-    ;;
 esac
 
 exit 0
