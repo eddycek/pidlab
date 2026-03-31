@@ -1272,12 +1272,13 @@ describe('dynamic lowpass awareness in recommend()', () => {
     const dynMinRec = recs.find((r) => r.setting === 'gyro_lpf1_dyn_min_hz');
     const dynMaxRec = recs.find((r) => r.setting === 'gyro_lpf1_dyn_max_hz');
 
-    if (dynMinRec && dynMaxRec) {
-      // Max should maintain roughly 2:1 ratio
-      const ratio = dynMaxRec.recommendedValue / dynMinRec.recommendedValue;
-      expect(ratio).toBeGreaterThanOrEqual(1.5);
-      expect(ratio).toBeLessThanOrEqual(3.0);
-    }
+    expect(dynMinRec).toBeDefined();
+    expect(dynMaxRec).toBeDefined();
+
+    // Max should maintain roughly 2:1 ratio
+    const ratio = dynMaxRec!.recommendedValue / dynMinRec!.recommendedValue;
+    expect(ratio).toBeGreaterThanOrEqual(1.5);
+    expect(ratio).toBeLessThanOrEqual(3.0);
   });
 
   it('should recommend static_hz when dynamic is off', () => {

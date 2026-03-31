@@ -209,6 +209,15 @@ export function recommendDynamicLowpass(
       confidence: 'low',
       ruleId: 'F-DLPF-GYRO-OFF',
     });
+    recs.push({
+      setting: 'gyro_lpf1_dyn_max_hz',
+      currentValue: settings.gyro_lpf1_dyn_max_hz ?? 0,
+      recommendedValue: 0,
+      reason: 'Clearing dynamic max alongside min to fully disable gyro dynamic lowpass.',
+      impact: 'latency',
+      confidence: 'low',
+      ruleId: 'F-DLPF-GYRO-OFF',
+    });
   }
   if (dtermDynActive) {
     recs.push({
@@ -218,6 +227,15 @@ export function recommendDynamicLowpass(
       reason:
         'Noise is consistent across throttle positions — dynamic D-term lowpass provides no benefit. ' +
         'Disabling it simplifies the filter stack.',
+      impact: 'latency',
+      confidence: 'low',
+      ruleId: 'F-DLPF-DTERM-OFF',
+    });
+    recs.push({
+      setting: 'dterm_lpf1_dyn_max_hz',
+      currentValue: settings.dterm_lpf1_dyn_max_hz ?? 0,
+      recommendedValue: 0,
+      reason: 'Clearing dynamic max alongside min to fully disable D-term dynamic lowpass.',
       impact: 'latency',
       confidence: 'low',
       ruleId: 'F-DLPF-DTERM-OFF',

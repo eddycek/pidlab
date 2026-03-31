@@ -153,7 +153,8 @@ function recommendNoiseFloorAdjustments(
   const gyroDynActive = isGyroDynamicActive(current);
   const dtermDynActive = isDtermDynamicActive(current);
 
-  // For dynamic mode: the effective "current cutoff" is dyn_min (tightest point at low throttle)
+  // For dynamic mode: the effective "current cutoff" is dyn_min (tightest point at high throttle;
+  // BF ramps from dyn_max at low throttle down to dyn_min at high throttle)
   const effectiveGyroCutoff = gyroDynActive
     ? (current.gyro_lpf1_dyn_min_hz ?? current.gyro_lpf1_static_hz)
     : current.gyro_lpf1_static_hz;

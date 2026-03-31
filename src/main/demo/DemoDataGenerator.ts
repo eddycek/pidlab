@@ -374,6 +374,7 @@ function buildDemoSession(config: DemoSessionConfig): Buffer {
     'H dshot_bidir:1',
     'H rpm_filter_harmonics:3',
     'H rpm_filter_min_hz:100',
+    'H rpm_filter_q:500',
     // Dynamic notch
     'H dyn_notch_count:3',
     'H dyn_notch_q:300',
@@ -385,7 +386,6 @@ function buildDemoSession(config: DemoSessionConfig): Buffer {
     'H dterm_lpf1_dyn_min_hz:150',
     'H dterm_lpf1_dyn_max_hz:300',
     'H dterm_lpf1_dyn_expo:5',
-    'H rpm_filter_q:500',
     // D-min (propwash D boost)
     'H d_min_roll:30',
     'H d_min_pitch:34',

@@ -264,12 +264,16 @@ describe('recommendDynamicLowpass', () => {
       dynamicSettings(200, 500, 100, 250)
     );
 
-    // Both active but no throttle noise → recommend disabling
-    expect(recs).toHaveLength(2);
+    // Both active but no throttle noise → recommend disabling (min + max for each)
+    expect(recs).toHaveLength(4);
     expect(recs[0].setting).toBe('gyro_lpf1_dyn_min_hz');
     expect(recs[0].recommendedValue).toBe(0);
-    expect(recs[1].setting).toBe('dterm_lpf1_dyn_min_hz');
+    expect(recs[1].setting).toBe('gyro_lpf1_dyn_max_hz');
     expect(recs[1].recommendedValue).toBe(0);
+    expect(recs[2].setting).toBe('dterm_lpf1_dyn_min_hz');
+    expect(recs[2].recommendedValue).toBe(0);
+    expect(recs[3].setting).toBe('dterm_lpf1_dyn_max_hz');
+    expect(recs[3].recommendedValue).toBe(0);
   });
 });
 

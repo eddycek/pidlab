@@ -325,8 +325,8 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
                 const baseline = await snapshotManager.loadSnapshot(
                   refreshedSession.baselineSnapshotId
                 );
-                if (baseline?.tuningSessionNumber) {
-                  sessionNumber = baseline.tuningSessionNumber;
+                if (baseline?.metadata?.tuningSessionNumber) {
+                  sessionNumber = baseline.metadata.tuningSessionNumber;
                 }
               } catch {
                 // Fall back to computed number
