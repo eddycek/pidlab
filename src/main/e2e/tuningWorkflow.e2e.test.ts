@@ -748,8 +748,8 @@ describe('E2E Tuning Workflow', () => {
       expect(res.data.appliedFilters).toBe(1);
       expect(res.data.rebooted).toBe(true);
 
-      // Verify ordering: PID via MSP -> CLI -> save (no snapshot in Apply)
-      expect(callOrder).toEqual(['setPID', 'enterCLI', 'sendCLI', 'save']);
+      // Verify ordering: PID via MSP -> CLI filter -> CLI profile_name -> save
+      expect(callOrder).toEqual(['setPID', 'enterCLI', 'sendCLI', 'sendCLI', 'save']);
     });
 
     it('apply PID-only recommendations — MSP setPID called, no CLI for PID-only', async () => {

@@ -1226,8 +1226,8 @@ describe('IPC Handlers', () => {
       const res = await invokeWithEvent(IPCChannel.TUNING_APPLY_RECOMMENDATIONS, event, baseInput);
       expect(res.success).toBe(true);
 
-      // Order: PID via MSP → enter CLI → filter CLI → save
-      expect(callOrder).toEqual(['setPID', 'enterCLI', 'sendCLI', 'save']);
+      // Order: PID via MSP → enter CLI → filter CLI → profile name CLI → save
+      expect(callOrder).toEqual(['setPID', 'enterCLI', 'sendCLI', 'sendCLI', 'save']);
     });
 
     it('rejects PID values outside safety bounds', async () => {
