@@ -72,41 +72,35 @@ export function registerAnalysisHandlers(deps: HandlerDependencies): void {
 
         const session = parseResult.sessions[idx];
 
-        // Build filter settings: BBL headers first (flight-time config), MSP as fallback
-        if (!currentSettings) {
-          const { DEFAULT_FILTER_SETTINGS } = await import('@shared/types/analysis.types');
-          const fromBBL = enrichSettingsFromBBLHeaders(
-            DEFAULT_FILTER_SETTINGS,
-            session.header.rawHeaders
-          );
-          if (fromBBL) {
-            currentSettings = fromBBL;
-            logger.info('Built filter settings from BBL headers (primary source)');
-          }
-
-          // Fallback: read from live FC if BBL headers were insufficient
-          if (!currentSettings && deps.mspClient?.isConnected()) {
-            try {
-              currentSettings = await deps.mspClient.getFilterConfiguration();
-              logger.info('Read current filter settings from FC (BBL headers unavailable)');
-            } catch {
-              logger.warn('Could not read filter settings from FC, using defaults');
-            }
-          }
+        // Build filter settings: BBL headers are the primary source (flight-time config).
+        // MSP (live FC) is used only to fill fields that BBL headers don't cover.
+        const { DEFAULT_FILTER_SETTINGS } = await import('@shared/types/analysis.types');
+        const baseSettings = currentSettings ?? DEFAULT_FILTER_SETTINGS;
+        const fromBBL = enrichSettingsFromBBLHeaders(baseSettings, session.header.rawHeaders);
+        if (fromBBL) {
+          currentSettings = fromBBL;
+          logger.info('Enriched filter settings from BBL headers (primary source)');
+        } else if (!currentSettings) {
+          currentSettings = DEFAULT_FILTER_SETTINGS;
         }
 
-        // Enrich with MSP data for fields BBL doesn't cover (rare)
-        if (currentSettings && deps.mspClient?.isConnected()) {
+        // Fill remaining undefined fields from live FC (single MSP read, reused below)
+        let mspConfig: CurrentFilterSettings | null = null;
+        if (deps.mspClient?.isConnected()) {
           try {
-            const mspConfig = await deps.mspClient.getFilterConfiguration();
-            // Only fill in fields that BBL didn't provide
-            for (const key of Object.keys(mspConfig) as (keyof typeof mspConfig)[]) {
-              if (currentSettings[key] === undefined && mspConfig[key] !== undefined) {
-                (currentSettings as Record<string, unknown>)[key] = mspConfig[key];
-              }
-            }
+            mspConfig = await deps.mspClient.getFilterConfiguration();
           } catch {
             // Non-critical — BBL has the primary data
+          }
+        }
+        if (mspConfig && currentSettings) {
+          const mspAny = mspConfig as any;
+
+          const settingsAny = currentSettings as any;
+          for (const key of Object.keys(mspAny)) {
+            if (settingsAny[key] === undefined && mspAny[key] !== undefined) {
+              settingsAny[key] = mspAny[key];
+            }
           }
         }
 
