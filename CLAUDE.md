@@ -703,6 +703,8 @@ Design docs follow a lifecycle: **Proposed → Complete**. See `docs/README.md` 
 ### Autonomous Repo Operations
 Claude has **full autonomous access** exclusively to `eddycek/pidlab` repo:
 - **NEVER push directly to main** — always create a feature branch, open a PR, then merge with `gh pr merge --admin`
+- **Merge workflow**: After creating PR: (1) wait for CI, (2) wait for CodePilot Agent check, (3) poll 6 min for comments (15s intervals), (4) fix any comments, (5) ask user before merging — NEVER auto-merge
+- **CodePilot comments can be delayed** — always poll for 6 minutes after Agent check completes, filtering by latest commit SHA
 - PR create, merge (with `--admin` flag to bypass branch protection), close
 - All gh CLI operations allowed
 

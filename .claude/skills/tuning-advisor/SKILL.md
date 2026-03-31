@@ -26,6 +26,13 @@ Also read the app's analysis constants for current thresholds:
 src/main/analysis/constants.ts
 ```
 
+Also read propwash-specific modules:
+```
+src/main/analysis/PropWashDetector.ts
+src/main/analysis/PIDRecommender.ts (propwash functions: recommendPropWashDMin, applyPropWashContext)
+src/main/msp/mspLayouts.ts
+```
+
 ## Modes
 
 Determine the mode from the user's request or `$ARGUMENTS`:
@@ -65,6 +72,12 @@ Review code changes that affect tuning logic. Called automatically via hook or m
    - **Safety**: Could this produce dangerous values? (too high P/D, too low filters)
    - **Edge cases**: How does this affect different quad types (tiny whoop vs 7" LR)?
    - **Convergence**: Will this cause recommendation drift or oscillation?
+   - **Propwash rules**: Do PW-DMIN-*, PW-IRELAX-*, PW-TPA-* changes match community consensus?
+   - **Size-aware noise**: Do NOISE_LEVEL_BY_SIZE changes match quad archetype expectations?
+   - **Dynamic lowpass ratio**: Is DYNAMIC_LOWPASS_RATIO still 2 (BF convention)?
+   - **MSP layouts**: Do byte offsets match betaflight-configurator MSPHelper.js?
+   - **BBL header parsing**: Do header key names match actual BF BBL output? (CSV formats, d_max_gain naming)
+   - **Missing knowledge**: If you don't have community data to validate a change, say "Insufficient KB data — update docs/PID_TUNING_KNOWLEDGE.md before proceeding"
 4. Output a structured review with verdict per change
 
 ### Mode: `audit`
@@ -78,6 +91,12 @@ Full audit of recommendation quality.
    - Overly aggressive rules (safety risk)
    - Missing rules (known tuning patterns we don't handle)
    - Quad-type gaps (works for 5" but not for whoops)
+   - Propwash detection thresholds (20-90 Hz, severity 2.0/5.0) vs community
+   - d_min per-size defaults (DMIN_BY_SIZE) vs BF wiki
+   - iterm_relax cutoff per flight style vs community (30-40 race, 10-15 freestyle, 5-7 heavy)
+   - TPA interaction with propwash (D-only mode, breakpoint >= 1300)
+   - Size-aware noise classification vs PIDToolBox -30 dB standard
+   - Dynamic lowpass 2:1 ratio vs BF simplified tuning formula
 5. Output prioritized improvement list
 
 ### Mode: `analyze`
@@ -122,3 +141,5 @@ Always structure your response as:
 - **Consider the quad type**: 5" freestyle values are wrong for a tiny whoop
 - **Convergent advice**: Recommendations should move toward a stable optimum, not oscillate
 - **Hardware awareness**: If data suggests mechanical issues, say so — don't try to tune around broken hardware
+- **Insufficient data**: If community knowledge is missing for a specific tuning parameter or threshold, explicitly state this and request a KB update before approving the change
+- **BBL vs MSP**: Analysis should use BBL headers (flight-time config) as primary source, MSP as fallback — flag any code that reads MSP for analysis purposes

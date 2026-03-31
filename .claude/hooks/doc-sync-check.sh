@@ -5,7 +5,7 @@
 FILE="${CLAUDE_FILE_PATH:-}"
 
 # Check if the edited file is one that typically affects documentation accuracy
-if echo "$FILE" | grep -qE '(src/main/analysis/|src/main/ipc/handlers/|src/shared/types/|src/shared/constants|src/shared/utils/|src/renderer/hooks/|\.test\.(ts|tsx)$)'; then
+if echo "$FILE" | grep -qE '(src/main/analysis/|src/main/ipc/handlers/|src/shared/types/|src/shared/constants|src/shared/utils/|src/renderer/hooks/|src/main/msp/mspLayouts|\.test\.(ts|tsx)$)'; then
   echo "📝 This file change may affect documentation accuracy. Consider running /doc-sync before merging."
 fi
 
