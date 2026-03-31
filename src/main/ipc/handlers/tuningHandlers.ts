@@ -55,9 +55,10 @@ const BF_SETTING_RANGES: Record<string, { min: number; max: number }> = {
   feedforward_max_rate_limit: { min: 0, max: 150 },
   anti_gravity_gain: { min: 0, max: 250 },
   thrust_linear: { min: 0, max: 150 },
-  tpa_rate: { min: 0, max: 100 },
+  tpa_rate: { min: 0, max: 250 },
   tpa_breakpoint: { min: 1000, max: 2000 },
   tpa_low_always: { min: 0, max: 1 },
+  tpa_mode: { min: 0, max: 1 },
 };
 
 /**

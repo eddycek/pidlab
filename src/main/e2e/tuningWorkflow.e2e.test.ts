@@ -790,6 +790,33 @@ describe('E2E Tuning Workflow', () => {
       expect(mockMSP.connection.enterCLI).not.toHaveBeenCalled();
     });
 
+    it('rejects out-of-range filter values before MSP/CLI contact', async () => {
+      await invoke(IPCChannel.TUNING_START_SESSION);
+
+      const input = {
+        filterRecommendations: [
+          {
+            setting: 'tpa_mode',
+            currentValue: 0,
+            recommendedValue: 5, // out of range (valid: 0-1)
+            reason: 'test',
+            impact: 'noise' as const,
+            confidence: 'high' as const,
+          },
+        ],
+        pidRecommendations: [],
+        createSnapshot: false,
+      };
+
+      const { event } = createMockEvent();
+      const res = await invokeWithEvent(IPCChannel.TUNING_APPLY_RECOMMENDATIONS, event, input);
+      expect(res.success).toBe(false);
+      expect(res.error).toContain('validation failed');
+      // MSP should NOT have been called
+      expect(mockMSP.setPIDConfiguration).not.toHaveBeenCalled();
+      expect(mockMSP.connection.enterCLI).not.toHaveBeenCalled();
+    });
+
     it('update tuning phase transitions correctly', async () => {
       await invoke(IPCChannel.TUNING_START_SESSION);
 
