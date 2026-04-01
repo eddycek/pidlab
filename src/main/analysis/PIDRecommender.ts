@@ -1207,6 +1207,32 @@ export function recommendItermRelaxCutoff(
 
   if (currentCutoff === undefined) return undefined;
 
+  // Rule PW-IRELAX-CUTOFF-MOD: moderate propwash (2-5×) + cutoff above moderate floor → lower by 5
+  // Floor = 15 for moderate propwash — prevents over-suppression while still reducing bounce-back.
+  if (
+    propWash &&
+    propWash.meanSeverity >= PROPWASH_SEVERITY_MINIMAL &&
+    propWash.meanSeverity < PROPWASH_SEVERITY_SEVERE &&
+    currentCutoff > PROPWASH_IRELAX_CUTOFF_FLOOR
+  ) {
+    const floor = PROPWASH_IRELAX_CUTOFF_FLOOR;
+    const targetCutoff = Math.max(floor, currentCutoff - PROPWASH_IRELAX_CUTOFF_REDUCTION);
+    if (targetCutoff < currentCutoff) {
+      return {
+        setting: 'iterm_relax_cutoff',
+        currentValue: currentCutoff,
+        recommendedValue: targetCutoff,
+        reason:
+          `Moderate prop wash detected (${propWash.meanSeverity.toFixed(1)}× baseline) and iterm_relax_cutoff is ${currentCutoff}. ` +
+          `Lowering to ${targetCutoff} slightly increases I-term suppression during descents, ` +
+          'helping reduce mild oscillation without sacrificing too much tracking accuracy.',
+        impact: 'stability',
+        confidence: 'low',
+        ruleId: 'PW-IRELAX-CUTOFF-MOD',
+      };
+    }
+  }
+
   // Rule PW-IRELAX-CUTOFF: propwash severe (≥5×) + cutoff above floor → lower cutoff by 5
   // Floor = 10 for all severe propwash, per community guidance "reduce 15 → 10 → 7 → 5".
   if (
@@ -1663,6 +1689,52 @@ export function recommendTPA(
   }
 
   return recs;
+}
+
+/**
+ * Extract vbat_sag_compensation from BBL raw headers.
+ * Returns undefined if the header is not present.
+ */
+export function extractVbatSagCompensation(rawHeaders: Map<string, string>): number | undefined {
+  return parseIntOr(rawHeaders.get('vbat_sag_compensation'));
+}
+
+/**
+ * Recommend vbat_sag_compensation based on flight style.
+ *
+ * VBat sag compensation scales PID output based on battery voltage to maintain
+ * consistent feel as battery depletes. Recommended 50-100 for freestyle/cinematic,
+ * disabled (0) for racing where predictable power curve is preferred.
+ *
+ * Source: KB §10, community consensus.
+ * Rule ID: P-VBAT-SAG, confidence: low (advisory)
+ */
+export function recommendVbatSagCompensation(
+  currentValue: number | undefined,
+  flightStyle: FlightStyle
+): PIDRecommendation | undefined {
+  if (currentValue === undefined) return undefined;
+
+  // Only recommend when currently disabled
+  if (currentValue !== 0) return undefined;
+
+  // Racing pilots prefer predictable power curve (no compensation)
+  if (flightStyle === 'aggressive') return undefined;
+
+  const recommended = 75; // Midpoint of 50-100 range
+
+  return {
+    setting: 'vbat_sag_compensation',
+    currentValue: 0,
+    recommendedValue: recommended,
+    reason:
+      `VBat sag compensation is disabled. Setting to ${recommended} maintains consistent stick feel ` +
+      'as the battery depletes — the flight controller scales PID output to compensate for voltage drop. ' +
+      'Recommended for freestyle and cinematic flying.',
+    impact: 'response',
+    confidence: 'low',
+    ruleId: 'P-VBAT-SAG',
+  };
 }
 
 function clamp(value: number, min: number, max: number): number {

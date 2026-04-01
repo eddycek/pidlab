@@ -62,6 +62,8 @@ const BF_SETTING_RANGES: Record<string, { min: number; max: number }> = {
   tpa_breakpoint: { min: 1000, max: 2000 },
   tpa_low_always: { min: 0, max: 1 },
   tpa_mode: { min: 0, max: 1 },
+  rc_smoothing_auto_factor: { min: 1, max: 250 },
+  vbat_sag_compensation: { min: 0, max: 150 },
   // PID bounds — uses default (5") safety bounds as defense-in-depth.
   // Per-size bounds are enforced in the recommender; these catch truly dangerous values.
   pid_roll_p: { min: DEFAULT_QUAD_SIZE_BOUNDS.pMin, max: DEFAULT_QUAD_SIZE_BOUNDS.pMax },

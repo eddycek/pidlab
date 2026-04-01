@@ -555,7 +555,24 @@ describe('recommendRCLinkBaseline', () => {
     expect(rcRec!.recommendedValue).toBe(45);
   });
 
-  it('should not recommend rc_smoothing_auto_factor when not at default', () => {
+  it('should recommend rc_smoothing_auto_factor when below recommended (non-default)', () => {
+    const ctx: FeedforwardContext = {
+      active: true,
+      boost: 15,
+      averaging: 0,
+      smoothFactor: 15,
+      jitterFactor: 10,
+      rcLinkRateHz: 200,
+      rcSmoothingAutoFactor: 35, // non-default, but below recommended 45
+    };
+    const recs = recommendRCLinkBaseline(ctx);
+    const rcRec = recs.find((r) => r.setting === 'rc_smoothing_auto_factor');
+    expect(rcRec).toBeDefined();
+    expect(rcRec!.currentValue).toBe(35);
+    expect(rcRec!.recommendedValue).toBe(45);
+  });
+
+  it('should not recommend rc_smoothing_auto_factor when at recommended', () => {
     const ctx: FeedforwardContext = {
       active: true,
       boost: 15,
