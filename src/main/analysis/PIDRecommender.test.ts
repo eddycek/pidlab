@@ -21,6 +21,9 @@ import {
   extractThrustLinear,
   recommendThrustLinear,
   recommendTPA,
+  recommendRCSmoothingAutoFactor,
+  extractVbatSagCompensation,
+  recommendVbatSagCompensation,
 } from './PIDRecommender';
 import type { DMinContext, TPAContext } from './PIDRecommender';
 import type { TransferFunctionContext } from './PIDRecommender';
@@ -3148,10 +3151,33 @@ describe('recommendItermRelaxCutoff propwash-aware (Task 4)', () => {
     expect(rec!.recommendedValue).toBe(10); // max(10, 12-5) = 10
   });
 
-  it('PW-IRELAX-CUTOFF: should not fire when propwash is mild', () => {
-    // Mild propwash (3.0 < 5.0 severe threshold) → fall through to style check
+  it('PW-IRELAX-CUTOFF-MOD: should fire for moderate propwash when cutoff > floor 15', () => {
+    // Moderate propwash (3.0×, range 2-5×) + cutoff 25 > floor 15 → moderate rule fires
     const rec = recommendItermRelaxCutoff(25, 'balanced', mildPropWash);
-    // Style check: 25 vs typical 12, deviation = 13/12 = 1.08 > 0.5 → style rec fires
+    expect(rec).toBeDefined();
+    expect(rec!.ruleId).toBe('PW-IRELAX-CUTOFF-MOD');
+    expect(rec!.recommendedValue).toBe(20); // max(15, 25-5) = 20
+    expect(rec!.confidence).toBe('low');
+  });
+
+  it('PW-IRELAX-CUTOFF-MOD: should not go below moderate floor (15)', () => {
+    const rec = recommendItermRelaxCutoff(17, 'balanced', mildPropWash);
+    expect(rec).toBeDefined();
+    expect(rec!.ruleId).toBe('PW-IRELAX-CUTOFF-MOD');
+    expect(rec!.recommendedValue).toBe(15); // max(15, 17-5) = 15
+  });
+
+  it('PW-IRELAX-CUTOFF-MOD: should not fire when cutoff already at floor 15', () => {
+    const rec = recommendItermRelaxCutoff(15, 'balanced', mildPropWash);
+    // cutoff 15 is not > floor 15, so moderate rule doesn't fire
+    // Falls through to style check: 15 vs typical 12, deviation = 3/12 = 0.25 < 0.5 → no rec
+    expect(rec).toBeUndefined();
+  });
+
+  it('PW-IRELAX-CUTOFF-MOD: should not fire when propwash is minimal (< 2×)', () => {
+    const minimalPropWash = makePropWash({ meanSeverity: 1.5 });
+    const rec = recommendItermRelaxCutoff(25, 'balanced', minimalPropWash);
+    // Below minimal threshold → falls through to style check
     expect(rec).toBeDefined();
     expect(rec!.ruleId).toBe('P-IRELAX'); // style-based, not propwash
   });
@@ -3277,5 +3303,99 @@ describe('recommendTPA propwash-aware (Task 5)', () => {
     const rateRec = recs.find((r) => r.setting === 'tpa_rate');
     expect(rateRec).toBeDefined();
     expect(rateRec!.ruleId).toBe('P-TPA');
+  });
+});
+
+// ---- RC Smoothing Auto Factor Advisory ----
+
+describe('recommendRCSmoothingAutoFactor', () => {
+  it('should return undefined when feedforwardContext is undefined', () => {
+    expect(recommendRCSmoothingAutoFactor(undefined)).toBeUndefined();
+  });
+
+  it('should return undefined when rcLinkRateHz is undefined', () => {
+    const ctx: FeedforwardContext = { active: true, rcSmoothingAutoFactor: 30 };
+    expect(recommendRCSmoothingAutoFactor(ctx)).toBeUndefined();
+  });
+
+  it('should return undefined when rcSmoothingAutoFactor is undefined', () => {
+    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 250 };
+    expect(recommendRCSmoothingAutoFactor(ctx)).toBeUndefined();
+  });
+
+  it('should return undefined when RC link rate is below 150 Hz', () => {
+    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 50, rcSmoothingAutoFactor: 30 };
+    expect(recommendRCSmoothingAutoFactor(ctx)).toBeUndefined();
+  });
+
+  it('should recommend 45 when link rate >= 150 Hz and factor is at default 30', () => {
+    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 250, rcSmoothingAutoFactor: 30 };
+    const rec = recommendRCSmoothingAutoFactor(ctx);
+    expect(rec).toBeDefined();
+    expect(rec!.setting).toBe('rc_smoothing_auto_factor');
+    expect(rec!.currentValue).toBe(30);
+    expect(rec!.recommendedValue).toBe(45);
+    expect(rec!.ruleId).toBe('P-RC-SMOOTH');
+    expect(rec!.confidence).toBe('low');
+  });
+
+  it('should return undefined when factor is already at recommended 45', () => {
+    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 500, rcSmoothingAutoFactor: 45 };
+    expect(recommendRCSmoothingAutoFactor(ctx)).toBeUndefined();
+  });
+
+  it('should return undefined when factor is above recommended', () => {
+    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 500, rcSmoothingAutoFactor: 50 };
+    expect(recommendRCSmoothingAutoFactor(ctx)).toBeUndefined();
+  });
+
+  it('should recommend at exact threshold link rate 150 Hz', () => {
+    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 150, rcSmoothingAutoFactor: 30 };
+    const rec = recommendRCSmoothingAutoFactor(ctx);
+    expect(rec).toBeDefined();
+    expect(rec!.recommendedValue).toBe(45);
+  });
+});
+
+// ---- VBat Sag Compensation Advisory ----
+
+describe('extractVbatSagCompensation', () => {
+  it('should extract vbat_sag_compensation from headers', () => {
+    const headers = new Map([['vbat_sag_compensation', '75']]);
+    expect(extractVbatSagCompensation(headers)).toBe(75);
+  });
+
+  it('should return undefined when header is missing', () => {
+    expect(extractVbatSagCompensation(new Map())).toBeUndefined();
+  });
+});
+
+describe('recommendVbatSagCompensation', () => {
+  it('should return undefined when value is undefined', () => {
+    expect(recommendVbatSagCompensation(undefined, 'balanced')).toBeUndefined();
+  });
+
+  it('should return undefined when already enabled', () => {
+    expect(recommendVbatSagCompensation(50, 'balanced')).toBeUndefined();
+  });
+
+  it('should return undefined for aggressive (racing) style', () => {
+    expect(recommendVbatSagCompensation(0, 'aggressive')).toBeUndefined();
+  });
+
+  it('should recommend 75 for balanced style when disabled', () => {
+    const rec = recommendVbatSagCompensation(0, 'balanced');
+    expect(rec).toBeDefined();
+    expect(rec!.setting).toBe('vbat_sag_compensation');
+    expect(rec!.currentValue).toBe(0);
+    expect(rec!.recommendedValue).toBe(75);
+    expect(rec!.ruleId).toBe('P-VBAT-SAG');
+    expect(rec!.confidence).toBe('low');
+  });
+
+  it('should recommend 75 for smooth (cinematic) style when disabled', () => {
+    const rec = recommendVbatSagCompensation(0, 'smooth');
+    expect(rec).toBeDefined();
+    expect(rec!.recommendedValue).toBe(75);
   });
 });

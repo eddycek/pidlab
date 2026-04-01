@@ -51,6 +51,9 @@ import {
   extractThrustLinear,
   recommendThrustLinear,
   recommendTPA,
+  recommendRCSmoothingAutoFactor,
+  extractVbatSagCompensation,
+  recommendVbatSagCompensation,
 } from './PIDRecommender';
 import type { TransferFunctionContext } from './PIDRecommender';
 import {
@@ -440,6 +443,19 @@ async function analyzePIDCore(params: CoreParams): Promise<PIDAnalysisResult> {
   // TPA tuning advisory (size + noise + propwash-based)
   const tpaRecs = recommendTPA(tpaContext, droneSize, throttleNoiseIncreaseDeltaDb, propWash);
   rawRecommendations.push(...tpaRecs);
+
+  // RC smoothing auto factor advisory (high-rate link advisory)
+  const rcSmoothRec = recommendRCSmoothingAutoFactor(feedforwardContext);
+  if (rcSmoothRec) {
+    rawRecommendations.push(rcSmoothRec);
+  }
+
+  // VBat sag compensation advisory (flight-style-based)
+  const vbatSag = rawHeaders ? extractVbatSagCompensation(rawHeaders) : undefined;
+  const vbatSagRec = recommendVbatSagCompensation(vbatSag, flightStyle);
+  if (vbatSagRec) {
+    rawRecommendations.push(vbatSagRec);
+  }
 
   // Quality-adjusted confidence — no blanket cap, gating handles it
   const recommendations = adjustPIDConfidenceByQuality(

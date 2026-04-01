@@ -419,7 +419,7 @@ Propwash oscillation occurs during throttle transitions (descent → climb) when
 **iterm_relax (BF 3.4+)**
 - Suppresses I accumulation during fast maneuvers, preventing bounce-back
 - Lower cutoff = more suppression = less bounce-back
-- Racing: cutoff 30-40, Freestyle: 10-15, Heavy/7" quads: 5-7
+- Racing: cutoff 20-30, Freestyle: 10-15, Heavy/7" quads: 5-7
 - BF default: mode=RP, type=SETPOINT, cutoff=15
 - If bounce-back after flips: reduce cutoff from 15 → 10 → 7 → 5
 
@@ -698,14 +698,14 @@ Default bounds (used when drone size is unknown) match standard 5" values. When 
 | Size | P min | P max | D min | D max | I min | I max | P typical |
 |------|-------|-------|-------|-------|-------|-------|-----------|
 | 1" | 30 | 80 | 15 | 50 | 40 | 100 | 40 |
-| 2" | 30 | 80 | 15 | 50 | 40 | 100 | 40 |
+| 2" *(ref only)* | 30 | 80 | 15 | 50 | 40 | 100 | 40 |
 | 2.5" | 25 | 90 | 15 | 55 | 40 | 110 | 42 |
 | 3" | 20 | 100 | 15 | 60 | 40 | 110 | 45 |
 | 4" | 20 | 110 | 15 | 70 | 40 | 120 | 46 |
 | **5"** (default) | **20** | **120** | **15** | **80** | **40** | **120** | **48** |
 | 6" | 20 | 120 | 15 | 90 | 40 | 120 | 50 |
 | 7" | 20 | 120 | 15 | 100 | 40 | 120 | 50 |
-| 10" | 20 | 120 | 15 | 100 | 40 | 120 | 50 |
+| 10" *(ref only)* | 20 | 120 | 15 | 100 | 40 | 120 | 50 |
 
 > **Note**: FPVPIDlab supports 1"/2.5"/3"/4"/5"/6"/7" sizes only. The 2" and 10" rows are community reference values and are not selectable in the app. If an unsupported size is requested in code, it falls back to the standard 5" bounds.
 
