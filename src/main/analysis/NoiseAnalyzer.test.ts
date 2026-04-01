@@ -362,6 +362,21 @@ describe('buildNoiseProfile', () => {
     expect(profile.overallLevel).toBe('medium');
   });
 
+  it('should classify exactly-on-boundary noise as the higher tier (inclusive)', () => {
+    // -30 dB is exactly highDb for 5" → should be 'high' (inclusive >=)
+    const exactHigh = makeAxisProfile(-30);
+    const quiet = makeAxisProfile(-60);
+    expect(buildNoiseProfile(exactHigh, quiet, quiet).overallLevel).toBe('high');
+
+    // -50 dB is exactly mediumDb for 5" → should be 'medium' (inclusive >=)
+    const exactMedium = makeAxisProfile(-50);
+    expect(buildNoiseProfile(exactMedium, quiet, quiet).overallLevel).toBe('medium');
+
+    // Below mediumDb → 'low'
+    const low = makeAxisProfile(-51);
+    expect(buildNoiseProfile(low, quiet, quiet).overallLevel).toBe('low');
+  });
+
   it('should pass droneSize through to categorization', () => {
     const roll = makeAxisProfile(-28);
     const pitch = makeAxisProfile(-28);
@@ -369,7 +384,7 @@ describe('buildNoiseProfile', () => {
 
     const profile5 = buildNoiseProfile(roll, pitch, yaw);
     const profile4 = buildNoiseProfile(roll, pitch, yaw, '4"');
-    expect(profile5.overallLevel).toBe('high'); // -28 > -30 → HIGH on 5"
-    expect(profile4.overallLevel).toBe('medium'); // -28 < -27 → MEDIUM on 4"
+    expect(profile5.overallLevel).toBe('high'); // -28 >= -30 → HIGH on 5"
+    expect(profile4.overallLevel).toBe('medium'); // -28 < -27 → not high on 4", -28 >= -40 → MEDIUM
   });
 });

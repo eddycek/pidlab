@@ -3116,20 +3116,20 @@ describe('recommendItermRelaxCutoff propwash-aware (Task 4)', () => {
     expect(rec!.reason).toContain('prop wash');
   });
 
-  it('PW-IRELAX-CUTOFF: should cap at PROPWASH_IRELAX_CUTOFF_FLOOR', () => {
-    // currentCutoff=18, severe propwash → target = max(15, 18-5) = 15
+  it('PW-IRELAX-CUTOFF: should lower to floor 10 for severe propwash', () => {
+    // currentCutoff=18, severe propwash → target = max(10, 18-5) = 13
     const rec = recommendItermRelaxCutoff(18, 'balanced', severePropWash);
     expect(rec).toBeDefined();
-    expect(rec!.recommendedValue).toBe(15);
+    expect(rec!.recommendedValue).toBe(13);
     expect(rec!.ruleId).toBe('PW-IRELAX-CUTOFF');
   });
 
-  it('PW-IRELAX-CUTOFF: should not fire when cutoff is at moderate floor and severity is moderate', () => {
-    // cutoff=15, severity=6.0 (severe but < 7.5 threshold for lower floor)
-    // floor=15 (moderate), target=max(15, 15-5)=15 → no change, skip
+  it('PW-IRELAX-CUTOFF: should lower from 15 to 10 for severe propwash', () => {
+    // cutoff=15 (BF default), severe propwash → target = max(10, 15-5) = 10
     const rec = recommendItermRelaxCutoff(15, 'balanced', severePropWash);
-    // Falls through to style-based check — 15 vs typical 12: deviation = 3/12 = 0.25 < 0.5
-    expect(rec).toBeUndefined();
+    expect(rec).toBeDefined();
+    expect(rec!.ruleId).toBe('PW-IRELAX-CUTOFF');
+    expect(rec!.recommendedValue).toBe(10);
   });
 
   it('PW-IRELAX-CUTOFF: should use lower floor (10) for very severe propwash', () => {

@@ -1216,10 +1216,10 @@ export function recommendItermRelaxCutoff(
     propWash.meanSeverity >= PROPWASH_SEVERITY_SEVERE &&
     currentCutoff > PROPWASH_IRELAX_CUTOFF_FLOOR_SEVERE
   ) {
-    const floor =
-      propWash.meanSeverity >= PROPWASH_SEVERITY_VERY_SEVERE
-        ? PROPWASH_IRELAX_CUTOFF_FLOOR_SEVERE
-        : PROPWASH_IRELAX_CUTOFF_FLOOR;
+    // Both severe tiers use the lower floor (10) to allow progressive reduction.
+    // Very severe (≥7.5×) and severe (≥5×) both follow community "15→10→7→5" guidance.
+    // The difference: very severe gets higher confidence in PW-specific D recommendations.
+    const floor = PROPWASH_IRELAX_CUTOFF_FLOOR_SEVERE;
     const targetCutoff = Math.max(floor, currentCutoff - PROPWASH_IRELAX_CUTOFF_REDUCTION);
     if (targetCutoff < currentCutoff) {
       return {
