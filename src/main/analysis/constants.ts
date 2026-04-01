@@ -750,12 +750,9 @@ export const PROPWASH_IRELAX_CUTOFF_REDUCTION = 5;
 /** Minimum iterm_relax_cutoff floor for moderate propwash (won't reduce below this) */
 export const PROPWASH_IRELAX_CUTOFF_FLOOR = 15;
 
-/** Lower floor for very severe propwash (applies when severity >= PROPWASH_SEVERITY_VERY_SEVERE).
- * Allows reaching freestyle-low range (10) per community guidance: "reduce 15 → 10 → 7 → 5" */
+/** Floor for iterm_relax_cutoff when propwash is severe (≥5×).
+ * Allows progressive reduction per community guidance: "reduce 15 → 10 → 7 → 5" */
 export const PROPWASH_IRELAX_CUTOFF_FLOOR_SEVERE = 10;
-
-/** Very severe propwash threshold — triggers lower iterm_relax floor */
-export const PROPWASH_SEVERITY_VERY_SEVERE = PROPWASH_SEVERITY_SEVERE * 1.5;
 
 // ---- Propwash TPA ----
 

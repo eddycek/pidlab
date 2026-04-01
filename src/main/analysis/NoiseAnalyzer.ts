@@ -262,8 +262,8 @@ export function categorizeNoiseLevel(
   // Use the worst (highest) noise floor across roll and pitch (yaw is typically noisier, less relevant)
   const worstFloor = Math.max(roll.noiseFloorDb, pitch.noiseFloorDb);
 
-  if (worstFloor > thresholds.highDb) return 'high';
-  if (worstFloor > thresholds.mediumDb) return 'medium';
+  if (worstFloor >= thresholds.highDb) return 'high';
+  if (worstFloor >= thresholds.mediumDb) return 'medium';
   return 'low';
 }
 
