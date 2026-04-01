@@ -167,7 +167,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 
 ## Test Inventory
 
-**Total: 2970 unit tests across 138 files + 37 Playwright E2E tests across 7 spec files** (last verified: March 31, 2026)
+**Total: 3007 unit tests across 139 files + 37 Playwright E2E tests across 7 spec files** (last verified: April 1, 2026)
 
 ### UI Components
 
@@ -373,6 +373,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 | `analysis/TransferFunctionEstimator.test.ts` | 23 | Wiener deconvolution, frequency response estimation, Bode plot data, PID recommendations from transfer function, DC gain extraction |
 | `analysis/ThrottleTFAnalyzer.test.ts` | 8 | Per-band TF analysis, throttle binning, variance computation, TPA warning, band boundaries |
 | `analysis/AnalysisPipeline.realdata.test.ts` | 20 | End-to-end filter+PID analysis with bf45-reference fixture and real_flight.bbl, safety bounds, determinism, performance |
+| `analysis/OfflineTuning.pipeline.test.ts` | 37 | Offline tuning validation with 4 real VX3.5 BBL logs: pipeline smoke (filter+PID on all logs), factory settings regression, convergence (fixpoint ≤3 iterations, no oscillation), determinism, recommendation direction, cross-pipeline robustness, mechanical health (no false-positive critical), group delay sanity, header extraction invariants |
 
 ### Header Validation
 
