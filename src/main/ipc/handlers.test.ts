@@ -154,11 +154,19 @@ function createMockMSPClient(connected = true) {
     saveAndReboot: vi.fn().mockResolvedValue(undefined),
     setRebootPending: vi.fn(),
     clearRebootPending: vi.fn(),
-    connection: {
-      enterCLI: vi.fn().mockResolvedValue(undefined),
-      sendCLICommand: vi.fn().mockResolvedValue(''),
-      isInCLI: vi.fn().mockReturnValue(false),
-    },
+    connection: (() => {
+      const state = { inCLI: false };
+      return {
+        enterCLI: vi.fn().mockImplementation(async () => {
+          state.inCLI = true;
+        }),
+        sendCLICommand: vi.fn().mockResolvedValue(''),
+        isInCLI: vi.fn().mockImplementation(() => state.inCLI),
+        _resetCLIState: () => {
+          state.inCLI = false;
+        },
+      };
+    })(),
   };
 }
 
@@ -1214,6 +1222,8 @@ describe('IPC Handlers', () => {
       });
       mockMSP.connection.enterCLI.mockImplementation(async () => {
         callOrder.push('enterCLI');
+        (mockMSP.connection as any)._resetCLIState?.();
+        mockMSP.connection.isInCLI.mockReturnValue(true);
       });
       mockMSP.connection.sendCLICommand.mockImplementation(async () => {
         callOrder.push('sendCLI');
@@ -1227,6 +1237,7 @@ describe('IPC Handlers', () => {
       expect(res.success).toBe(true);
 
       // Order: PID via MSP → enter CLI → filter CLI → profile name CLI → save
+      // (profile name guard sees isInCLI=true, skips extra enterCLI)
       expect(callOrder).toEqual(['setPID', 'enterCLI', 'sendCLI', 'sendCLI', 'save']);
     });
 
@@ -1299,14 +1310,15 @@ describe('IPC Handlers', () => {
       expect(mockMSP.setPIDConfiguration).not.toHaveBeenCalled();
     });
 
-    it('handles PID-only (no filters)', async () => {
+    it('handles PID-only (no filters) — enters CLI for profile name', async () => {
       const input = { ...baseInput, filterRecommendations: [] };
       const { event } = createMockEvent();
       const res = await invokeWithEvent(IPCChannel.TUNING_APPLY_RECOMMENDATIONS, event, input);
       expect(res.success).toBe(true);
       expect(res.data.appliedPIDs).toBe(1);
       expect(res.data.appliedFilters).toBe(0);
-      expect(mockMSP.connection.enterCLI).not.toHaveBeenCalled();
+      // CLI entered for profile_name write even without filter/FF recs
+      expect(mockMSP.connection.enterCLI).toHaveBeenCalled();
     });
 
     it('returns success without reboot when no recommendations', async () => {
@@ -1389,6 +1401,7 @@ describe('IPC Handlers', () => {
       const callOrder: string[] = [];
       mockMSP.connection.enterCLI.mockImplementation(async () => {
         callOrder.push('enterCLI');
+        mockMSP.connection.isInCLI.mockReturnValue(true);
       });
       mockMSP.connection.sendCLICommand.mockImplementation(async (cmd: string) => {
         callOrder.push(`cli:${cmd}`);
@@ -1402,7 +1415,7 @@ describe('IPC Handlers', () => {
       expect(res.success).toBe(true);
       expect(res.data.appliedFilters).toBe(1);
       expect(res.data.appliedFeedforward).toBe(1);
-      // Only one enterCLI call for both filter + FF
+      // Only one enterCLI — profile name guard sees isInCLI=true, skips extra enter
       expect(callOrder.filter((c) => c === 'enterCLI')).toHaveLength(1);
     });
 

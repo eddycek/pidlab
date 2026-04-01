@@ -708,6 +708,7 @@ describe('E2E Tuning Workflow', () => {
       });
       mockMSP.connection.enterCLI.mockImplementation(async () => {
         callOrder.push('enterCLI');
+        mockMSP.connection.isInCLI.mockReturnValue(true);
       });
       mockMSP.connection.sendCLICommand.mockImplementation(async () => {
         callOrder.push('sendCLI');
@@ -748,11 +749,12 @@ describe('E2E Tuning Workflow', () => {
       expect(res.data.appliedFilters).toBe(1);
       expect(res.data.rebooted).toBe(true);
 
-      // Verify ordering: PID via MSP -> CLI filter -> CLI profile_name -> save
+      // Verify ordering: PID via MSP -> enter CLI -> filter CLI -> profile name CLI -> save
+      // (profile name guard sees isInCLI=true, skips extra enterCLI)
       expect(callOrder).toEqual(['setPID', 'enterCLI', 'sendCLI', 'sendCLI', 'save']);
     });
 
-    it('apply PID-only recommendations — MSP setPID called, no CLI for PID-only', async () => {
+    it('apply PID-only recommendations — MSP setPID called, CLI entered for profile name', async () => {
       await invoke(IPCChannel.TUNING_START_SESSION);
 
       const input = {
@@ -786,8 +788,8 @@ describe('E2E Tuning Workflow', () => {
 
       // PID was set via MSP
       expect(mockMSP.setPIDConfiguration).toHaveBeenCalled();
-      // CLI was NOT entered (no filter changes)
-      expect(mockMSP.connection.enterCLI).not.toHaveBeenCalled();
+      // CLI entered for profile_name write even without filter/FF recs
+      expect(mockMSP.connection.enterCLI).toHaveBeenCalled();
     });
 
     it('rejects out-of-range filter values before MSP/CLI contact', async () => {
