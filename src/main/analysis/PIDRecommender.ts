@@ -58,8 +58,6 @@ import {
   PROPWASH_SEVERITY_SEVERE,
   PROPWASH_SEVERITY_MINIMAL,
   FF_DOMINATED_MIN_STEPS,
-  RC_SMOOTHING_AUTO_FACTOR_RECOMMENDED,
-  RC_SMOOTHING_ADVISORY_MIN_HZ,
   type QuadSizeBounds,
 } from './constants';
 
@@ -1691,44 +1689,6 @@ export function recommendTPA(
   }
 
   return recs;
-}
-
-/**
- * Recommend rc_smoothing_auto_factor for high-rate RC links.
- *
- * When RC link rate is ≥150 Hz and rc_smoothing_auto_factor is below the
- * recommended 45 (BF default is 30), suggest increasing it for smoother
- * input with minimal latency cost.
- *
- * Source: SupaflyFPV 4.5 presets, community consensus (KB §1).
- * Rule ID: P-RC-SMOOTH, confidence: low (advisory)
- */
-export function recommendRCSmoothingAutoFactor(
-  feedforwardContext: FeedforwardContext | undefined
-): PIDRecommendation | undefined {
-  if (!feedforwardContext) return undefined;
-
-  const { rcLinkRateHz, rcSmoothingAutoFactor } = feedforwardContext;
-  if (rcLinkRateHz === undefined || rcSmoothingAutoFactor === undefined) return undefined;
-
-  // Only recommend for high-rate links (≥150 Hz)
-  if (rcLinkRateHz < RC_SMOOTHING_ADVISORY_MIN_HZ) return undefined;
-
-  // Only recommend when below the recommended value
-  if (rcSmoothingAutoFactor >= RC_SMOOTHING_AUTO_FACTOR_RECOMMENDED) return undefined;
-
-  return {
-    setting: 'rc_smoothing_auto_factor',
-    currentValue: rcSmoothingAutoFactor,
-    recommendedValue: RC_SMOOTHING_AUTO_FACTOR_RECOMMENDED,
-    reason:
-      `RC link rate is ${rcLinkRateHz} Hz but rc_smoothing_auto_factor is ${rcSmoothingAutoFactor} (BF default 30). ` +
-      `Most presets recommend ${RC_SMOOTHING_AUTO_FACTOR_RECOMMENDED} for high-rate links — ` +
-      'smoother stick input with minimal latency cost.',
-    impact: 'both',
-    confidence: 'low',
-    ruleId: 'P-RC-SMOOTH',
-  };
 }
 
 /**

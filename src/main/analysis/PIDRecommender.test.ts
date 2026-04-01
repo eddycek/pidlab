@@ -21,7 +21,6 @@ import {
   extractThrustLinear,
   recommendThrustLinear,
   recommendTPA,
-  recommendRCSmoothingAutoFactor,
   extractVbatSagCompensation,
   recommendVbatSagCompensation,
 } from './PIDRecommender';
@@ -3303,57 +3302,6 @@ describe('recommendTPA propwash-aware (Task 5)', () => {
     const rateRec = recs.find((r) => r.setting === 'tpa_rate');
     expect(rateRec).toBeDefined();
     expect(rateRec!.ruleId).toBe('P-TPA');
-  });
-});
-
-// ---- RC Smoothing Auto Factor Advisory ----
-
-describe('recommendRCSmoothingAutoFactor', () => {
-  it('should return undefined when feedforwardContext is undefined', () => {
-    expect(recommendRCSmoothingAutoFactor(undefined)).toBeUndefined();
-  });
-
-  it('should return undefined when rcLinkRateHz is undefined', () => {
-    const ctx: FeedforwardContext = { active: true, rcSmoothingAutoFactor: 30 };
-    expect(recommendRCSmoothingAutoFactor(ctx)).toBeUndefined();
-  });
-
-  it('should return undefined when rcSmoothingAutoFactor is undefined', () => {
-    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 250 };
-    expect(recommendRCSmoothingAutoFactor(ctx)).toBeUndefined();
-  });
-
-  it('should return undefined when RC link rate is below 150 Hz', () => {
-    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 50, rcSmoothingAutoFactor: 30 };
-    expect(recommendRCSmoothingAutoFactor(ctx)).toBeUndefined();
-  });
-
-  it('should recommend 45 when link rate >= 150 Hz and factor is at default 30', () => {
-    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 250, rcSmoothingAutoFactor: 30 };
-    const rec = recommendRCSmoothingAutoFactor(ctx);
-    expect(rec).toBeDefined();
-    expect(rec!.setting).toBe('rc_smoothing_auto_factor');
-    expect(rec!.currentValue).toBe(30);
-    expect(rec!.recommendedValue).toBe(45);
-    expect(rec!.ruleId).toBe('P-RC-SMOOTH');
-    expect(rec!.confidence).toBe('low');
-  });
-
-  it('should return undefined when factor is already at recommended 45', () => {
-    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 500, rcSmoothingAutoFactor: 45 };
-    expect(recommendRCSmoothingAutoFactor(ctx)).toBeUndefined();
-  });
-
-  it('should return undefined when factor is above recommended', () => {
-    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 500, rcSmoothingAutoFactor: 50 };
-    expect(recommendRCSmoothingAutoFactor(ctx)).toBeUndefined();
-  });
-
-  it('should recommend at exact threshold link rate 150 Hz', () => {
-    const ctx: FeedforwardContext = { active: true, rcLinkRateHz: 150, rcSmoothingAutoFactor: 30 };
-    const rec = recommendRCSmoothingAutoFactor(ctx);
-    expect(rec).toBeDefined();
-    expect(rec!.recommendedValue).toBe(45);
   });
 });
 

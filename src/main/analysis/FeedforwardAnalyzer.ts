@@ -244,11 +244,11 @@ export function recommendRCLinkBaseline(
     });
   }
 
-  // rc_smoothing_auto_factor advisory
+  // rc_smoothing_auto_factor advisory — recommend when below optimal for high-rate links
   const currentAutoFactor = ffContext.rcSmoothingAutoFactor;
   if (
     currentAutoFactor !== undefined &&
-    currentAutoFactor === RC_SMOOTHING_AUTO_FACTOR_DEFAULT &&
+    currentAutoFactor < RC_SMOOTHING_AUTO_FACTOR_RECOMMENDED &&
     ffContext.rcLinkRateHz !== undefined &&
     ffContext.rcLinkRateHz >= RC_SMOOTHING_ADVISORY_MIN_HZ
   ) {
@@ -257,11 +257,11 @@ export function recommendRCLinkBaseline(
       currentValue: currentAutoFactor,
       recommendedValue: RC_SMOOTHING_AUTO_FACTOR_RECOMMENDED,
       reason:
-        `rc_smoothing_auto_factor is at BF default (${RC_SMOOTHING_AUTO_FACTOR_DEFAULT}). ` +
+        `rc_smoothing_auto_factor is ${currentAutoFactor} (BF default ${RC_SMOOTHING_AUTO_FACTOR_DEFAULT}). ` +
         `Most community presets recommend ${RC_SMOOTHING_AUTO_FACTOR_RECOMMENDED} for RC link rates ≥${RC_SMOOTHING_ADVISORY_MIN_HZ} Hz. ` +
         'Higher values produce smoother input with slightly more latency — good for freestyle/cinema.',
       impact: 'stability',
-      confidence: 'medium',
+      confidence: 'low',
       ruleId: 'FF-RC-SMOOTH',
     });
   }
