@@ -349,7 +349,8 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
         });
 
         // Stage 4b: Write PID profile name if needed (auto-name or user label sync)
-        if (needsCLI && profileManager && tuningSessionManager) {
+        // Runs even for PID-only applies (needsCLI may be false) — enters CLI if needed.
+        if (profileManager && tuningSessionManager) {
           try {
             const pId = profileManager.getCurrentProfileId();
             if (pId) {
@@ -371,6 +372,10 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
               if (targetName) {
                 // Sanitize: BF CLI allows alphanumeric + underscore + hyphen
                 const sanitized = targetName.replace(/[^a-zA-Z0-9_-]/g, '_');
+                // Enter CLI if not already there (PID-only applies skip filter/FF CLI stages)
+                if (!mspClient.connection.isInCLI()) {
+                  await mspClient.connection.enterCLI();
+                }
                 const cmd = `set profile_name = ${sanitized}`;
                 const response = await mspClient.connection.sendCLICommand(cmd);
                 try {

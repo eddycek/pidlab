@@ -748,8 +748,8 @@ describe('E2E Tuning Workflow', () => {
       expect(res.data.appliedFilters).toBe(1);
       expect(res.data.rebooted).toBe(true);
 
-      // Verify ordering: PID via MSP -> CLI filter -> CLI profile_name -> save
-      expect(callOrder).toEqual(['setPID', 'enterCLI', 'sendCLI', 'sendCLI', 'save']);
+      // Verify ordering: PID via MSP -> CLI filter -> CLI profile_name (+ enterCLI guard) -> save
+      expect(callOrder).toEqual(['setPID', 'enterCLI', 'sendCLI', 'enterCLI', 'sendCLI', 'save']);
     });
 
     it('apply PID-only recommendations — MSP setPID called, no CLI for PID-only', async () => {
@@ -786,8 +786,8 @@ describe('E2E Tuning Workflow', () => {
 
       // PID was set via MSP
       expect(mockMSP.setPIDConfiguration).toHaveBeenCalled();
-      // CLI was NOT entered (no filter changes)
-      expect(mockMSP.connection.enterCLI).not.toHaveBeenCalled();
+      // CLI entered for profile_name write even without filter/FF recs
+      expect(mockMSP.connection.enterCLI).toHaveBeenCalled();
     });
 
     it('rejects out-of-range filter values before MSP/CLI contact', async () => {
