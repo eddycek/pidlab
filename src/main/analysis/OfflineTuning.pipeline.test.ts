@@ -277,17 +277,13 @@ describe('C. PID analysis on real PID flights', () => {
     if (result.stepsDetected > 0) {
       for (const axis of ['roll', 'pitch', 'yaw'] as const) {
         const profile = result[axis];
-        if (profile.stepCount > 0) {
-          expect(profile.meanOvershootPercent).toBeGreaterThanOrEqual(0);
-          expect(profile.meanOvershootPercent).toBeLessThan(500);
-          if (profile.meanRiseTimeMs !== undefined) {
-            expect(profile.meanRiseTimeMs).toBeGreaterThan(0);
-            expect(profile.meanRiseTimeMs).toBeLessThan(500);
-          }
-          if (profile.meanSettlingTimeMs !== undefined) {
-            expect(profile.meanSettlingTimeMs).toBeGreaterThan(0);
-            expect(profile.meanSettlingTimeMs).toBeLessThan(2000);
-          }
+        if (profile.responses.length > 0) {
+          expect(profile.meanOvershoot).toBeGreaterThanOrEqual(0);
+          expect(profile.meanOvershoot).toBeLessThan(500);
+          expect(profile.meanRiseTimeMs).toBeGreaterThan(0);
+          expect(profile.meanRiseTimeMs).toBeLessThan(500);
+          expect(profile.meanSettlingTimeMs).toBeGreaterThan(0);
+          expect(profile.meanSettlingTimeMs).toBeLessThan(2000);
         }
       }
     }
@@ -399,11 +395,12 @@ describe('C. PID analysis on real PID flights', () => {
     expect(result.analysisTimeMs).toBeGreaterThan(0);
 
     // If bandwidth was computed, it should be positive
-    if (result.transferFunction.roll?.bandwidthHz) {
-      expect(result.transferFunction.roll.bandwidthHz).toBeGreaterThan(0);
+    // bandwidthHz is on transferFunction.metrics.roll, not transferFunction.roll
+    if (result.transferFunction.metrics?.roll?.bandwidthHz) {
+      expect(result.transferFunction.metrics.roll.bandwidthHz).toBeGreaterThan(0);
     }
-    if (result.transferFunction.pitch?.bandwidthHz) {
-      expect(result.transferFunction.pitch.bandwidthHz).toBeGreaterThan(0);
+    if (result.transferFunction.metrics?.pitch?.bandwidthHz) {
+      expect(result.transferFunction.metrics.pitch.bandwidthHz).toBeGreaterThan(0);
     }
   }, 15_000);
 
