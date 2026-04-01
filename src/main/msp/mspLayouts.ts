@@ -222,6 +222,8 @@ export const STATUS_EX = {
   MODE: u32(6, 'mode'),
   PID_PROFILE_INDEX: u8(10, 'pidProfileIndex'),
   CPU_LOAD: u16(11, 'cpuload'),
+  /** @deprecated Not used — byte 13 is actually rateProfile in some BF versions.
+   *  MSPClient derives profile count from API version instead. */
   PID_PROFILE_COUNT: u8(13, 'numProfiles'),
   RATE_PROFILE: u8(14, 'rateProfile'),
 } as const;

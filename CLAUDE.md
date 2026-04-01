@@ -365,7 +365,7 @@ Multi-step wizard for active tuning sessions (Filter Tune, PID Tune, and Flash T
 **Steps by mode** (used only during active tuning sessions):
 - `filter`: Flight Guide → Session → Filters → Summary (skips PIDs)
 - `pid`: Flight Guide → Session → PIDs → Summary (skips Filters)
-- `quick`: Session → Flash Tune Analysis (filter + TF in parallel, auto-runs) → Summary
+- `flash`: Session → Flash Tune Analysis (filter + TF in parallel, auto-runs) → Summary
 
 - **useTuningWizard hook**: State management for parse/filter/PID analysis and apply lifecycle, mode-aware auto-advance and apply
 - **WizardProgress**: Visual step indicator with done/current/upcoming states, dynamic step filtering by mode

@@ -356,7 +356,7 @@ export interface QuadSizeBounds {
  * large (6-7").
  */
 export const QUAD_SIZE_BOUNDS: Record<DroneSize, QuadSizeBounds> = {
-  '1"': { pMin: 30, pMax: 80, dMin: 15, dMax: 50, iMin: 40, iMax: 100, pTypical: 40 },
+  '1"': { pMin: 30, pMax: 80, dMin: 15, dMax: 50, iMin: 40, iMax: 100, pTypical: 65 },
   '2.5"': { pMin: 25, pMax: 90, dMin: 15, dMax: 55, iMin: 40, iMax: 110, pTypical: 42 },
   '3"': { pMin: 20, pMax: 100, dMin: 15, dMax: 60, iMin: 40, iMax: 110, pTypical: 45 },
   '4"': { pMin: 20, pMax: 110, dMin: 15, dMax: 70, iMin: 40, iMax: 120, pTypical: 46 },
@@ -752,7 +752,7 @@ export const PROPWASH_IRELAX_CUTOFF_FLOOR = 15;
 
 /** Floor for iterm_relax_cutoff when propwash is severe (≥5×).
  * Allows progressive reduction per community guidance: "reduce 15 → 10 → 7 → 5" */
-export const PROPWASH_IRELAX_CUTOFF_FLOOR_SEVERE = 10;
+export const PROPWASH_IRELAX_CUTOFF_FLOOR_SEVERE = 7;
 
 // ---- Propwash TPA ----
 

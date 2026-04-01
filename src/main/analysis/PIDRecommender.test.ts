@@ -1793,8 +1793,8 @@ describe('P-too-high informational warning', () => {
 });
 
 describe('P-too-low informational warning', () => {
-  it('should warn when P is below typical for quad size (1" pTypical=40)', () => {
-    // P=25 on 1" quad (pTypical=40, threshold=40*0.7=28) → informational warning
+  it('should warn when P is below typical for quad size (1" pTypical=65)', () => {
+    // P=25 on 1" quad (pTypical=65, threshold=65*0.7=45.5) → informational warning
     const goodProfile = makeProfile({
       meanOvershoot: 5,
       meanRiseTimeMs: 30,
@@ -1834,8 +1834,8 @@ describe('P-too-low informational warning', () => {
       meanSettlingTimeMs: 150,
     });
     const normalPPids: PIDConfiguration = {
-      roll: { P: 45, I: 60, D: 20 },
-      pitch: { P: 45, I: 60, D: 20 },
+      roll: { P: 50, I: 60, D: 20 },
+      pitch: { P: 50, I: 60, D: 20 },
       yaw: { P: 40, I: 60, D: 0 },
     };
     const recs = recommendPID(
@@ -3118,8 +3118,8 @@ describe('recommendItermRelaxCutoff propwash-aware (Task 4)', () => {
     expect(rec!.reason).toContain('prop wash');
   });
 
-  it('PW-IRELAX-CUTOFF: should lower to floor 10 for severe propwash', () => {
-    // currentCutoff=18, severe propwash → target = max(10, 18-5) = 13
+  it('PW-IRELAX-CUTOFF: should lower to floor 7 for severe propwash', () => {
+    // currentCutoff=18, severe propwash → target = max(7, 18-5) = 13
     const rec = recommendItermRelaxCutoff(18, 'balanced', severePropWash);
     expect(rec).toBeDefined();
     expect(rec!.recommendedValue).toBe(13);
@@ -3127,27 +3127,27 @@ describe('recommendItermRelaxCutoff propwash-aware (Task 4)', () => {
   });
 
   it('PW-IRELAX-CUTOFF: should lower from 15 to 10 for severe propwash', () => {
-    // cutoff=15 (BF default), severe propwash → target = max(10, 15-5) = 10
+    // cutoff=15 (BF default), severe propwash → target = max(7, 15-5) = 10
     const rec = recommendItermRelaxCutoff(15, 'balanced', severePropWash);
     expect(rec).toBeDefined();
     expect(rec!.ruleId).toBe('PW-IRELAX-CUTOFF');
     expect(rec!.recommendedValue).toBe(10);
   });
 
-  it('PW-IRELAX-CUTOFF: should use lower floor (10) for very severe propwash', () => {
-    // severity=8.0 >= 5.0 * 1.5 = 7.5 → floor=10
+  it('PW-IRELAX-CUTOFF: should use lower floor (7) for very severe propwash', () => {
+    // severity=8.0 >= 5.0 * 1.5 = 7.5 → floor=7
     const verySeverePropWash = makePropWash({ meanSeverity: 8.0 });
     const rec = recommendItermRelaxCutoff(15, 'balanced', verySeverePropWash);
     expect(rec).toBeDefined();
     expect(rec!.ruleId).toBe('PW-IRELAX-CUTOFF');
-    expect(rec!.recommendedValue).toBe(10); // max(10, 15-5) = 10
+    expect(rec!.recommendedValue).toBe(10); // max(7, 15-5) = 10
   });
 
-  it('PW-IRELAX-CUTOFF: should not go below severe floor (10) even with very severe propwash', () => {
+  it('PW-IRELAX-CUTOFF: should not go below severe floor (7) even with very severe propwash', () => {
     const verySeverePropWash = makePropWash({ meanSeverity: 10.0 });
     const rec = recommendItermRelaxCutoff(12, 'balanced', verySeverePropWash);
     expect(rec).toBeDefined();
-    expect(rec!.recommendedValue).toBe(10); // max(10, 12-5) = 10
+    expect(rec!.recommendedValue).toBe(7); // max(7, 12-5) = 7
   });
 
   it('PW-IRELAX-CUTOFF-MOD: should fire for moderate propwash when cutoff > floor 15', () => {
