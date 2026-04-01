@@ -167,7 +167,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 
 ## Test Inventory
 
-**Total: 2957 unit tests across 137 files + 37 Playwright E2E tests across 7 spec files** (last verified: March 31, 2026)
+**Total: 2970 unit tests across 138 files + 37 Playwright E2E tests across 7 spec files** (last verified: March 31, 2026)
 
 ### UI Components
 
@@ -263,7 +263,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 
 | File | Tests | Description |
 |------|-------|-------------|
-| `ipc/handlers.test.ts` | 110 | All 51 IPC handler channels: connection, FC info, profiles, snapshots, blackbox, PID config, analysis (filter+PID+TF), tuning apply (PID+filter+FF+bounds validation), snapshot restore, tuning session, BB settings fix, BF PID profile selection, handler registration |
+| `ipc/handlers.test.ts` | 113 | All 51 IPC handler channels: connection, FC info, profiles, snapshots, blackbox, PID config, analysis (filter+PID+TF), tuning apply (PID+filter+FF+bounds validation), snapshot restore, tuning session, BB settings fix, BF PID profile selection, reuse verification log on repeat tuning, handler registration |
 | `ipc/handlers/telemetryHandlers.test.ts` | 4 | Telemetry IPC handlers: get settings, set enabled, send now, error when manager null |
 | `ipc/handlers/diagnosticHandlers.test.ts` | 14 | Diagnostic IPC handler: send report, bundle build, gzip upload, Pro license gate, error handling, BBL upload (fire-and-forget, skip when disabled, file not found, upload failure, verification log selection, telemetry event) |
 
