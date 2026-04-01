@@ -56,7 +56,6 @@ import {
   PROPWASH_TPA_BREAKPOINT_MIN,
   PROPWASH_TPA_RATE_MAX,
   PROPWASH_SEVERITY_SEVERE,
-  PROPWASH_SEVERITY_VERY_SEVERE,
   PROPWASH_SEVERITY_MINIMAL,
   FF_DOMINATED_MIN_STEPS,
   type QuadSizeBounds,
@@ -1208,17 +1207,13 @@ export function recommendItermRelaxCutoff(
 
   if (currentCutoff === undefined) return undefined;
 
-  // Rule PW-IRELAX-CUTOFF: propwash severe + cutoff too high → lower cutoff
-  // Severity-aware floor: very severe propwash allows lowering to 10 (freestyle-low range),
-  // moderate propwash only to 15 (BF default). Per community guidance: "reduce 15 → 10 → 7 → 5".
+  // Rule PW-IRELAX-CUTOFF: propwash severe (≥5×) + cutoff above floor → lower cutoff by 5
+  // Floor = 10 for all severe propwash, per community guidance "reduce 15 → 10 → 7 → 5".
   if (
     propWash &&
     propWash.meanSeverity >= PROPWASH_SEVERITY_SEVERE &&
     currentCutoff > PROPWASH_IRELAX_CUTOFF_FLOOR_SEVERE
   ) {
-    // Both severe tiers use the lower floor (10) to allow progressive reduction.
-    // Very severe (≥7.5×) and severe (≥5×) both follow community "15→10→7→5" guidance.
-    // The difference: very severe gets higher confidence in PW-specific D recommendations.
     const floor = PROPWASH_IRELAX_CUTOFF_FLOOR_SEVERE;
     const targetCutoff = Math.max(floor, currentCutoff - PROPWASH_IRELAX_CUTOFF_REDUCTION);
     if (targetCutoff < currentCutoff) {

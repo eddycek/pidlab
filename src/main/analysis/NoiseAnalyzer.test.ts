@@ -292,14 +292,14 @@ describe('analyzeAxisNoise', () => {
 });
 
 describe('categorizeNoiseLevel', () => {
-  it('should return "high" when noise floor > -30 dB', () => {
+  it('should return "high" when noise floor >= -30 dB', () => {
     const roll = makeAxisProfile(-20);
     const pitch = makeAxisProfile(-25);
     const yaw = makeAxisProfile(-15);
     expect(categorizeNoiseLevel(roll, pitch, yaw)).toBe('high');
   });
 
-  it('should return "medium" when noise floor between -50 and -30 dB', () => {
+  it('should return "medium" when noise floor >= -50 dB and < -30 dB', () => {
     const roll = makeAxisProfile(-40);
     const pitch = makeAxisProfile(-45);
     const yaw = makeAxisProfile(-10); // yaw ignored for level calc
