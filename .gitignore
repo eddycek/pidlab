@@ -64,9 +64,12 @@ test-results/
 # Real flight BBL fixtures (large binary files)
 src/main/blackbox/__fixtures__/*.bbl
 src/main/blackbox/__fixtures__/*.bfl
-# test-fixtures/bbl/ — only the CI fixture is tracked, rest are local-only
+# test-fixtures/bbl/ — 4 real flight BBL fixtures tracked for CI pipeline tests
 test-fixtures/bbl/*
 !test-fixtures/bbl/blackbox_2026-03-29T11-09-44-682Z.bbl
+!test-fixtures/bbl/blackbox_2026-03-29T16-17-37-126Z.bbl
+!test-fixtures/bbl/blackbox_2026-03-29T18-00-16-246Z.bbl
+!test-fixtures/bbl/blackbox_2026-03-29T18-23-46-100Z.bbl
 
 # Temp files
 *.temp
