@@ -282,9 +282,8 @@ Verify each subdirectory CLAUDE.md is consistent with:
 Check that no content was orphaned (present in root but belongs in subdirectory, or vice versa).
 
 ### Step 9: Feature description audit (enhanced)
-<!-- Note: Steps were renumbered after adding Step 8 (Subdirectory CLAUDE.md consistency) -->
 
-#### 8a: README feature list
+#### 9a: README feature list
 
 Read the features/capabilities section of README.md. For each feature bullet:
 - Verify corresponding code exists (component, module, handler, hook)
@@ -292,7 +291,7 @@ Read the features/capabilities section of README.md. For each feature bullet:
 - Flag features described as "planned"/"pending"/"coming soon" that are actually implemented
 - Flag features described as implemented that have been removed
 
-#### 8b: ARCHITECTURE.md module list
+#### 9b: ARCHITECTURE.md module list
 
 For each module listed in ARCHITECTURE.md:
 - Verify the source file exists at the stated path
@@ -306,14 +305,14 @@ grep -oP '`src/[^`]+`' ARCHITECTURE.md | tr -d '`' | while read f; do
 done
 ```
 
-#### 8c: Known Limitations audit
+#### 9c: Known Limitations audit
 
 Read README.md "Known Limitations" section (if it exists):
 - For each limitation listed, check if it has been fixed (search codebase for the fix)
 - Remove limitations that are now resolved
 - Add any new known limitations discovered during the PR
 
-### Step 9: Verify text accuracy
+### Step 10: Verify text accuracy
 
 Scan for common stale patterns:
 - Numbers that don't match code (grep for specific values)
@@ -324,7 +323,7 @@ Scan for common stale patterns:
 - Handler counts in tables that don't match actual handler registrations
 - Stale "N tests" or "N modules" counts in prose text
 
-### Step 10: Fix issues
+### Step 11: Fix issues
 
 For each issue found:
 1. State the file, line, and what's wrong

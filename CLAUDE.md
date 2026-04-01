@@ -110,7 +110,7 @@ Three tuning modes: **Filter Tune**, **PID Tune**, **Flash Tune** (each: 2 fligh
 **State Machines**:
 - Filter: `filter_flight_pending → filter_log_ready → filter_analysis → filter_applied → filter_verification_pending → completed`
 - PID: `pid_flight_pending → pid_log_ready → pid_analysis → pid_applied → pid_verification_pending → completed`
-- Flash: `flash_flight_pending → flash_log_ready → flash_analysis → flash_applied → verification_pending → completed`
+- Flash: `flash_flight_pending → flash_log_ready → flash_analysis → flash_applied → flash_verification_pending → completed`
 
 `TuningSessionManager` enforces legal forward-only transitions. Archive on completion to `TuningHistoryManager`.
 
