@@ -23,6 +23,17 @@ MultiWii Serial Protocol layer for Betaflight flight controller communication.
 - **Version gate**: `validateFirmwareVersion()` checks API version on connect — rejects BF < 4.3 (API 1.44) with `UnsupportedVersionError`, auto-disconnects
 - **BF PID profile selection**: `MSP_SELECT_SETTING` (210) switches active PID profile (0-indexed). `getStatusEx()` reads current `pidProfileIndex` and `pidProfileCount` from FC. FCInfo carries these fields.
 
+## Adding or Modifying MSP Fields
+
+When adding new MSP fields or CLI commands, **always verify byte offsets and field names** against these authoritative sources:
+
+1. **MSP byte layouts**: `betaflight-configurator` → [`src/js/msp/MSPHelper.js`](https://github.com/betaflight/betaflight-configurator) — canonical byte offsets for each MSP command
+2. **MSP protocol**: `betaflight` → [`src/main/msp/msp.c`](https://github.com/betaflight/betaflight/blob/master/src/main/msp/msp.c) — server-side encoding/decoding
+3. **CLI setting names**: `betaflight` → [`src/main/cli/settings.c`](https://github.com/betaflight/betaflight/blob/master/src/main/cli/settings.c) — exact `set` command names and allowed ranges
+4. **BBL header field names**: `betaflight` → [`src/main/blackbox/blackbox.c`](https://github.com/betaflight/betaflight/blob/master/src/main/blackbox/blackbox.c) — header key names written to logs
+
+Never guess byte offsets — always cross-reference with the configurator source. Our `mspLayouts.ts` was verified against MSPHelper.js. See also `docs/complete/BF_VERSION_POLICY.md` for version-specific layout differences.
+
 ## CLI Prompt Detection
 
 `MSPConnection.sendCLICommand`: The real BF CLI prompt is `# ` (hash + space). Detection strips trailing `\r` from buffer (FC may send extra CR), then checks `endsWith('\n# ')`. Never use `trimEnd()` (it strips the space that distinguishes the prompt from section headers). **100ms debounce** in `sendCLICommand` — when the pattern matches, a timer starts. If more data arrives before it fires (e.g. `# master\r\n...`), the timer resets. Only when no data arrives for 100ms does it resolve as the real prompt. `enterCLI()` uses the same strip-CR + `endsWith('\n# ')` check but without debounce (no diff output during CLI entry).
