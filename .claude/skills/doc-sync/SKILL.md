@@ -39,6 +39,14 @@ Run `/doc-sync` before merging any PR that changes:
 - `CLAUDE.md`
 - `QUICK_START.md`
 
+### Subdirectory CLAUDE.md files
+- `src/main/CLAUDE.md` — Storage, apply flow, snapshot restore, SD card, smart reconnect
+- `src/main/analysis/CLAUDE.md` — FFT, step response, transfer function, data quality
+- `src/main/blackbox/CLAUDE.md` — BBL parser details
+- `src/main/msp/CLAUDE.md` — MSP protocol, CLI prompt, BF version compat
+- `src/renderer/CLAUDE.md` — UI components, charts, history, dashboard
+- `e2e/CLAUDE.md` — Playwright E2E test architecture
+
 ### Design docs
 - `docs/README.md`
 - `docs/*.md`
@@ -165,7 +173,7 @@ Read the Features section of README and check each bullet against actual impleme
 - Ringing SNR filter threshold vs `RINGING_MIN_AMPLITUDE_FRACTION`
 - Size-aware noise classification (`NOISE_LEVEL_BY_SIZE` per drone size) vs docs
 - Propwash-aware d_min/iterm_relax/TPA recommendations vs PID decision table
-- MSP layout typed constants (`mspLayouts.ts` readField/writeField) vs CLAUDE.md MSP section
+- MSP layout typed constants (`mspLayouts.ts` readField/writeField) vs `src/main/msp/CLAUDE.md` MSP section
 - BBL headers as primary source for analysis (not MSP) vs TUNING_SESSION_EVALUATION.md
 - Dynamic lowpass BF 2:1 ratio (`DYNAMIC_LOWPASS_RATIO`) vs Filter Decision Table
 
@@ -264,7 +272,17 @@ For each extracted link:
 
 Report broken links with the source file, line, and dead target path.
 
-### Step 8: Feature description audit (enhanced)
+### Step 8: Subdirectory CLAUDE.md consistency
+
+Verify each subdirectory CLAUDE.md is consistent with:
+- Root `CLAUDE.md` IPC handler table (counts must match)
+- Root `CLAUDE.md` state machines (must be identical)
+- Actual source code in that directory (file names, class names, function names)
+
+Check that no content was orphaned (present in root but belongs in subdirectory, or vice versa).
+
+### Step 9: Feature description audit (enhanced)
+<!-- Note: Steps were renumbered after adding Step 8 (Subdirectory CLAUDE.md consistency) -->
 
 #### 8a: README feature list
 
