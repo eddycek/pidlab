@@ -174,6 +174,25 @@ export class TuningHistoryManager {
   }
 
   /**
+   * Get the most recent completed record of a given type for a profile.
+   * Used for cross-session convergence comparison regardless of time window.
+   * Returns null if no matching record exists.
+   */
+  async getLatestByType(
+    profileId: string,
+    tuningType: TuningType
+  ): Promise<CompletedTuningRecord | null> {
+    const records = await this.loadRecords(profileId);
+    // Records stored oldest-first — iterate backwards for newest match
+    for (let i = records.length - 1; i >= 0; i--) {
+      if (records[i].tuningType === tuningType) {
+        return records[i];
+      }
+    }
+    return null;
+  }
+
+  /**
    * Delete all history for a profile. No-op if none exists.
    */
   async deleteHistory(profileId: string): Promise<void> {
