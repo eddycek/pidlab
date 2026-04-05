@@ -545,6 +545,67 @@ Tasks 2-5 can be implemented in parallel. Tasks 7 and 8 can be parallel after Ta
 
 ---
 
+## Post-Implementation Improvements
+
+Applied after initial implementation (Tasks 1-9) was merged.
+
+### Improvement A: Threshold Calibration via BBL Fixtures
+
+**Problem**: `SIMILARITY_ACCEPT_THRESHOLD = 70` and `SIMILARITY_REJECT_THRESHOLD = 40` are educated guesses. Without empirical validation, we risk false rejections (frustrating users) or false accepts (meaningless comparisons).
+
+**Solution**: Add calibration test using the 4 real BBL fixtures in `test-fixtures/bbl/` (LOG1-LOG4, same VX3.5 quad, same session, BF 4.5.2). These flights from the same quad and session should produce high similarity scores consistently. If same-quad flights score close to 70, the threshold is too tight.
+
+**Files**: `src/main/analysis/VerificationMatcher.test.ts` — new `describe('threshold calibration')` block.
+
+**Constant annotation**: Add calibration provenance comment to `SIMILARITY_ACCEPT_THRESHOLD` and `SIMILARITY_REJECT_THRESHOLD` in `constants.ts`.
+
+### Improvement B: PID Magnitude — Coefficient of Variation
+
+**Problem**: Current PID magnitude sub-score uses `computeActivityRatio(meanMagnitude)` (min/max ratio). This penalizes different battery voltages or drone weights between flights, even if the pilot's *style* was identical. A heavier battery produces larger step magnitudes but the same relative spread.
+
+**Solution**: Replace activity ratio with coefficient of variation (CoV) comparison. CoV = `std / mean` normalizes for absolute magnitude — an aggressive pilot has large magnitudes AND large spread, a calm pilot has small both. Similar CoV = similar style.
+
+```typescript
+// New: CoV-based comparison
+const refCoV = ref.magnitudeStd / ref.meanMagnitude;
+const verCoV = ver.magnitudeStd / ver.meanMagnitude;
+const covDiff = Math.abs(refCoV - verCoV);
+const magnitudeScore = clamp100((1 - Math.min(covDiff / MAX_COV_DIFF, 1)) * 100);
+```
+
+**New constant**: `MAX_COV_DIFF = 0.5` — CoV difference at which score drops to 0. Typical CoV for stick snaps is 0.2-0.6, so 0.5 diff covers the full practical range.
+
+**Files**: `src/main/analysis/VerificationMatcher.ts`, `src/main/analysis/VerificationMatcher.test.ts`, `src/main/analysis/constants.ts`.
+
+### Improvement C: Previous Session Reference in ConvergenceResult
+
+**Problem**: Iteration tracking (Layer 4) only looks at the last 7 days. A user who tunes once per weekend over 4 weeks won't see iteration warnings. But convergence detection could still show that the latest results are barely different from the previous session — regardless of time window.
+
+**Solution**: Add `previousSession` field to `ConvergenceResult` that references the most recent completed session of the same type for the same profile, regardless of time. This gives the user context even outside the 7-day window.
+
+```typescript
+interface ConvergenceResult {
+  // ... existing fields ...
+
+  /** Previous session metrics for cross-session comparison (any time range) */
+  previousSession?: {
+    completedAt: string;
+    noiseFloorDb?: number;   // worst-axis (filter/flash)
+    overshootPct?: number;   // worst-axis (PID)
+    bandwidthHz?: number;    // worst-axis (flash)
+  };
+}
+```
+
+**Integration**:
+- `TuningHistoryManager.getLatestByType(profileId, tuningType)` — new method returning most recent record of matching type
+- `tuningHandlers.ts` — query previous session on verification, populate `previousSession` on `ConvergenceResult`
+- `TuningCompletionSummary` — show "vs previous session" comparison when available
+
+**Files**: `src/shared/types/analysis.types.ts`, `src/main/storage/TuningHistoryManager.ts`, `src/main/ipc/handlers/tuningHandlers.ts`, `src/renderer/components/TuningHistory/TuningCompletionSummary.tsx`.
+
+---
+
 ## Tuning Advisor Review
 
 **Reviewed**: 2026-04-05 | **Verdict**: ✅ Approved with adjustments (all applied above)
@@ -556,3 +617,11 @@ Tasks 2-5 can be implemented in parallel. Tasks 7 and 8 can be parallel after Ta
 | 3 | `VARIABILITY_TO_HZ_SCALE` should be derived from interpolation slope | P1 | Changed from 2.0 to 3.75 (225 Hz / 60 dB) |
 | 4 | Filter convergence thresholds too tight vs ±3-5 dB natural variation | P2 | Raised to 1.5 dB converged, 3.0 dB diminishing_returns |
 | 5 | PID magnitude overlap may penalize different pilot styles | P2 | Noted — will use coefficient of variation in implementation |
+
+### Post-Implementation Review (2026-04-05)
+
+| # | Finding | Severity | Resolution |
+|---|---------|----------|------------|
+| A | Thresholds 70/40 are uncalibrated guesses — need empirical validation | P1 | BBL fixture calibration tests + constant annotations (Improvement A) |
+| B | PID magnitude uses min/max ratio instead of CoV as noted in finding #5 | P1 | Replaced with CoV-based comparison (Improvement B) |
+| C | 7-day iteration window misses slow-cadence tuning loops | P2 | Added previousSession reference to ConvergenceResult (Improvement C) |
