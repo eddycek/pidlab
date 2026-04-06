@@ -31,6 +31,100 @@ import {
   detectFlashConvergence,
 } from '../../analysis/ConvergenceDetector';
 import { ITERATION_WARNING_THRESHOLD } from '../../analysis/constants';
+import type { ConvergenceResult } from '@shared/types/analysis.types';
+import type { TuningHistoryManager } from '../../storage/TuningHistoryManager';
+
+/**
+ * Compute convergence detection, previous session enrichment, and iteration count.
+ * Shared between TUNING_UPDATE_PHASE (first-time completion) and TUNING_UPDATE_VERIFICATION (re-analyze).
+ */
+async function computeConvergenceAndIteration(
+  session: TuningSession,
+  profileId: string,
+  verificationMetrics: FilterMetricsSummary | undefined,
+  verificationPidMetrics: PIDMetricsSummary | undefined,
+  verificationTFMetrics: TransferFunctionMetricsSummary | undefined,
+  tuningHistoryManager: TuningHistoryManager | null
+): Promise<{ convergence?: ConvergenceResult; iterationCount?: number }> {
+  const result: { convergence?: ConvergenceResult; iterationCount?: number } = {};
+
+  // Layer 3: Convergence detection
+  try {
+    if (session.tuningType === 'filter' && session.filterMetrics && verificationMetrics) {
+      result.convergence = detectFilterConvergence(session.filterMetrics, verificationMetrics);
+    } else if (session.tuningType === 'pid' && session.pidMetrics && verificationPidMetrics) {
+      result.convergence = detectPIDConvergence(session.pidMetrics, verificationPidMetrics);
+    } else if (
+      session.tuningType === 'flash' &&
+      session.transferFunctionMetrics &&
+      verificationTFMetrics
+    ) {
+      result.convergence = detectFlashConvergence(
+        session.transferFunctionMetrics,
+        verificationTFMetrics,
+        session.filterMetrics,
+        verificationMetrics
+      );
+    }
+  } catch (err) {
+    logger.warn('Convergence detection failed (non-fatal):', err);
+  }
+
+  // Enrich convergence with previous session snapshot
+  if (result.convergence && tuningHistoryManager) {
+    try {
+      const prevRecord = await tuningHistoryManager.getLatestByType(
+        profileId,
+        session.tuningType,
+        session.startedAt
+      );
+      if (prevRecord) {
+        result.convergence.previousSession = {
+          completedAt: prevRecord.completedAt,
+        };
+        if (prevRecord.verificationMetrics) {
+          const axes = ['roll', 'pitch', 'yaw'] as const;
+          result.convergence.previousSession.noiseFloorDb = Math.max(
+            ...axes.map((a) => prevRecord.verificationMetrics![a].noiseFloorDb)
+          );
+        }
+        if (prevRecord.verificationPidMetrics) {
+          const axes = ['roll', 'pitch', 'yaw'] as const;
+          result.convergence.previousSession.overshootPct = Math.max(
+            ...axes.map((a) => prevRecord.verificationPidMetrics![a].meanOvershoot)
+          );
+        }
+        if (prevRecord.transferFunctionMetrics) {
+          const axes = ['roll', 'pitch', 'yaw'] as const;
+          result.convergence.previousSession.bandwidthHz = Math.min(
+            ...axes.map((a) => prevRecord.transferFunctionMetrics![a].bandwidthHz)
+          );
+        }
+      }
+    } catch (err) {
+      logger.warn('Previous session lookup failed (non-fatal):', err);
+    }
+  }
+
+  // Layer 4: Iteration tracking
+  if (tuningHistoryManager) {
+    try {
+      result.iterationCount = await tuningHistoryManager.getRecentIterationCount(
+        profileId,
+        session.tuningType
+      );
+      if (result.iterationCount >= ITERATION_WARNING_THRESHOLD) {
+        logger.info(
+          `Iteration warning: ${result.iterationCount} ${session.tuningType} sessions in lookback window`
+        );
+      }
+    } catch (err) {
+      logger.warn('Iteration count failed (non-fatal):', err);
+    }
+  }
+
+  return result;
+}
 
 /**
  * Pre-apply validation ranges for recommended values.
@@ -789,6 +883,27 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
               mspClient.advancePastVerification();
             }
 
+            // Compute convergence detection before archiving
+            const activeSession = await tuningSessionManager.getSession(profileId);
+            if (activeSession) {
+              const convergenceData = await computeConvergenceAndIteration(
+                activeSession,
+                profileId,
+                data?.verificationMetrics as FilterMetricsSummary | undefined,
+                data?.verificationPidMetrics as PIDMetricsSummary | undefined,
+                data?.verificationTransferFunctionMetrics as
+                  | TransferFunctionMetricsSummary
+                  | undefined,
+                tuningHistoryManager
+              );
+              if (convergenceData.convergence) {
+                data = { ...data, convergence: convergenceData.convergence };
+              }
+              if (convergenceData.iterationCount != null) {
+                data = { ...data, iterationCount: convergenceData.iterationCount };
+              }
+            }
+
             // First update the phase to 'completed' so the session has the final data
             const completedSession = await tuningSessionManager.updatePhase(
               profileId,
@@ -901,100 +1016,22 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
         }
         if (verificationPidMetrics) updateData.verificationPidMetrics = verificationPidMetrics;
 
-        // --- Layer 3: Convergence detection ---
-        // Compare initial metrics (from analysis flight) with verification metrics
+        // Convergence detection + iteration tracking (shared with TUNING_UPDATE_PHASE)
         const activeSession = await tuningSessionManager.getSession(profileId);
         if (activeSession) {
-          try {
-            if (
-              activeSession.tuningType === 'filter' &&
-              activeSession.filterMetrics &&
-              verificationMetrics
-            ) {
-              updateData.convergence = detectFilterConvergence(
-                activeSession.filterMetrics,
-                verificationMetrics
-              );
-            } else if (
-              activeSession.tuningType === 'pid' &&
-              activeSession.pidMetrics &&
-              verificationPidMetrics
-            ) {
-              updateData.convergence = detectPIDConvergence(
-                activeSession.pidMetrics,
-                verificationPidMetrics
-              );
-            } else if (
-              activeSession.tuningType === 'flash' &&
-              activeSession.transferFunctionMetrics &&
-              verificationTransferFunctionMetrics
-            ) {
-              updateData.convergence = detectFlashConvergence(
-                activeSession.transferFunctionMetrics,
-                verificationTransferFunctionMetrics,
-                activeSession.filterMetrics,
-                verificationMetrics
-              );
-            }
-          } catch (err) {
-            logger.warn('Convergence detection failed (non-fatal):', err);
+          const convergenceData = await computeConvergenceAndIteration(
+            activeSession,
+            profileId,
+            verificationMetrics,
+            verificationPidMetrics,
+            verificationTransferFunctionMetrics,
+            tuningHistoryManager
+          );
+          if (convergenceData.convergence) {
+            updateData.convergence = convergenceData.convergence;
           }
-
-          // --- Enrich convergence with previous session snapshot ---
-          if (updateData.convergence && tuningHistoryManager) {
-            try {
-              const prevRecord = await tuningHistoryManager.getLatestByType(
-                profileId,
-                activeSession.tuningType,
-                activeSession.startedAt // Exclude current session (already archived)
-              );
-              if (prevRecord) {
-                const convergence =
-                  updateData.convergence as import('@shared/types/analysis.types').ConvergenceResult;
-                convergence.previousSession = {
-                  completedAt: prevRecord.completedAt,
-                };
-                // Populate type-specific metrics from previous session
-                if (prevRecord.verificationMetrics) {
-                  const axes = ['roll', 'pitch', 'yaw'] as const;
-                  convergence.previousSession.noiseFloorDb = Math.max(
-                    ...axes.map((a) => prevRecord.verificationMetrics![a].noiseFloorDb)
-                  );
-                }
-                if (prevRecord.verificationPidMetrics) {
-                  const axes = ['roll', 'pitch', 'yaw'] as const;
-                  convergence.previousSession.overshootPct = Math.max(
-                    ...axes.map((a) => prevRecord.verificationPidMetrics![a].meanOvershoot)
-                  );
-                }
-                if (prevRecord.transferFunctionMetrics) {
-                  const axes = ['roll', 'pitch', 'yaw'] as const;
-                  convergence.previousSession.bandwidthHz = Math.min(
-                    ...axes.map((a) => prevRecord.transferFunctionMetrics![a].bandwidthHz)
-                  );
-                }
-              }
-            } catch (err) {
-              logger.warn('Previous session lookup failed (non-fatal):', err);
-            }
-          }
-
-          // --- Layer 4: Iteration tracking ---
-          if (tuningHistoryManager) {
-            try {
-              const iterationCount = await tuningHistoryManager.getRecentIterationCount(
-                profileId,
-                activeSession.tuningType
-              );
-              updateData.iterationCount = iterationCount;
-              if (iterationCount >= ITERATION_WARNING_THRESHOLD) {
-                logger.info(
-                  `Iteration warning: ${iterationCount} ${activeSession.tuningType} sessions in lookback window`
-                );
-              }
-            } catch (err) {
-              logger.warn('Iteration count failed (non-fatal):', err);
-            }
+          if (convergenceData.iterationCount != null) {
+            updateData.iterationCount = convergenceData.iterationCount;
           }
         }
 

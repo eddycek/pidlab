@@ -168,6 +168,18 @@ function AppContent() {
   };
 
   useEffect(() => {
+    // Hydrate connection state on mount (survives HMR and late renders)
+    window.betaflight
+      .getConnectionStatus()
+      .then((status) => {
+        setIsConnected(status.connected);
+        fetchBBSettings(status);
+        if (status.connected) {
+          refreshBlackboxInfo();
+        }
+      })
+      .catch(() => {});
+
     // Listen for connection changes
     const unsubscribeConnection = window.betaflight.onConnectionChanged((status) => {
       setIsConnected(status.connected);
@@ -804,6 +816,14 @@ function AppContent() {
                   fixingSettings={fixingSettings}
                   isDemoMode={isDemoMode}
                   hasDownloadedLogs={availableLogIds.size > 0}
+                  pidProfileLabel={
+                    (tuning.session.bfPidProfileIndex ?? connectedFcInfo?.pidProfileIndex) != null
+                      ? currentProfile?.bfPidProfileLabels?.[
+                          tuning.session.bfPidProfileIndex ?? connectedFcInfo?.pidProfileIndex ?? 0
+                        ]
+                      : undefined
+                  }
+                  fcPidProfileIndex={connectedFcInfo?.pidProfileIndex}
                   onFixSettings={() => setShowBannerFixConfirm(true)}
                   onAction={handleTuningAction}
                   onViewGuide={(mode) => setShowFlightGuideMode(mode)}

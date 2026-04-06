@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { TuningType } from '@shared/types/tuning.types';
 import type { FCInfo } from '@shared/types/common.types';
 import type { CompletedTuningRecord } from '@shared/types/tuning-history.types';
@@ -55,11 +55,27 @@ interface StartTuningModalProps {
 export function StartTuningModal({
   onStart,
   onCancel,
-  fcInfo,
+  fcInfo: fcInfoProp,
   defaultPidProfileIndex,
   pidProfileLabels,
   tuningHistory,
 }: StartTuningModalProps) {
+  // FC info may be null after app restart or HMR — always fetch as fallback
+  const [fetchedFcInfo, setFetchedFcInfo] = useState<FCInfo | null>(null);
+  const [fetchAttempted, setFetchAttempted] = useState(!!fcInfoProp);
+  useEffect(() => {
+    if (!fcInfoProp) {
+      window.betaflight
+        .getConnectionStatus()
+        .then((s) => {
+          if (s.connected && s.fcInfo) setFetchedFcInfo(s.fcInfo);
+        })
+        .catch(() => {})
+        .finally(() => setFetchAttempted(true));
+    }
+  }, [fcInfoProp]);
+  const fcInfo = fcInfoProp ?? fetchedFcInfo ?? undefined;
+  const loading = !fetchAttempted;
   const profileCount = fcInfo?.pidProfileCount ?? 0;
   const currentFcProfile = fcInfo?.pidProfileIndex ?? 0;
   const showProfileSelector = profileCount > 1;
@@ -67,6 +83,13 @@ export function StartTuningModal({
   const [selectedProfile, setSelectedProfile] = useState<number>(
     defaultPidProfileIndex ?? currentFcProfile
   );
+
+  // Update selection when FC info arrives async (after HMR state loss)
+  useEffect(() => {
+    if (fcInfo && defaultPidProfileIndex == null) {
+      setSelectedProfile(fcInfo.pidProfileIndex ?? 0);
+    }
+  }, [fcInfo, defaultPidProfileIndex]);
 
   const profileStats = useMemo(
     () => computeProfileStats(tuningHistory ?? [], profileCount),
@@ -76,6 +99,17 @@ export function StartTuningModal({
   const handleStart = (tuningType: TuningType) => {
     onStart(tuningType, showProfileSelector ? selectedProfile : undefined);
   };
+
+  if (loading) {
+    return (
+      <div className="start-tuning-overlay">
+        <div className="start-tuning-modal">
+          <h2>Choose Tuning Mode</h2>
+          <p className="start-tuning-subtitle">Loading flight controller info...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="start-tuning-overlay" onClick={onCancel}>
