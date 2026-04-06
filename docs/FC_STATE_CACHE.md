@@ -89,17 +89,38 @@ A centralized in-memory cache holding all FC state, populated atomically on conn
 ```typescript
 export interface FCState {
   info: FCInfo | null;
-  statusEx: StatusExData | null;
+  statusEx: { pidProfileIndex: number; pidProfileCount: number } | null;
   pidConfig: PIDConfiguration | null;
   filterConfig: CurrentFilterSettings | null;
   feedforwardConfig: FeedforwardConfiguration | null;
-  blackboxInfo: BlackboxInfo | null;
-  blackboxSettings: BlackboxSettings | null;
   ratesConfig: RatesConfiguration | null;
+  tuningConfig: Record<string, number> | null;  // MSP_PID_ADVANCED advanced fields (PR #427)
+  blackboxInfo: BlackboxInfo | null;
+  blackboxSettings: BlackboxSettings | null;     // CLI-only: parsed from baseline snapshot CLI diff
+  hydratedAt: string | null;                     // ISO timestamp of last full hydration
+  hydrating: boolean;                            // True during MSP reads
 }
 
-export type FCStateKey = keyof FCState;
+export type FCStateSlice = keyof Omit<FCState, 'hydratedAt' | 'hydrating'>;
 ```
+
+**Data source classification:**
+
+| Slice | Source | Notes |
+|-------|--------|-------|
+| info | MSP (getFCInfo) | Board, version, craftName, PID profile index/count |
+| statusEx | MSP (getStatusEx) | Active PID profile index |
+| pidConfig | MSP (getPIDConfiguration) | P/I/D per axis |
+| filterConfig | MSP (getFilterConfiguration) | LPF, notch, RPM, dynamic lowpass |
+| feedforwardConfig | MSP (getFeedforwardConfiguration) | FF gains, d_min, iterm_relax — reads MSP_PID_ADVANCED |
+| ratesConfig | MSP (getRatesConfiguration) | Rates type, per-axis settings |
+| tuningConfig | MSP (getTuningConfig) | anti_gravity, TPA, vbat_sag, thrust_linear, idle_min_rpm — reads MSP_PID_ADVANCED |
+| blackboxInfo | MSP (getBlackboxInfo) | Storage type, used/free size, hasLogs |
+| blackboxSettings | **CLI-only** (baseline snapshot) | debug_mode, logging_rate — NOT readable via MSP |
+
+**CLI-only settings** (`simplified_dmax_gain`, `tpa_low_always`) are in BF CLI but NOT in any MSP command. These are applied/restored via CLI `set` commands and readable only from snapshot CLI diff. They are NOT cached — the app reads them from the latest snapshot when needed.
+
+**MSP_PID_ADVANCED constraint**: `feedforwardConfig` and `tuningConfig` both read from MSP command 94 (MSP_PID_ADVANCED). MSP responseQueue is keyed by command ID, so concurrent reads collide. These MUST be called sequentially during hydration.
 
 #### Cache API
 
@@ -127,21 +148,31 @@ class FCStateCache extends EventEmitter {
 
 #### Hydration Sequence
 
-Called once after `MSPClient.connect()` completes successfully:
+Called once after baseline creation + smart reconnect completes in `src/main/index.ts`:
 
 ```
-1. getFCInfo()              → cache.info
-2. getStatusEx()            → cache.statusEx
-3. getPIDConfiguration()    → cache.pidConfig
-4. getFilterConfiguration() → cache.filterConfig
-5. getFeedforwardConfig()   → cache.feedforwardConfig
-6. getBlackboxInfo()        → cache.blackboxInfo
-7. getRatesConfiguration()  → cache.ratesConfig
+1. getFCInfo()                    → cache.info           (must be first — apiVersion needed)
+2. getStatusEx(apiVersion)        → cache.statusEx       (PID profile index)
+3. Promise.all([                                         (parallel — different MSP commands)
+     getPIDConfiguration(),       → cache.pidConfig
+     getFilterConfiguration(),    → cache.filterConfig
+     getRatesConfiguration(),     → cache.ratesConfig
+     getBlackboxInfo(),           → cache.blackboxInfo
+   ])
+4. getFeedforwardConfiguration()  → cache.feedforwardConfig  (SEQUENTIAL — MSP_PID_ADVANCED)
+5. getTuningConfig()              → cache.tuningConfig       (SEQUENTIAL — MSP_PID_ADVANCED)
+6. readBBSettingsFromSnapshot()   → cache.blackboxSettings   (CLI-only, from baseline)
 ```
 
-Total: ~7 MSP commands, ~500ms one-time cost on connect. After this, all reads are instant from cache.
+Total: 8 MSP commands + 1 snapshot read, ~600ms one-time cost on connect. After this, all reads are instant from cache.
 
 **BlackboxSettings special case**: Read from baseline snapshot CLI diff (not MSP), so populated separately after baseline creation. Cached as `blackboxSettings`.
+
+#### Guards
+
+**CLI mode guard**: `invalidate()` checks `mspClient.connection.isInCLI()` before issuing MSP reads. If CLI mode is active, skips the read and logs a warning. This prevents timeout race conditions during baseline export or snapshot restore.
+
+**Flash→none guard**: After erase, MSP may transiently return `storageType='none'` before dataflash subsystem reinitializes. `invalidate(['blackboxInfo'])` preserves the previous `storageType` if the new value is `'none'` but previous was `'flash'`, updating only `usedSize=0` and `hasLogs=false`.
 
 #### Snapshot Optimization (PR #422 synergy)
 
@@ -172,15 +203,17 @@ Similarly, `restoreSnapshot()` (which writes MSP data back after CLI restore) sh
 
 #### Invalidation Matrix
 
-| Mutation Action | Invalidated Slices | Trigger |
+| Mutation Action | Invalidated Slices | Method |
 |---|---|---|
-| Apply recommendations | `pidConfig`, `filterConfig`, `feedforwardConfig`, `statusEx` | After `saveAndReboot()` + reconnect |
-| Erase flash | `blackboxInfo` | After erase completes |
-| Fix BB settings | `blackboxSettings`, `blackboxInfo` | After `saveAndReboot()` + reconnect |
-| PID profile switch | `pidConfig`, `filterConfig`, `feedforwardConfig`, `statusEx`, `ratesConfig` | After MSP_SELECT_SETTING + reconnect |
-| Snapshot restore | ALL slices | Full re-hydrate after reboot |
-| Wipe profile (PR #419) | N/A (disk only) | Cache unchanged — wipe only deletes logs/snapshots on disk, not FC state |
-| Reconnect (any) | ALL slices | Full re-hydrate |
+| Connect / reconnect | ALL | `hydrate()` (full re-read) |
+| Disconnect | ALL | `clear()` (reset to null) |
+| Erase flash | `blackboxInfo` | `invalidate(['blackboxInfo'])` |
+| Download BB log | `blackboxInfo` | `invalidate(['blackboxInfo'])` |
+| PID profile switch | `pidConfig`, `filterConfig`, `feedforwardConfig`, `ratesConfig`, `tuningConfig`, `statusEx` | `invalidate([...])` |
+| Apply recommendations (reboot) | ALL | Auto via reconnect → `hydrate()` |
+| Snapshot restore (reboot) | ALL | Auto via reconnect → `hydrate()` |
+| Fix BB settings (reboot) | ALL | Auto via reconnect → `hydrate()` |
+| Wipe profile (PR #419) | N/A (disk only) | Cache unchanged |
 
 ### Layer 2: IPC Event Propagation
 
@@ -262,80 +295,65 @@ onFCStateChanged: (callback) => {
 },
 ```
 
-## Implementation Phases
+## Implementation (single PR)
 
-### Phase 1: Core Cache Infrastructure
+Implementation in bottom-up order — tests pass at each step.
 
-**Goal**: Introduce FCStateCache without changing any existing behavior.
+### Step 1: Types + cache class + tests
 
-1. Create `src/main/fc/FCStateCache.ts` with full implementation
-2. Create `src/main/fc/FCStateCache.test.ts` with unit tests
-3. Add `fcStateCache` to `HandlerDependencies`
-4. Add new IPC channels to `ipc.types.ts`
-5. Wire hydrate/clear in `src/main/index.ts` connect/disconnect handlers
-6. Add preload bridge methods
+- Create `src/shared/types/fcState.types.ts` — FCState interface, FCStateSlice type
+- Create `src/main/cache/FCStateCache.ts` (~250 lines) — Cache class with hydrate/invalidate/clear
+- Create `src/main/cache/FCStateCache.test.ts` (~15 tests)
 
-**Deliverable**: Cache populates on connect, clears on disconnect. No consumers yet — existing code unchanged.
+### Step 2: IPC plumbing
 
-### Phase 2: useFCState Hook + Renderer Migration
+- Add `FC_GET_STATE`, `EVENT_FC_STATE_CHANGED` to `src/shared/types/ipc.types.ts`
+- Add `getFCState()`, `onFCStateChanged()` to `BetaflightAPI` and preload bridge
+- Add `sendFCStateChanged()` to `src/main/ipc/handlers/events.ts`
+- Add `fcStateCache` to `HandlerDependencies`
+- Register `FC_GET_STATE` handler in `src/main/ipc/handlers/index.ts`
 
-**Goal**: Components consume from cache instead of independent IPC calls.
+### Step 3: Hydration lifecycle
 
-1. Create `src/renderer/hooks/useFCState.ts` + tests
-2. Migrate `BlackboxStatus` to use `useFCState().blackboxInfo`
-3. Migrate `TuningStatusBanner` to use `useFCState().blackboxInfo` and `useFCState().statusEx`
-4. Migrate `FCInfoDisplay` to use `useFCState().info`
-5. Simplify `App.tsx`:
-   - Remove: `flashUsedSize`, `storageType`, `storageTypeRef`, `bbRefreshKey`
-   - Remove: `refreshBlackboxInfo()`, `fetchBBSettings()`
-   - Remove: `fcVersion`, `connectedFcInfo`, `bbSettings`
-   - Replace with single `useFCState()` call
+- Instantiate `FCStateCache` in `src/main/index.ts`
+- Replace post-connect MSP reads with `cache.hydrate()`
+- Call `cache.clear()` on disconnect
+- Remove `suppressConnectEvent` pattern (cache push replaces final re-emit)
 
-**Deliverable**: All FC data consumed from single hook. ~15 state variables removed from App.tsx.
+### Step 4: Handler migration (read path)
 
-### Phase 3: Handler Migration (Read Path)
+- `BLACKBOX_GET_INFO` → read from cache with MSP fallback
+- `FC_GET_INFO` → read from cache with MSP fallback
+- `FC_GET_BLACKBOX_SETTINGS` → read from cache with snapshot fallback
+- `PID_GET_CONFIG` → read from cache with MSP fallback
 
-**Goal**: IPC handlers serve data from cache instead of MSP reads.
+### Step 5: Handler migration (write path)
 
-1. `FC_GET_INFO` → read from `cache.get('info')` (fallback to MSP if not hydrated)
-2. `BLACKBOX_GET_INFO` → read from `cache.get('blackboxInfo')`
-3. `PID_GET` → read from `cache.get('pidConfig')`
-4. `FC_GET_BLACKBOX_SETTINGS` → read from `cache.get('blackboxSettings')`
+- `BLACKBOX_ERASE_FLASH` → `invalidate(['blackboxInfo'])` after erase
+- `BLACKBOX_DOWNLOAD_LOG` → `invalidate(['blackboxInfo'])` after download
+- `FC_SELECT_PID_PROFILE` → `invalidate(['pidConfig', 'filterConfig', ...])` after switch
 
-**Fallback pattern** (for safety during migration):
-```typescript
-const cached = deps.fcStateCache?.get('blackboxInfo');
-if (cached) return createResponse(cached);
-// Fallback: direct MSP read
-return createResponse(await deps.mspClient.getBlackboxInfo());
-```
+### Step 6: useFCState hook + renderer migration
 
-### Phase 4: Handler Migration (Write Path)
+- Create `src/renderer/hooks/useFCState.ts` (~60 lines)
+- Create `src/renderer/hooks/useFCState.test.ts` (~6 tests)
+- Migrate `App.tsx`:
+  - Remove 7 state vars: `flashUsedSize`, `storageType`, `storageTypeRef`, `bbSettings`, `fcVersion`, `connectedFcInfo`, `bbRefreshKey`
+  - Remove 2 functions: `refreshBlackboxInfo()`, `fetchBBSettings()`
+  - Replace with `const fcState = useFCState();`
+  - Update all JSX props to use `fcState.*`
 
-**Goal**: Mutation handlers invalidate cache after FC writes.
+### Step 7: Optimizations + cleanup
 
-1. `APPLY_RECOMMENDATIONS` → after `saveAndReboot()` + reconnect → `cache.invalidate(['pidConfig', 'filterConfig', 'feedforwardConfig', 'statusEx'])`
-2. `ERASE_FLASH` → after erase completes → `cache.invalidate(['blackboxInfo'])`
-3. `FIX_BLACKBOX_SETTINGS` → after reboot → `cache.invalidate(['blackboxSettings', 'blackboxInfo'])`
-4. `SNAPSHOT_RESTORE` → after reboot → `cache.hydrate()` (full re-read)
+- `SnapshotManager.createSnapshot()`: read MSP config from cache instead of 4 MSP calls
+- `MockMSPClient`: add `getStatusEx()` if missing
+- Update `src/renderer/test/setup.ts` with new mocks
+- Simplify `useBlackboxInfo` (thin wrapper around `useFCState().blackboxInfo`)
 
-### Phase 5: Smart Reconnect Simplification
+### Step 8: E2E validation
 
-**Goal**: Remove timing hacks that are no longer needed.
-
-1. Remove `suppressConnectEvent` flag in `src/main/index.ts`
-2. Remove blackbox info 2-second retry delay
-3. Remove `storageTypeRef` hack in `App.tsx`
-4. Remove `bbRefreshKey` external refresh mechanism
-5. Smart reconnect reads from cache (already populated by hydrate)
-
-### Phase 6: Deprecate Old Hooks
-
-**Goal**: Clean up redundant hooks.
-
-1. `useBlackboxInfo` → thin wrapper around `useFCState().blackboxInfo` (for backward compat)
-2. Eventually remove entirely and update all consumers
-3. Remove unused IPC handlers that only served individual data reads
+- Run `npm run test:e2e` — all 37 E2E tests must pass
+- Run `npm run test:run` — all 3076+ unit tests must pass
 
 ## Bug Fix Mapping
 
@@ -348,27 +366,31 @@ return createResponse(await deps.mspClient.getBlackboxInfo());
 
 ## Testing Strategy
 
-### Unit Tests (`FCStateCache.test.ts`)
+### Unit Tests (`src/main/cache/FCStateCache.test.ts`, ~15 tests)
 
-- `hydrate()` reads all 7 MSP values and stores them
-- `get()` returns cached values synchronously
-- `invalidate()` re-reads only specified keys
-- `clear()` resets all to null
-- Events emitted on hydrate, invalidate, clear
-- Fallback: returns null for unhydrated keys
-- Error handling: partial hydration failure doesn't corrupt existing state
+- `hydrate()` reads all MSP values and populates state
+- `hydrate()` respects sequential MSP_PID_ADVANCED constraint
+- `hydrate()` handles partial MSP failure gracefully
+- `hydrate()` sets `hydrating` flag during reads
+- `invalidate(['blackboxInfo'])` re-reads only blackbox info
+- `invalidate()` skips when CLI mode active (guard)
+- `invalidate(['blackboxInfo'])` preserves storageType on flash→none transition (guard)
+- `clear()` resets all slices to null
+- `getState()` returns immutable copy
+- `getSlice()` returns correct slice value
+- Emits `state-changed` event on hydrate, invalidate, clear
 
-### Hook Tests (`useFCState.test.ts`)
+### Hook Tests (`src/renderer/hooks/useFCState.test.ts`, ~6 tests)
 
 - Returns empty state before hydration
-- Populates from `getFCState()` on mount
-- Updates on `EVENT_FC_STATE_CHANGED` event
-- Clears on disconnect
-- Multiple components share same data (no independent fetches)
+- Hydrates from `getFCState()` on mount
+- Updates on `onFCStateChanged` event
+- Returns correct typed slice values
+- Handles unmount cleanup (no memory leak)
 
-### Integration Tests
+### E2E Validation (existing 37 tests)
 
-- Connect → verify cache hydrated → disconnect → verify cache cleared
+Existing Playwright E2E tests run the full tuning workflow in demo mode. The cache is transparent to the E2E layer — tests validate UI outcomes (button states, phase transitions, toasts), not implementation details. All 37 tests must pass after migration without modification.
 - Apply → verify invalidated slices re-read → verify UI updated
 - Erase → verify blackboxInfo updated → verify BB status panel correct
 - Reconnect after reboot → verify full re-hydration
