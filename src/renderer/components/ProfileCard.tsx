@@ -9,9 +9,19 @@ interface ProfileCardProps {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onExport: (id: string) => void;
+  onWipe: (id: string) => void;
 }
 
-export function ProfileCard({ profile, isActive, isLocked, onSelect, onEdit, onDelete, onExport }: ProfileCardProps) {
+export function ProfileCard({
+  profile,
+  isActive,
+  isLocked,
+  onSelect,
+  onEdit,
+  onDelete,
+  onExport,
+  onWipe,
+}: ProfileCardProps) {
   const lastConnectedDate = new Date(profile.lastConnected);
   const isRecent = Date.now() - lastConnectedDate.getTime() < 24 * 60 * 60 * 1000; // Last 24h
 
@@ -31,16 +41,10 @@ export function ProfileCard({ profile, isActive, isLocked, onSelect, onEdit, onD
         <div className="profile-card-info">
           <div className="profile-card-title">
             <div className="profile-card-name">{profile.name}</div>
-            {isActive && (
-              <span className="profile-card-badge active">Active</span>
-            )}
-            {isRecent && !isActive && (
-              <span className="profile-card-badge recent">Recent</span>
-            )}
+            {isActive && <span className="profile-card-badge active">Active</span>}
+            {isRecent && !isActive && <span className="profile-card-badge recent">Recent</span>}
           </div>
-          <div className="profile-card-serial">
-            {profile.fcSerialNumber.slice(0, 16)}
-          </div>
+          <div className="profile-card-serial">{profile.fcSerialNumber.slice(0, 16)}</div>
         </div>
 
         <div className="profile-card-actions">
@@ -53,7 +57,12 @@ export function ProfileCard({ profile, isActive, isLocked, onSelect, onEdit, onD
             title="Edit profile"
           >
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
             </svg>
           </button>
 
@@ -66,7 +75,31 @@ export function ProfileCard({ profile, isActive, isLocked, onSelect, onEdit, onD
             title="Export profile"
           >
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onWipe(profile.id);
+            }}
+            className="profile-card-action-btn wipe"
+            title="Wipe profile data"
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 2h6" />
             </svg>
           </button>
 
@@ -79,7 +112,12 @@ export function ProfileCard({ profile, isActive, isLocked, onSelect, onEdit, onD
             title="Delete profile"
           >
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
             </svg>
           </button>
         </div>

@@ -107,6 +107,10 @@
   color: #60a5fa;
 }
 
+.profile-card-action-btn.wipe:hover {
+  color: #f59e0b;
+}
+
 .profile-card-action-btn.delete:hover {
   color: #ef4444;
 }

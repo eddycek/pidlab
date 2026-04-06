@@ -131,6 +131,27 @@ export function useProfiles() {
     [loadProfiles, currentProfile]
   );
 
+  const wipeProfile = useCallback(
+    async (id: string): Promise<void> => {
+      try {
+        setLoading(true);
+        setError(null);
+        await window.betaflight.wipeProfile(id);
+        await loadProfiles();
+        toast.success('Profile data wiped');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to wipe profile data';
+        setError(message);
+        toast.error(message);
+        throw new Error(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loadProfiles]
+  );
+
   const setAsCurrentProfile = useCallback(
     async (id: string): Promise<DroneProfile> => {
       try {
@@ -199,6 +220,7 @@ export function useProfiles() {
     createProfileFromPreset,
     updateProfile,
     deleteProfile,
+    wipeProfile,
     setAsCurrentProfile,
     getProfile,
     exportProfile,

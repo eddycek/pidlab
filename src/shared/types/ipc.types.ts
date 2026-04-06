@@ -131,6 +131,7 @@ export enum IPCChannel {
   PROFILE_SET_CURRENT = 'profile:set-current',
   PROFILE_EXPORT = 'profile:export',
   PROFILE_GET_FC_SERIAL = 'profile:get-fc-serial',
+  PROFILE_WIPE = 'profile:wipe',
 
   // PID Configuration
   PID_GET_CONFIG = 'pid:get-config',
@@ -246,6 +247,7 @@ export interface BetaflightAPI {
   createProfileFromPreset(presetId: string, customName?: string): Promise<DroneProfile>;
   updateProfile(id: string, updates: ProfileUpdateInput): Promise<DroneProfile>;
   deleteProfile(id: string): Promise<void>;
+  wipeProfile(id: string): Promise<void>;
   listProfiles(): Promise<DroneProfileMetadata[]>;
   getProfile(id: string): Promise<DroneProfile | null>;
   getCurrentProfile(): Promise<DroneProfile | null>;

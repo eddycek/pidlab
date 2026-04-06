@@ -237,6 +237,13 @@ const betaflightAPI: BetaflightAPI = {
     }
   },
 
+  async wipeProfile(id: string): Promise<void> {
+    const response = await ipcRenderer.invoke(IPCChannel.PROFILE_WIPE, id);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to wipe profile data');
+    }
+  },
+
   async listProfiles(): Promise<DroneProfileMetadata[]> {
     const response = await ipcRenderer.invoke(IPCChannel.PROFILE_LIST);
     if (!response.success) {

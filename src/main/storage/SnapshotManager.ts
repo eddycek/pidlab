@@ -116,22 +116,29 @@ export class SnapshotManager {
     }
   }
 
-  async deleteSnapshot(id: string): Promise<void> {
-    // Prevent deleting baseline
-    if (id === this.baselineId) {
-      throw new SnapshotError('Cannot delete baseline snapshot');
-    }
-
-    // Prevent deleting profile's baseline
-    if (this.profileManager) {
-      const currentProfile = await this.profileManager.getCurrentProfile();
-      if (currentProfile?.baselineSnapshotId === id) {
+  async deleteSnapshot(id: string, force: boolean = false): Promise<void> {
+    if (!force) {
+      // Prevent deleting baseline
+      if (id === this.baselineId) {
         throw new SnapshotError('Cannot delete baseline snapshot');
+      }
+
+      // Prevent deleting profile's baseline
+      if (this.profileManager) {
+        const currentProfile = await this.profileManager.getCurrentProfile();
+        if (currentProfile?.baselineSnapshotId === id) {
+          throw new SnapshotError('Cannot delete baseline snapshot');
+        }
       }
     }
 
     try {
       await this.storage.deleteSnapshot(id);
+
+      // Clear baselineId if force-deleting the baseline
+      if (force && id === this.baselineId) {
+        this.baselineId = null;
+      }
 
       // Unlink from current profile
       if (this.profileManager) {

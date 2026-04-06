@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ProfileCard } from './ProfileCard';
 import { ProfileEditModal } from './ProfileEditModal';
 import { ProfileDeleteModal } from './ProfileDeleteModal';
+import { ProfileWipeModal } from './ProfileWipeModal';
 import { useProfiles } from '../hooks/useProfiles';
 import { useConnection } from '../hooks/useConnection';
 import type { DroneProfile } from '@shared/types/profile.types';
@@ -16,6 +17,7 @@ export function ProfileSelector() {
     setAsCurrentProfile,
     updateProfile,
     deleteProfile,
+    wipeProfile,
     getProfile,
     exportProfile: _exportProfile,
   } = useProfiles();
@@ -25,6 +27,7 @@ export function ProfileSelector() {
   const [expanded, setExpanded] = useState(false);
   const [editingProfile, setEditingProfile] = useState<DroneProfile | null>(null);
   const [deletingProfile, setDeletingProfile] = useState<DroneProfile | null>(null);
+  const [wipingProfile, setWipingProfile] = useState<DroneProfile | null>(null);
 
   const handleSelect = async (id: string) => {
     if (currentProfile?.id === id) {
@@ -86,6 +89,28 @@ export function ProfileSelector() {
       setExpanded(false); // Close the dropdown after deletion
     } catch (err) {
       console.error('Failed to delete profile:', err);
+      throw err;
+    }
+  };
+
+  const handleWipe = async (id: string) => {
+    try {
+      const profile = await getProfile(id);
+      if (profile) {
+        setWipingProfile(profile);
+      }
+    } catch (err) {
+      console.error('Failed to load profile for wipe:', err);
+    }
+  };
+
+  const handleWipeConfirm = async () => {
+    if (!wipingProfile) return;
+    try {
+      await wipeProfile(wipingProfile.id);
+      setWipingProfile(null);
+    } catch (err) {
+      console.error('Failed to wipe profile:', err);
       throw err;
     }
   };
@@ -183,6 +208,7 @@ export function ProfileSelector() {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onExport={handleExport}
+                    onWipe={handleWipe}
                   />
                 ))}
               </>
@@ -207,6 +233,15 @@ export function ProfileSelector() {
           isActive={currentProfile?.id === deletingProfile.id}
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeletingProfile(null)}
+        />
+      )}
+
+      {/* Wipe Modal */}
+      {wipingProfile && (
+        <ProfileWipeModal
+          profile={wipingProfile}
+          onConfirm={handleWipeConfirm}
+          onCancel={() => setWipingProfile(null)}
         />
       )}
     </div>
