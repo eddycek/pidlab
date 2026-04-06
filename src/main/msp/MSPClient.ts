@@ -501,6 +501,7 @@ export class MSPClient extends EventEmitter {
         // IMPORTANT: Send `exit` BEFORE clearing cliMode. writeCLIRaw() requires
         // cliMode=true. Keep cliMode=true during reboot so the boot banner goes
         // into the CLI buffer (harmless) instead of the MSP parser (corrupts it).
+        this._rebootPending = true; // Preserve currentPort across disconnect
         try {
           await this.connection.writeCLIRaw('exit');
         } catch {
@@ -551,16 +552,20 @@ export class MSPClient extends EventEmitter {
           await this.connection.forceExitCLI();
           this.connection.clearFCRebootedFromCLI();
           const reconnected = await this.reconnectAfterReboot(MAX_WAIT_MS);
+          this._rebootPending = false;
           if (!reconnected) {
             logger.warn('Auto-reconnect failed — FC may need manual reconnection');
             this.connectionStatus = { connected: false };
             this.emit('connection-changed', this.connectionStatus);
           }
+        } else {
+          this._rebootPending = false;
         }
       }
 
       return this.cleanCLIOutput(output);
     } catch (error) {
+      this._rebootPending = false;
       // Try to recover — send exit to get FC out of CLI (triggers reboot)
       try {
         if (!wasInCLI) {
@@ -589,6 +594,7 @@ export class MSPClient extends EventEmitter {
 
       // Exit CLI if WE entered it — same rationale as exportCLIDiff()
       if (!wasInCLI) {
+        this._rebootPending = true; // Preserve currentPort across disconnect
         try {
           await this.connection.writeCLIRaw('exit');
         } catch {
@@ -629,16 +635,20 @@ export class MSPClient extends EventEmitter {
           await this.connection.forceExitCLI();
           this.connection.clearFCRebootedFromCLI();
           const reconnected = await this.reconnectAfterReboot(MAX_WAIT_MS);
+          this._rebootPending = false;
           if (!reconnected) {
             logger.warn('Auto-reconnect failed (dump) — FC may need manual reconnection');
             this.connectionStatus = { connected: false };
             this.emit('connection-changed', this.connectionStatus);
           }
+        } else {
+          this._rebootPending = false;
         }
       }
 
       return this.cleanCLIOutput(output);
     } catch (error) {
+      this._rebootPending = false;
       try {
         if (!wasInCLI) {
           try {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StartTuningModal } from './StartTuningModal';
@@ -18,8 +18,17 @@ const DEMO_FC_INFO: FCInfo = {
 };
 
 describe('StartTuningModal', () => {
-  it('renders all three tuning mode options', () => {
+  beforeEach(() => {
+    // Default: getConnectionStatus returns disconnected (no FC info)
+    // so tests without fcInfo prop resolve loading state quickly
+    vi.mocked(window.betaflight.getConnectionStatus).mockResolvedValue({
+      connected: false,
+    });
+  });
+
+  it('renders all three tuning mode options', async () => {
     render(<StartTuningModal onStart={vi.fn()} onCancel={vi.fn()} />);
+    await screen.findByText('Filter Tune');
 
     expect(screen.getByText('Filter Tune')).toBeInTheDocument();
     expect(screen.getByText('PID Tune')).toBeInTheDocument();
@@ -27,16 +36,16 @@ describe('StartTuningModal', () => {
     expect(screen.getAllByText('2 flights')).toHaveLength(3);
   });
 
-  it('shows "Start here" badge on Filter Tune', () => {
+  it('shows "Start here" badge on Filter Tune', async () => {
     render(<StartTuningModal onStart={vi.fn()} onCancel={vi.fn()} />);
-
-    expect(screen.getByText('Start here')).toBeInTheDocument();
+    await screen.findByText('Start here');
   });
 
   it('calls onStart with filter when Filter Tune clicked', async () => {
     const onStart = vi.fn();
     const user = userEvent.setup();
     render(<StartTuningModal onStart={onStart} onCancel={vi.fn()} />);
+    await screen.findByText('Filter Tune');
 
     await user.click(screen.getByText('Filter Tune'));
     expect(onStart).toHaveBeenCalledWith(TUNING_TYPE.FILTER, undefined);
@@ -46,6 +55,7 @@ describe('StartTuningModal', () => {
     const onStart = vi.fn();
     const user = userEvent.setup();
     render(<StartTuningModal onStart={onStart} onCancel={vi.fn()} />);
+    await screen.findByText('PID Tune');
 
     await user.click(screen.getByText('PID Tune'));
     expect(onStart).toHaveBeenCalledWith(TUNING_TYPE.PID, undefined);
@@ -55,6 +65,7 @@ describe('StartTuningModal', () => {
     const onStart = vi.fn();
     const user = userEvent.setup();
     render(<StartTuningModal onStart={onStart} onCancel={vi.fn()} />);
+    await screen.findByText('Flash Tune');
 
     await user.click(screen.getByText('Flash Tune'));
     expect(onStart).toHaveBeenCalledWith(TUNING_TYPE.FLASH, undefined);
@@ -64,6 +75,7 @@ describe('StartTuningModal', () => {
     const onCancel = vi.fn();
     const user = userEvent.setup();
     render(<StartTuningModal onStart={vi.fn()} onCancel={onCancel} />);
+    await screen.findByText('Cancel');
 
     await user.click(screen.getByText('Cancel'));
     expect(onCancel).toHaveBeenCalled();
@@ -73,6 +85,7 @@ describe('StartTuningModal', () => {
     const onCancel = vi.fn();
     const user = userEvent.setup();
     render(<StartTuningModal onStart={vi.fn()} onCancel={onCancel} />);
+    await screen.findByText('Cancel');
 
     await user.click(screen.getByText('Choose Tuning Mode').closest('.start-tuning-overlay')!);
     expect(onCancel).toHaveBeenCalled();
@@ -82,6 +95,7 @@ describe('StartTuningModal', () => {
     const onCancel = vi.fn();
     const user = userEvent.setup();
     render(<StartTuningModal onStart={vi.fn()} onCancel={onCancel} />);
+    await screen.findByText('Cancel');
 
     await user.click(screen.getByText('Choose Tuning Mode'));
     expect(onCancel).not.toHaveBeenCalled();
@@ -239,5 +253,43 @@ describe('StartTuningModal', () => {
     // Profile numbers shown, but no name spans rendered
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.queryByText('pidlab_1')).not.toBeInTheDocument();
+  });
+
+  // Self-hydration: fcInfo missing → fetched from getConnectionStatus
+  it('fetches FC info and shows profile selector when fcInfo prop is missing', async () => {
+    vi.mocked(window.betaflight.getConnectionStatus).mockResolvedValue({
+      connected: true,
+      fcInfo: DEMO_FC_INFO,
+    });
+
+    render(<StartTuningModal onStart={vi.fn()} onCancel={vi.fn()} />);
+
+    // Initially no profile selector
+    expect(screen.queryByText('BF PID Profile')).not.toBeInTheDocument();
+
+    // After async hydration, profile selector appears
+    await screen.findByText('BF PID Profile');
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+  });
+
+  it('passes fetched profile index when starting after hydration', async () => {
+    vi.mocked(window.betaflight.getConnectionStatus).mockResolvedValue({
+      connected: true,
+      fcInfo: { ...DEMO_FC_INFO, pidProfileIndex: 2 },
+    });
+
+    const onStart = vi.fn();
+    const user = userEvent.setup();
+    render(<StartTuningModal onStart={onStart} onCancel={vi.fn()} />);
+
+    // Wait for hydration
+    await screen.findByText('BF PID Profile');
+
+    // Click profile 1 (index 0) then start
+    await user.click(screen.getByText('1'));
+    await user.click(screen.getByText('PID Tune'));
+
+    expect(onStart).toHaveBeenCalledWith(TUNING_TYPE.PID, 0);
   });
 });

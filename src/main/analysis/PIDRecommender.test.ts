@@ -141,7 +141,9 @@ describe('PIDRecommender', () => {
       const pRec = recs.find((r) => r.setting === 'pid_roll_p');
       expect(dRec).toBeDefined();
       expect(pRec).toBeDefined();
-      expect(dRec!.confidence).toBe('high');
+      // D confidence is downgraded to 'low' when damping ratio clamp kicks in
+      // (both P-OS-P and P-OS-D fire, combined ratio exceeds 0.85)
+      expect(dRec!.confidence).toBe('low');
       expect(pRec!.recommendedValue).toBeLessThan(highDPids.roll.P);
     });
 
@@ -154,7 +156,9 @@ describe('PIDRecommender', () => {
       const dRec = recs.find((r) => r.setting === 'pid_roll_d');
       const pRec = recs.find((r) => r.setting === 'pid_roll_p');
       expect(dRec).toBeDefined();
-      expect(dRec!.recommendedValue).toBe(DEFAULT_PIDS.roll.D + 10); // D: 30 + 10 = 40
+      // D initially 30+10=40, P=45-5=40 → ratio 40/40=1.0 > 0.85
+      // Damping ratio clamp: D = round(40 × 0.85) = 34
+      expect(dRec!.recommendedValue).toBe(34);
       expect(pRec).toBeDefined();
       expect(pRec!.recommendedValue).toBe(DEFAULT_PIDS.roll.P - 5); // P: 45 - 5 = 40
     });
@@ -168,7 +172,10 @@ describe('PIDRecommender', () => {
       const dRec = recs.find((r) => r.setting === 'pid_roll_d');
       const pRec = recs.find((r) => r.setting === 'pid_roll_p');
       expect(dRec).toBeDefined();
-      expect(dRec!.recommendedValue).toBe(DEFAULT_PIDS.roll.D + 15); // D: 30 + 15 = 45
+      // D initially 30+15=45, P=45-10=35 → ratio 45/35=1.29 > 0.85
+      // Damping ratio clamp: D = round(35 × 0.85) = 30 (clamped back to current)
+      expect(dRec!.recommendedValue).toBe(30);
+      expect(dRec!.confidence).toBe('low');
       expect(pRec).toBeDefined();
       expect(pRec!.recommendedValue).toBe(DEFAULT_PIDS.roll.P - 10); // P: 45 - 10 = 35
       expect(pRec!.reason).toContain('Extreme');
@@ -971,7 +978,9 @@ describe('PIDRecommender', () => {
       );
 
       for (const rec of recs) {
-        expect(rec.confidence).toBe('medium');
+        // TF recs capped at medium, but damping ratio post-processing may
+        // further downgrade to 'low' when both P and D fire on same axis
+        expect(['medium', 'low']).toContain(rec.confidence);
       }
     });
 
@@ -1332,6 +1341,30 @@ describe('PIDRecommender', () => {
       const pitchD = recs.find((r) => r.setting === 'pid_pitch_d');
       expect(rollD).toBeDefined(); // Roll needs damping fix
       expect(pitchD).toBeUndefined(); // Pitch is fine
+    });
+
+    it('should clamp D when both P-OS-P and P-OS-D fire and ratio exceeds max', () => {
+      // Extreme overshoot (115%) triggers both P-OS-D (+15) and P-OS-P (-10)
+      // P=47 → 37, D=46 → 61 → ratio = 61/37 = 1.65 (far above 0.85)
+      // Fix should clamp D to maintain healthy D/P ratio
+      const pids: PIDConfiguration = {
+        roll: { P: 45, I: 80, D: 30 },
+        pitch: { P: 47, I: 84, D: 46 },
+        yaw: { P: 45, I: 80, D: 0 },
+      };
+      const extreme = makeProfile({ meanOvershoot: 115 });
+
+      const recs = recommendPID(emptyProfile(), extreme, emptyProfile(), pids);
+
+      const pitchP = recs.find((r) => r.setting === 'pid_pitch_p');
+      const pitchD = recs.find((r) => r.setting === 'pid_pitch_d');
+      expect(pitchP).toBeDefined();
+      expect(pitchD).toBeDefined();
+      // Both should exist (from overshoot rule)
+      // D should be clamped so ratio ≤ DAMPING_RATIO_MAX
+      const resultRatio = pitchD!.recommendedValue / pitchP!.recommendedValue;
+      expect(resultRatio).toBeLessThanOrEqual(DAMPING_RATIO_MAX);
+      expect(pitchD!.confidence).toBe('low'); // Downgraded by damping clamp
     });
 
     it('resulting D/P ratio should be within healthy bounds after damping correction', () => {

@@ -160,8 +160,16 @@ async function initialize(): Promise<void> {
     startDebugServer(port);
   }
 
-  // Listen for connection changes
+  // Listen for connection changes.
+  // For connect events: suppress the initial emit from MSPClient.connect() —
+  // the 'connected' handler below sends a final re-emit after baseline creation
+  // and smart reconnect are complete. Without this, the renderer calls
+  // refreshBlackboxInfo() during CLI mode (baseline export) which timeouts.
+  let suppressConnectEvent = false;
   mspClient.on('connection-changed', (status) => {
+    if (status.connected && suppressConnectEvent) {
+      return; // Will be re-emitted by 'connected' handler after all init is done
+    }
     const window = getMainWindow();
     if (window) {
       sendConnectionChanged(window, status);
@@ -174,10 +182,11 @@ async function initialize(): Promise<void> {
 
   // Auto-detect profile and create baseline on connection
   mspClient.on('connected', async () => {
+    suppressConnectEvent = true;
     try {
-      // Get FC serial number
+      // Get FC serial number and info (from connectionStatus which includes PID profile data)
       const fcSerial = await mspClient.getFCSerialNumber();
-      const fcInfo = await mspClient.getFCInfo();
+      const fcInfo = mspClient.getConnectionStatus().fcInfo!;
       logger.info(`Connected to FC with serial: ${fcSerial}`);
 
       // Find or prompt for profile
@@ -253,6 +262,9 @@ async function initialize(): Promise<void> {
         // Smart reconnect: check tuning session state
         try {
           const session = await tuningSessionManager.getSession(existingProfile.id);
+          logger.info(
+            `Smart reconnect: session=${session ? session.phase : 'null'}, profile=${existingProfile.id}`
+          );
           if (session) {
             // Restore BF PID profile if session has one specified
             if (session.bfPidProfileIndex !== undefined) {
@@ -262,6 +274,19 @@ async function initialize(): Promise<void> {
               } catch (e) {
                 logger.warn('Reconnect: failed to restore BF PID profile (non-fatal):', e);
               }
+            } else {
+              // Session missing PID profile index — backfill from FC's current state
+              try {
+                const statusEx = await mspClient.getStatusEx(fcInfo.apiVersion);
+                await tuningSessionManager.updatePhase(existingProfile.id, session.phase, {
+                  bfPidProfileIndex: statusEx.pidProfileIndex,
+                });
+                logger.info(
+                  `Reconnect: backfilled bfPidProfileIndex=${statusEx.pidProfileIndex} on session`
+                );
+              } catch (e) {
+                logger.warn('Reconnect: failed to backfill PID profile index (non-fatal):', e);
+              }
             }
 
             // Auto-transition from *_flight_pending → *_log_ready if flash has data
@@ -270,7 +295,17 @@ async function initialize(): Promise<void> {
               session.phase === TUNING_PHASE.PID_FLIGHT_PENDING ||
               session.phase === TUNING_PHASE.FLASH_FLIGHT_PENDING
             ) {
-              const bbInfo = await mspClient.getBlackboxInfo();
+              // BB info may return storageType='none' immediately after reconnect
+              // (dataflash subsystem not ready). Retry once after 2s settle delay.
+              let bbInfo = await mspClient.getBlackboxInfo();
+              if (bbInfo.storageType === 'none') {
+                logger.info('Smart reconnect: BB returned none, retrying after 2s settle...');
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                bbInfo = await mspClient.getBlackboxInfo();
+              }
+              logger.info(
+                `Smart reconnect: BB check — storage=${bbInfo.storageType}, hasLogs=${bbInfo.hasLogs}, usedSize=${bbInfo.usedSize}`
+              );
 
               // For flash: usedSize > 0 means logs exist
               // For SD card: usedSize is always > 0 (filesystem overhead),
@@ -287,7 +322,8 @@ async function initialize(): Promise<void> {
                 );
                 const updated = await tuningSessionManager.updatePhase(
                   existingProfile.id,
-                  nextPhase
+                  nextPhase,
+                  { eraseCompleted: undefined }
                 );
                 sendTuningSessionChanged(updated);
               } else if (bbInfo.storageType === 'sdcard' && session.eraseSkipped) {
@@ -328,7 +364,14 @@ async function initialize(): Promise<void> {
               session.phase === TUNING_PHASE.PID_VERIFICATION_PENDING ||
               session.phase === TUNING_PHASE.FLASH_VERIFICATION_PENDING;
             if (isVerificationPhase && session.eraseCompleted) {
-              const bbInfo = await mspClient.getBlackboxInfo();
+              let bbInfo = await mspClient.getBlackboxInfo();
+              if (bbInfo.storageType === 'none') {
+                logger.info(
+                  'Smart reconnect (verification): BB returned none, retrying after 2s...'
+                );
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                bbInfo = await mspClient.getBlackboxInfo();
+              }
               if (bbInfo.storageType === 'flash' && bbInfo.hasLogs && bbInfo.usedSize > 0) {
                 logger.info(
                   `Smart reconnect: ${session.phase} + flash has data — clearing eraseCompleted`
@@ -420,11 +463,21 @@ async function initialize(): Promise<void> {
         } catch (err) {
           logger.warn('Smart reconnect check failed (non-fatal):', err);
         }
+
+        // Final re-emit: ensure renderer has current connection + BB state.
+        // Initial onConnectionChanged fires during MSPClient.connect() before
+        // baseline creation and smart reconnect — BB info may be stale by then.
+        suppressConnectEvent = false;
+        if (mspClient.isConnected() && window) {
+          sendConnectionChanged(window, { connected: true, fcInfo });
+        }
       } else {
         // New drone - notify UI to show ProfileWizard modal
         // DO NOT create baseline yet - wait until profile is created
         logger.info('New FC detected - profile creation needed (baseline will be created later)');
+        suppressConnectEvent = false;
         if (window) {
+          sendConnectionChanged(window, { connected: true, fcInfo });
           logger.info(`Sending new FC detected event: ${fcSerial}`);
           sendNewFCDetected(window, fcSerial, fcInfo);
         } else {
@@ -433,6 +486,8 @@ async function initialize(): Promise<void> {
       }
     } catch (error) {
       logger.error('Failed to handle connection:', error);
+    } finally {
+      suppressConnectEvent = false;
     }
   });
 

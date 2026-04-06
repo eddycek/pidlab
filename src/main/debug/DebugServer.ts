@@ -595,11 +595,13 @@ async function runFullAnalysis(logId?: string, sessionIndex: number = 0) {
     if (enriched) filterSettings = enriched;
   }
 
-  // Get flight style
+  // Get flight style and drone size from current profile
   let flightStyle: 'smooth' | 'balanced' | 'aggressive' = 'balanced';
+  let droneSize: import('@shared/types/profile.types').DroneSize | undefined;
   try {
     const profile = await profileManager?.getCurrentProfile?.();
     if (profile?.flightStyle) flightStyle = profile.flightStyle;
+    if (profile?.size) droneSize = profile.size;
   } catch {
     /* ignore */
   }
@@ -638,7 +640,10 @@ async function runFullAnalysis(logId?: string, sessionIndex: number = 0) {
 
   // Run analyses in parallel
   const [filterResult, pidResult, tfResult] = await Promise.allSettled([
-    analyzeFilters(session.flightData, sessionIndex, filterSettings, noProgress),
+    analyzeFilters(session.flightData, sessionIndex, filterSettings, noProgress, {
+      droneSize,
+      flightStyle,
+    }),
     analyzePID(
       session.flightData,
       sessionIndex,
@@ -646,7 +651,9 @@ async function runFullAnalysis(logId?: string, sessionIndex: number = 0) {
       noProgress,
       flightPIDs,
       session.header.rawHeaders,
-      flightStyle
+      flightStyle,
+      undefined,
+      droneSize
     ),
     analyzeTransferFunction(
       session.flightData,
@@ -655,7 +662,9 @@ async function runFullAnalysis(logId?: string, sessionIndex: number = 0) {
       noProgress,
       flightPIDs,
       session.header.rawHeaders,
-      flightStyle
+      flightStyle,
+      undefined,
+      droneSize
     ),
   ]);
 

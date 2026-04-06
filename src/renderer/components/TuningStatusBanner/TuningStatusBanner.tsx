@@ -38,6 +38,10 @@ interface TuningStatusBannerProps {
   fixingSettings?: boolean;
   isDemoMode?: boolean;
   hasDownloadedLogs?: boolean;
+  /** Label for the active BF PID profile (e.g. "pidlab_2") */
+  pidProfileLabel?: string;
+  /** FC's current PID profile index (fallback when session doesn't have it) */
+  fcPidProfileIndex?: number;
   onAction: (action: TuningAction) => void;
   onViewGuide: (mode: FlightGuideMode) => void;
   onReset: () => void;
@@ -175,6 +179,8 @@ export function TuningStatusBanner({
   fixingSettings,
   isDemoMode,
   hasDownloadedLogs,
+  pidProfileLabel,
+  fcPidProfileIndex,
   onAction,
   onViewGuide,
   onReset,
@@ -455,8 +461,11 @@ export function TuningStatusBanner({
         >
           {TUNING_TYPE_LABELS[session.tuningType]}
         </span>
-        {session.bfPidProfileIndex != null && (
-          <span className="tuning-profile-badge">Profile {session.bfPidProfileIndex + 1}</span>
+        {(session.bfPidProfileIndex ?? fcPidProfileIndex) != null && (
+          <span className="tuning-profile-badge">
+            PID Profile {(session.bfPidProfileIndex ?? fcPidProfileIndex)! + 1}
+            {pidProfileLabel ? ` — ${pidProfileLabel}` : ''}
+          </span>
         )}
         {STEP_LABELS.map((label, i) => {
           const isDone = i < activeStepIndex;
