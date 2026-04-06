@@ -466,14 +466,18 @@ async function initialize(): Promise<void> {
 
         // Read all tuning-relevant config from FC for logging and debug access.
         // Runs after baseline/reconnect so it doesn't interfere with CLI mode.
+        // Note: getFeedforwardConfiguration() and getTuningConfig() both read
+        // MSP_PID_ADVANCED — must run sequentially (MSP responseQueue is keyed
+        // by command ID, concurrent same-command requests collide).
         try {
           await Promise.all([
             mspClient.getPIDConfiguration(),
             mspClient.getFilterConfiguration(),
-            mspClient.getFeedforwardConfiguration(),
             mspClient.getRatesConfiguration(),
-            mspClient.getTuningConfig(),
           ]);
+          // Sequential: both use MSP_PID_ADVANCED
+          await mspClient.getFeedforwardConfiguration();
+          await mspClient.getTuningConfig();
         } catch (e) {
           logger.warn('Post-connect config read failed (non-fatal):', e);
         }

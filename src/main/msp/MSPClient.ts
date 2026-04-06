@@ -1003,9 +1003,12 @@ export class MSPClient extends EventEmitter {
    * but readable via MSP without entering CLI mode.
    */
   async getTuningConfig(): Promise<Record<string, number>> {
+    const MIN_TUNING_CONFIG_LENGTH = 61; // TPA_BREAKPOINT at offset 59, U16
     const response = await this.connection.sendCommand(MSPCommand.MSP_PID_ADVANCED);
-    if (response.data.length < PID_ADVANCED.MIN_RESPONSE_LENGTH) {
-      throw new MSPError('Invalid MSP_PID_ADVANCED response');
+    if (response.data.length < MIN_TUNING_CONFIG_LENGTH) {
+      throw new MSPError(
+        `Invalid MSP_PID_ADVANCED response: expected at least ${MIN_TUNING_CONFIG_LENGTH} bytes, got ${response.data.length}`
+      );
     }
     const config: Record<string, number> = {
       anti_gravity_gain: readField(response.data, PID_ADVANCED.ANTI_GRAVITY_GAIN),
