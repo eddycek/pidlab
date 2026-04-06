@@ -186,6 +186,16 @@ export function registerProfileHandlers(deps: HandlerDependencies): void {
         }
       }
 
+      // Delete active tuning session for this profile
+      if (deps.tuningSessionManager) {
+        try {
+          await deps.tuningSessionManager.deleteSession(id);
+          logger.info(`Deleted tuning session for profile ${id}`);
+        } catch (err) {
+          logger.error(`Failed to delete tuning session for profile ${id}:`, err);
+        }
+      }
+
       // Delete the profile
       await deps.profileManager.deleteProfile(id);
 

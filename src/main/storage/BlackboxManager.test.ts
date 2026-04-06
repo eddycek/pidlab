@@ -28,7 +28,10 @@ describe('BlackboxManager', () => {
   let logsDir: string;
 
   beforeEach(async () => {
-    testUserDataDir = join(tmpdir(), `bfat-test-bbmgr-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    testUserDataDir = join(
+      tmpdir(),
+      `bfat-test-bbmgr-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
     logsDir = join(testUserDataDir, 'data', 'blackbox-logs');
     manager = new BlackboxManager();
     await manager.initialize();
@@ -100,7 +103,7 @@ describe('BlackboxManager', () => {
 
     const logsA = await manager.listLogs('prof-A');
     expect(logsA).toHaveLength(2);
-    expect(logsA.every(l => l.profileId === 'prof-A')).toBe(true);
+    expect(logsA.every((l) => l.profileId === 'prof-A')).toBe(true);
   });
 
   it('returns empty array for unknown profile', async () => {
@@ -171,6 +174,26 @@ describe('BlackboxManager', () => {
 
     expect(await manager.listLogs('prof-del')).toHaveLength(0);
     expect(await manager.listLogs('prof-keep')).toHaveLength(1);
+  });
+
+  it('removes all log files from disk for a profile', async () => {
+    const log1 = await manager.saveLog(Buffer.from('a'), 'prof-del', 'sn1', mockFCInfo);
+    const log2 = await manager.saveLog(Buffer.from('b'), 'prof-del', 'sn1', mockFCInfo);
+
+    await manager.deleteLogsForProfile('prof-del');
+
+    // Both files should be gone from disk
+    await expect(fs.access(log1.filepath)).rejects.toThrow();
+    await expect(fs.access(log2.filepath)).rejects.toThrow();
+  });
+
+  it('handles already-deleted files gracefully in deleteLogsForProfile', async () => {
+    const log = await manager.saveLog(Buffer.from('a'), 'prof-del', 'sn1', mockFCInfo);
+    await fs.unlink(log.filepath); // manually remove
+
+    // Should not throw
+    await manager.deleteLogsForProfile('prof-del');
+    expect(await manager.listLogs('prof-del')).toHaveLength(0);
   });
 
   // ─── exportLog ───────────────────────────────────────────────

@@ -97,7 +97,9 @@ export class BlackboxManager {
   }
 
   /**
-   * Delete a Blackbox log
+   * Delete a Blackbox log (file + metadata).
+   * File deletion errors are only swallowed for ENOENT (already gone).
+   * Real filesystem errors (permissions, etc.) are propagated.
    */
   async deleteLog(id: string): Promise<void> {
     const logs = await this.loadMetadata();
@@ -107,13 +109,17 @@ export class BlackboxManager {
       throw new Error(`Blackbox log not found: ${id}`);
     }
 
-    // Delete file
+    // Delete file from disk
     try {
       await fs.unlink(log.filepath);
-      logger.info(`[BlackboxManager] Deleted Blackbox log file: ${log.filename}`);
-    } catch (error) {
-      logger.warn(`[BlackboxManager] Failed to delete Blackbox log file: ${error}`);
-      // Continue anyway to remove from metadata
+      logger.info(`[BlackboxManager] Deleted Blackbox log file: ${log.filepath}`);
+    } catch (error: any) {
+      if (error?.code === 'ENOENT') {
+        logger.info(`[BlackboxManager] Log file already gone: ${log.filepath}`);
+      } else {
+        logger.error(`[BlackboxManager] Failed to delete log file: ${log.filepath} — ${error}`);
+        throw error;
+      }
     }
 
     // Remove from metadata
@@ -132,8 +138,10 @@ export class BlackboxManager {
     for (const log of logs) {
       try {
         await fs.unlink(log.filepath);
-      } catch (error) {
-        logger.warn(`[BlackboxManager] Failed to delete log file ${log.filename}: ${error}`);
+      } catch (error: any) {
+        if (error?.code !== 'ENOENT') {
+          logger.warn(`[BlackboxManager] Failed to delete log file ${log.filepath}: ${error}`);
+        }
       }
     }
 
