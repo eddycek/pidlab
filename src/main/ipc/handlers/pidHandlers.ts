@@ -37,6 +37,12 @@ function validatePIDConfiguration(config: PIDConfiguration): void {
 export function registerPIDHandlers(deps: HandlerDependencies): void {
   ipcMain.handle(IPCChannel.PID_GET_CONFIG, async () => {
     try {
+      // Cache-first: return cached PID config if available
+      const cached = deps.fcStateCache?.getSlice('pidConfig');
+      if (cached) {
+        return createResponse<PIDConfiguration>(cached);
+      }
+
       if (!deps.mspClient) throw new Error('MSP client not initialized');
       if (!deps.mspClient.isConnected()) throw new Error('Flight controller not connected');
 
