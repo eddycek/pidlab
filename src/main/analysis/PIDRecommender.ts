@@ -338,6 +338,12 @@ export function recommendPID(
   // Must run BEFORE informational P warnings so damping ratio recs take priority.
   validateDampingRatio(recommendations, currentPIDs, bounds);
 
+  // Re-run DTE gating after damping ratio — damping ratio may have added new D recs
+  // (P-DR-UD underdamped) that also need to be blocked when D is ineffective.
+  if (dTermEffectiveness) {
+    applyDTermEffectiveness(recommendations, dTermEffectiveness);
+  }
+
   // Post-process: P informational warnings (after damping ratio to avoid conflicts)
   detectHighP(recommendations, currentPIDs, bounds);
   detectLowP(recommendations, currentPIDs, bounds);
