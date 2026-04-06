@@ -525,6 +525,22 @@ function validateDampingRatio(
         dRec.reason += ` (D clamped from ${resultD} to ${clampedD} to maintain D/P ratio ≤ ${DAMPING_RATIO_MAX}.)`;
         dRec.confidence = 'low';
       }
+    } else if (ratio > DAMPING_RATIO_MAX && !dRec && pRec && pRec.recommendedValue < pids.P) {
+      // P was decreased (e.g. overshoot rule) but D wasn't adjusted
+      // (e.g. blocked by D-term effectiveness gating) — ratio pushed too high.
+      // Only triggers on P decrease — P increase would lower the ratio, not raise it.
+      const targetD = clamp(Math.round(resultP * DAMPING_RATIO_MAX), bounds.dMin, bounds.dMax);
+      if (targetD < pids.D && Math.abs(targetD - pids.D) >= DAMPING_RATIO_DEADZONE) {
+        recommendations.push({
+          setting: `pid_${axisName}_d`,
+          currentValue: pids.D,
+          recommendedValue: targetD,
+          reason: `Reducing D on ${axisName} to maintain healthy D/P balance (${ratio.toFixed(2)}) after P reduction. High D/P ratio causes sluggish response and motor heating.`,
+          impact: 'both',
+          confidence: 'medium',
+          ruleId: `P-DR-OD-${axisName}`,
+        });
+      }
     } else if (ratio > DAMPING_RATIO_MAX && !dRec && !pRec) {
       // No existing recommendations but ratio is already too high — reduce D
       const targetD = clamp(Math.round(resultP * DAMPING_RATIO_MAX), bounds.dMin, bounds.dMax);
