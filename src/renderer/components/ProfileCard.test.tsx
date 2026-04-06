@@ -20,6 +20,7 @@ describe('ProfileCard', () => {
   const mockOnEdit = vi.fn();
   const mockOnDelete = vi.fn();
   const mockOnExport = vi.fn();
+  const mockOnWipe = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,6 +36,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -51,6 +53,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -68,6 +71,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -85,6 +89,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -102,6 +107,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -119,6 +125,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -137,6 +144,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -155,6 +163,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -173,6 +182,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -191,6 +201,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -208,6 +219,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -229,6 +241,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -249,6 +262,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -270,6 +284,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -291,6 +306,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -311,6 +327,7 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
@@ -329,10 +346,33 @@ describe('ProfileCard', () => {
         onEdit={mockOnEdit}
         onDelete={mockOnDelete}
         onExport={mockOnExport}
+        onWipe={mockOnWipe}
       />
     );
 
     const card = container.querySelector('.profile-card');
     expect(card).toHaveClass('locked');
+  });
+
+  it('calls onWipe when wipe button is clicked', async () => {
+    const user = userEvent.setup();
+    const profile = createMockProfile();
+    render(
+      <ProfileCard
+        profile={profile}
+        isActive={false}
+        onSelect={mockOnSelect}
+        onEdit={mockOnEdit}
+        onDelete={mockOnDelete}
+        onExport={mockOnExport}
+        onWipe={mockOnWipe}
+      />
+    );
+
+    const wipeButton = screen.getByTitle('Wipe profile data');
+    await user.click(wipeButton);
+
+    expect(mockOnWipe).toHaveBeenCalledWith('test-profile-1');
+    expect(mockOnSelect).not.toHaveBeenCalled();
   });
 });

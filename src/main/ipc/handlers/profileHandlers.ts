@@ -12,7 +12,7 @@ import { getErrorMessage, ProfileLimitError } from '../../utils/errors';
 import { getMainWindow } from '../../window';
 import type { HandlerDependencies } from './types';
 import { createResponse } from './types';
-import { sendConnectionChanged, sendProfileChanged } from './events';
+import { sendConnectionChanged, sendProfileChanged, sendTuningSessionChanged } from './events';
 
 export function registerProfileHandlers(deps: HandlerDependencies): void {
   ipcMain.handle(
@@ -225,6 +225,83 @@ export function registerProfileHandlers(deps: HandlerDependencies): void {
       return createResponse<void>(undefined);
     } catch (error) {
       logger.error('Failed to delete profile:', error);
+      return createResponse<void>(undefined, getErrorMessage(error));
+    }
+  });
+
+  ipcMain.handle(IPCChannel.PROFILE_WIPE, async (_, id: string): Promise<IPCResponse<void>> => {
+    try {
+      if (!deps.profileManager) {
+        throw new Error('Profile manager not initialized');
+      }
+      if (!deps.snapshotManager) {
+        throw new Error('Snapshot manager not initialized');
+      }
+      if (!deps.blackboxManager) {
+        throw new Error('Blackbox manager not initialized');
+      }
+
+      // Validate profile exists
+      const profile = await deps.profileManager.getProfile(id);
+      if (!profile) {
+        throw new Error(`Profile ${id} not found`);
+      }
+
+      // Delete all snapshots (force: true to include baseline)
+      for (const snapshotId of profile.snapshotIds) {
+        try {
+          await deps.snapshotManager.deleteSnapshot(snapshotId, true);
+          logger.info(`Wiped snapshot ${snapshotId} from profile ${id}`);
+        } catch (err) {
+          logger.error(`Failed to delete snapshot ${snapshotId} during wipe:`, err);
+          // Continue wiping other data even if one snapshot fails
+        }
+      }
+
+      // Delete all Blackbox logs
+      try {
+        await deps.blackboxManager.deleteLogsForProfile(id);
+        logger.info(`Wiped all Blackbox logs for profile ${id}`);
+      } catch (err) {
+        logger.error(`Failed to delete Blackbox logs during wipe for profile ${id}:`, err);
+      }
+
+      // Delete tuning session
+      if (deps.tuningSessionManager) {
+        try {
+          await deps.tuningSessionManager.deleteSession(id);
+          logger.info(`Wiped tuning session for profile ${id}`);
+        } catch (err) {
+          logger.error(`Failed to delete tuning session during wipe for profile ${id}:`, err);
+        }
+      }
+
+      // Delete tuning history
+      if (deps.tuningHistoryManager) {
+        try {
+          await deps.tuningHistoryManager.deleteHistory(id);
+          logger.info(`Wiped tuning history for profile ${id}`);
+        } catch (err) {
+          logger.error(`Failed to delete tuning history during wipe for profile ${id}:`, err);
+        }
+      }
+
+      // Clear snapshot refs on profile
+      await deps.profileManager.clearSnapshotRefs(id);
+
+      // Notify UI — only send profile/session events if wiping the active profile
+      const isCurrentProfile = deps.profileManager.getCurrentProfileId() === id;
+      const window = getMainWindow();
+      if (isCurrentProfile && window) {
+        const updatedProfile = await deps.profileManager.getProfile(id);
+        sendProfileChanged(window, updatedProfile);
+        sendTuningSessionChanged(null);
+      }
+
+      logger.info(`Profile ${id} wiped successfully`);
+      return createResponse<void>(undefined);
+    } catch (error) {
+      logger.error('Failed to wipe profile:', error);
       return createResponse<void>(undefined, getErrorMessage(error));
     }
   });

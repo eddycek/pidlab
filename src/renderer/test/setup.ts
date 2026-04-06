@@ -51,6 +51,7 @@ global.window.betaflight = {
   createProfileFromPreset: vi.fn(),
   updateProfile: vi.fn(),
   deleteProfile: vi.fn(),
+  wipeProfile: vi.fn(),
   listProfiles: vi.fn(),
   getProfile: vi.fn(),
   getCurrentProfile: vi.fn(),

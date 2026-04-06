@@ -270,6 +270,23 @@ export class ProfileManager {
   }
 
   /**
+   * Clear all snapshot references from a profile (used during wipe)
+   */
+  async clearSnapshotRefs(profileId: string): Promise<void> {
+    const profile = await this.storage.loadProfile(profileId);
+    if (!profile) {
+      throw new Error(`Profile ${profileId} not found`);
+    }
+
+    profile.snapshotIds = [];
+    profile.baselineSnapshotId = undefined;
+    profile.updatedAt = new Date().toISOString();
+    await this.storage.saveProfile(profile);
+
+    logger.info(`Cleared snapshot refs for profile ${profileId}`);
+  }
+
+  /**
    * Export profile
    */
   async exportProfile(id: string, filePath: string): Promise<void> {
