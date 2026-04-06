@@ -464,6 +464,20 @@ async function initialize(): Promise<void> {
           logger.warn('Smart reconnect check failed (non-fatal):', err);
         }
 
+        // Read all tuning-relevant config from FC for logging and debug access.
+        // Runs after baseline/reconnect so it doesn't interfere with CLI mode.
+        try {
+          await Promise.all([
+            mspClient.getPIDConfiguration(),
+            mspClient.getFilterConfiguration(),
+            mspClient.getFeedforwardConfiguration(),
+            mspClient.getRatesConfiguration(),
+            mspClient.getTuningConfig(),
+          ]);
+        } catch (e) {
+          logger.warn('Post-connect config read failed (non-fatal):', e);
+        }
+
         // Final re-emit: ensure renderer has current connection + BB state.
         // Initial onConnectionChanged fires during MSPClient.connect() before
         // baseline creation and smart reconnect — BB info may be stale by then.
