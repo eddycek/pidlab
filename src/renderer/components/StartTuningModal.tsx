@@ -102,8 +102,8 @@ export function StartTuningModal({
 
   if (loading) {
     return (
-      <div className="start-tuning-overlay">
-        <div className="start-tuning-modal">
+      <div className="start-tuning-overlay" onClick={onCancel}>
+        <div className="start-tuning-modal" onClick={(e) => e.stopPropagation()}>
           <h2>Choose Tuning Mode</h2>
           <p className="start-tuning-subtitle">Loading flight controller info...</p>
         </div>
