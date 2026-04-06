@@ -171,7 +171,7 @@ export function registerFCInfoHandlers(deps: HandlerDependencies): void {
         await deps.mspClient.selectPidProfile(index);
 
         // PID profile switch changes almost all config — invalidate relevant slices
-        deps.fcStateCache?.invalidate([
+        await deps.fcStateCache?.invalidate([
           'pidConfig',
           'filterConfig',
           'feedforwardConfig',

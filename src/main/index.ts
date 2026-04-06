@@ -137,9 +137,7 @@ async function initialize(): Promise<void> {
   await licenseManager.initialize();
 
   // Create FC state cache
-  // Cast needed: MSPClient.connection is private but FCStateCache only uses the
-  // public CacheMSPClient interface (isConnected, getFCInfo, etc.)
-  fcStateCache = new FCStateCache(mspClient as any);
+  fcStateCache = new FCStateCache(mspClient);
   fcStateCache.setDependencies(snapshotManager, profileManager);
   snapshotManager.setFCStateCache(fcStateCache);
 

@@ -123,7 +123,7 @@ function createMockMSPClient(): CacheMSPClient & {
   const mock = {
     _cliMode: false,
     isConnected: vi.fn(() => true),
-    isInCLI: undefined as (() => boolean) | undefined,
+    isInCLI: () => mock._cliMode,
     getFCInfo: vi.fn().mockResolvedValue(makeFCInfo()),
     getStatusEx: vi.fn().mockResolvedValue({ pidProfileIndex: 0, pidProfileCount: 4 }),
     getPIDConfiguration: vi.fn().mockResolvedValue(makePIDConfig()),
@@ -133,9 +133,6 @@ function createMockMSPClient(): CacheMSPClient & {
     getTuningConfig: vi.fn().mockResolvedValue(makeTuningConfig()),
     getBlackboxInfo: vi.fn().mockResolvedValue(makeBBInfo()),
     getPidProcessDenom: vi.fn().mockResolvedValue(2),
-    connection: {
-      isInCLI: () => mock._cliMode,
-    },
   };
   return mock;
 }
@@ -349,6 +346,51 @@ describe('FCStateCache', () => {
     const preClean = listener.mock.calls.length;
     cache.clear();
     expect(listener.mock.calls.length).toBe(preClean + 1);
+  });
+
+  // -------------------------------------------------------------------------
+  // blackboxSettings from snapshot
+  // -------------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------
+  // Generation protection (stale hydrate prevention)
+  // -------------------------------------------------------------------------
+
+  it('clear() during hydrate prevents stale state writes', async () => {
+    // Make getFCInfo slow so we can clear() mid-hydrate
+    let resolveFCInfo: ((val: FCInfo) => void) | undefined;
+    msp.getFCInfo.mockImplementation(
+      () =>
+        new Promise<FCInfo>((resolve) => {
+          resolveFCInfo = resolve;
+        })
+    );
+
+    const hydratePromise = cache.hydrate();
+
+    // Clear while hydrate is waiting on getFCInfo
+    cache.clear();
+
+    // Now resolve the stale getFCInfo — should be discarded
+    resolveFCInfo!(makeFCInfo({ variant: 'STALE' }));
+    await hydratePromise;
+
+    // State should be empty (from clear), not the stale hydrate result
+    expect(cache.getState()).toEqual(EMPTY_FC_STATE);
+  });
+
+  it('hydrate() flash->none guard applies on re-hydrate', async () => {
+    // First hydrate sets blackboxInfo with flash storage
+    await cache.hydrate();
+    expect(cache.getState().blackboxInfo?.storageType).toBe('flash');
+
+    // Second hydrate: FC briefly reports 'none'
+    msp.getBlackboxInfo.mockResolvedValue(makeBBInfo({ storageType: 'none' }));
+    await cache.hydrate();
+
+    // Guard should preserve flash storageType
+    expect(cache.getState().blackboxInfo?.storageType).toBe('flash');
+    expect(cache.getState().blackboxInfo?.usedSize).toBe(0);
   });
 
   // -------------------------------------------------------------------------

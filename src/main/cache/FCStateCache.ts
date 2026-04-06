@@ -27,10 +27,8 @@ export interface CacheMSPClient {
   getTuningConfig(): Promise<Record<string, number>>;
   getBlackboxInfo(): Promise<BlackboxInfo>;
   getPidProcessDenom(): Promise<number>;
-  /** MockMSPClient exposes this directly; MSPClient does not. */
-  isInCLI?: () => boolean;
-  /** MockMSPClient has public connection; MSPClient has private. */
-  connection?: { isInCLI(): boolean };
+  /** Both MSPClient and MockMSPClient expose this public method. */
+  isInCLI(): boolean;
 }
 
 /**
@@ -60,6 +58,8 @@ export class FCStateCache extends EventEmitter {
   private mspClient: CacheMSPClient;
   private snapshotProvider: CacheSnapshotProvider | null = null;
   private profileProvider: CacheProfileProvider | null = null;
+  /** Incremented on hydrate/clear to detect stale async results */
+  private hydrateGeneration = 0;
 
   constructor(mspClient: CacheMSPClient) {
     super();
@@ -82,6 +82,10 @@ export class FCStateCache extends EventEmitter {
    * Full hydration — reads all FC state from MSP. Non-fatal on individual errors.
    */
   async hydrate(): Promise<void> {
+    const generation = ++this.hydrateGeneration;
+    // Capture previous blackboxInfo for flash->none guard on re-hydrate
+    const previousBlackboxInfo = this.state.blackboxInfo;
+
     this.state = { ...EMPTY_FC_STATE, hydrating: true };
     this.notifyRenderer();
 
@@ -89,18 +93,24 @@ export class FCStateCache extends EventEmitter {
     let fcInfo: FCInfo | null = null;
     try {
       fcInfo = await this.mspClient.getFCInfo();
+      if (this.hydrateGeneration !== generation) return;
       this.state.info = fcInfo;
     } catch (error) {
       logger.warn('FCStateCache: failed to read FCInfo', error);
     }
 
+    if (this.hydrateGeneration !== generation) return;
+
     // Phase 2: StatusEx (needs apiVersion from FCInfo)
     try {
       const statusEx = await this.mspClient.getStatusEx(fcInfo?.apiVersion);
+      if (this.hydrateGeneration !== generation) return;
       this.state.statusEx = statusEx;
     } catch (error) {
       logger.warn('FCStateCache: failed to read StatusEx', error);
     }
+
+    if (this.hydrateGeneration !== generation) return;
 
     // Phase 3: Parallel reads (independent MSP commands)
     const [pidResult, filterResult, ratesResult, bbInfoResult] = await Promise.allSettled([
@@ -109,6 +119,8 @@ export class FCStateCache extends EventEmitter {
       this.mspClient.getRatesConfiguration(),
       this.mspClient.getBlackboxInfo(),
     ]);
+
+    if (this.hydrateGeneration !== generation) return;
 
     if (pidResult.status === 'fulfilled') {
       this.state.pidConfig = pidResult.value;
@@ -129,10 +141,32 @@ export class FCStateCache extends EventEmitter {
     }
 
     if (bbInfoResult.status === 'fulfilled') {
-      this.state.blackboxInfo = bbInfoResult.value;
+      const newBBInfo = bbInfoResult.value;
+      // Flash->none guard: FC may briefly report 'none' during flash operations.
+      // Apply on re-hydrate when previous state had flash storage.
+      if (
+        previousBlackboxInfo &&
+        previousBlackboxInfo.storageType === 'flash' &&
+        newBBInfo.storageType === 'none'
+      ) {
+        logger.warn('FCStateCache hydrate: flash->none guard triggered, preserving storageType');
+        this.state.blackboxInfo = {
+          ...newBBInfo,
+          storageType: 'flash',
+          totalSize: previousBlackboxInfo.totalSize,
+          usedSize: 0,
+          freeSize: previousBlackboxInfo.totalSize,
+          usagePercent: 0,
+          hasLogs: false,
+        };
+      } else {
+        this.state.blackboxInfo = newBBInfo;
+      }
     } else {
       logger.warn('FCStateCache: failed to read BlackboxInfo', bbInfoResult.reason);
     }
+
+    if (this.hydrateGeneration !== generation) return;
 
     // Phase 4: Sequential reads (feedforward and tuning both use MSP_PID_ADVANCED)
     try {
@@ -141,11 +175,15 @@ export class FCStateCache extends EventEmitter {
       logger.warn('FCStateCache: failed to read FeedforwardConfiguration', error);
     }
 
+    if (this.hydrateGeneration !== generation) return;
+
     try {
       this.state.tuningConfig = await this.mspClient.getTuningConfig();
     } catch (error) {
       logger.warn('FCStateCache: failed to read TuningConfig', error);
     }
+
+    if (this.hydrateGeneration !== generation) return;
 
     // Phase 5: BlackboxSettings from snapshot CLI diff
     try {
@@ -153,6 +191,8 @@ export class FCStateCache extends EventEmitter {
     } catch (error) {
       logger.warn('FCStateCache: failed to read BlackboxSettings', error);
     }
+
+    if (this.hydrateGeneration !== generation) return;
 
     this.state.hydratedAt = new Date().toISOString();
     this.state.hydrating = false;
@@ -187,6 +227,7 @@ export class FCStateCache extends EventEmitter {
    * Clear all cached state (e.g., on disconnect).
    */
   clear(): void {
+    this.hydrateGeneration++;
     this.state = { ...EMPTY_FC_STATE };
     this.notifyRenderer();
   }
@@ -215,17 +256,9 @@ export class FCStateCache extends EventEmitter {
 
   /**
    * Check if the MSP client is currently in CLI mode.
-   * Handles both MSPClient (private connection) and MockMSPClient (public isInCLI).
    */
   private isClientInCLI(): boolean {
-    const client = this.mspClient;
-    if (typeof client.isInCLI === 'function') {
-      return client.isInCLI();
-    }
-    if (client.connection && typeof client.connection.isInCLI === 'function') {
-      return client.connection.isInCLI();
-    }
-    return false;
+    return this.mspClient.isInCLI();
   }
 
   /**

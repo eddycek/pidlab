@@ -101,7 +101,7 @@ export function setEventCollector(collector: any): void {
   deps.eventCollector = collector;
 }
 
-export function setFCStateCache(cache: any): void {
+export function setFCStateCache(cache: HandlerDependencies['fcStateCache']): void {
   deps.fcStateCache = cache;
 }
 

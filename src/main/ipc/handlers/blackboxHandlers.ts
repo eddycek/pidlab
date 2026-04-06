@@ -163,7 +163,7 @@ export function registerBlackboxHandlers(deps: HandlerDependencies): void {
       } finally {
         deps.isDownloadingBlackbox = false;
         // Invalidate cached blackbox info (storage sizes may have changed)
-        deps.fcStateCache?.invalidate(['blackboxInfo']);
+        await deps.fcStateCache?.invalidate(['blackboxInfo']);
       }
     } catch (error) {
       logger.error('Failed to download Blackbox log:', error);
@@ -276,7 +276,7 @@ export function registerBlackboxHandlers(deps: HandlerDependencies): void {
       }
 
       // Invalidate cached blackbox info (storage sizes changed)
-      deps.fcStateCache?.invalidate(['blackboxInfo']);
+      await deps.fcStateCache?.invalidate(['blackboxInfo']);
 
       return createResponse<void>(undefined);
     } catch (error) {

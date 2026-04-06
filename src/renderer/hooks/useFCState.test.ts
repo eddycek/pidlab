@@ -101,6 +101,44 @@ describe('useFCState', () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 
+  it('live event takes precedence over stale getFCState', async () => {
+    const liveState: FCState = {
+      ...mockFCState,
+      hydratedAt: '2026-04-06T13:00:00Z', // newer
+    };
+
+    let changeCallback: ((state: FCState) => void) | undefined;
+    let resolveFetch: ((val: FCState | null) => void) | undefined;
+
+    vi.mocked(window.betaflight.getFCState).mockImplementation(
+      () =>
+        new Promise<FCState | null>((resolve) => {
+          resolveFetch = resolve;
+        })
+    );
+    vi.mocked(window.betaflight.onFCStateChanged).mockImplementation((cb) => {
+      changeCallback = cb;
+      return () => {};
+    });
+
+    const { result } = renderHook(() => useFCState());
+
+    // Live event arrives BEFORE fetch resolves
+    act(() => {
+      changeCallback!(liveState);
+    });
+
+    // Now resolve the older cached state
+    act(() => {
+      resolveFetch!(mockFCState);
+    });
+
+    // Should keep the live state, not the stale fetch
+    await waitFor(() => {
+      expect(result.current.hydratedAt).toBe('2026-04-06T13:00:00Z');
+    });
+  });
+
   it('handles getFCState rejection gracefully', async () => {
     vi.mocked(window.betaflight.getFCState).mockRejectedValue(new Error('Not connected'));
 

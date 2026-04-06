@@ -64,6 +64,9 @@ export function registerPIDHandlers(deps: HandlerDependencies): void {
 
       await deps.mspClient.setPIDConfiguration(config);
 
+      // Invalidate cached PID config so next read gets the fresh values
+      await deps.fcStateCache?.invalidate(['pidConfig']);
+
       // Broadcast to all renderer windows
       const window = getMainWindow();
       if (window) {
