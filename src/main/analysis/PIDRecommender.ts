@@ -497,6 +497,15 @@ function validateDampingRatio(
           ruleId: `P-DR-OD-${axisName}`,
         });
       }
+    } else if (ratio > DAMPING_RATIO_MAX && dRec && pRec) {
+      // Both P and D were adjusted (e.g. P-OS-P + P-OS-D from same overshoot rule)
+      // but the combined result exceeds damping ratio — clamp D to restore healthy ratio
+      const clampedD = clamp(Math.round(resultP * DAMPING_RATIO_MAX), bounds.dMin, bounds.dMax);
+      if (clampedD !== dRec.recommendedValue) {
+        dRec.recommendedValue = clampedD;
+        dRec.reason += ` (D clamped from ${resultD} to ${clampedD} to maintain D/P ratio ≤ ${DAMPING_RATIO_MAX}.)`;
+        dRec.confidence = 'low';
+      }
     } else if (ratio > DAMPING_RATIO_MAX && !dRec && !pRec) {
       // No existing recommendations but ratio is already too high — reduce D
       const targetD = clamp(Math.round(resultP * DAMPING_RATIO_MAX), bounds.dMin, bounds.dMax);
