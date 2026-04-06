@@ -4,6 +4,7 @@ React application with hooks-based state management. No direct IPC access — us
 
 ## Key Hooks
 
+- **useFCState** — Centralized FC state from cache (info, PID/filter/FF config, BB info, BB settings). Push-updated via `EVENT_FC_STATE_CHANGED`
 - **useConnection** — FC connection state, port scanning
 - **useProfiles** — Profile CRUD, current profile
 - **useTuningSession** — Active session state, phase transitions

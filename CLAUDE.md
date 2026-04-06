@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `src/main/CLAUDE.md` — Storage, apply flow, snapshot restore, SD card, smart reconnect
 - `src/main/analysis/CLAUDE.md` — FFT, step response, transfer function, data quality scoring
 - `src/main/blackbox/CLAUDE.md` — BBL parser encoding/predictor/frame details
+- `src/main/cache/CLAUDE.md` — FCStateCache: hydration, invalidation, guards, renderer integration
 - `src/main/msp/CLAUDE.md` — MSP protocol, CLI prompt detection, BF version compatibility
 - `src/renderer/CLAUDE.md` — UI components: Analysis Overview, Tuning Wizard, charts, history
 - `e2e/CLAUDE.md` — Playwright E2E test architecture and common pitfalls
@@ -77,7 +78,7 @@ Both `npm run dev` and `npm run dev:demo` start with `DEBUG_SERVER=true`, which 
 
 ### Electron Process Model
 
-**Main Process** (`src/main/`) — Entry point: `src/main/index.ts`. See `src/main/CLAUDE.md` for storage, apply flow, and restore details.
+**Main Process** (`src/main/`) — Entry point: `src/main/index.ts`. See `src/main/CLAUDE.md` for storage, apply flow, and restore details. **FCStateCache** (`src/main/cache/`) centralizes all MSP-readable FC state in memory — hydrates on connect, pushes changes to renderer. See `src/main/cache/CLAUDE.md`.
 
 **Preload Script** (`src/preload/index.ts`) — Exposes `window.betaflight` API to renderer. Type-safe bridge using `@shared/types/ipc.types.ts`.
 
@@ -90,11 +91,11 @@ IPC handlers are split into domain modules under `src/main/ipc/handlers/`:
 | Module | Handlers | Purpose |
 |--------|----------|---------|
 | `types.ts` | — | `HandlerDependencies` interface, `createResponse`, `parseDiffSetting` |
-| `events.ts` | — | 7 event broadcast functions |
+| `events.ts` | — | 9 event broadcast functions |
 | `connectionHandlers.ts` | 8 | Port scanning, connect, disconnect, status, demo mode, reset demo, get logs, export logs |
 | `fcInfoHandlers.ts` | 7 | FC info, CLI export, BB settings, FF config, fix settings, reset settings, BF PID profile selection |
 | `snapshotHandlers.ts` | 6 | Snapshot CRUD, export, restore |
-| `profileHandlers.ts` | 10 | Profile CRUD, presets, FC serial |
+| `profileHandlers.ts` | 11 | Profile CRUD, presets, FC serial, wipe |
 | `pidHandlers.ts` | 3 | PID get/set/save |
 | `blackboxHandlers.ts` | 9 | Info, download, list, delete, erase, folder, test, parse, import |
 | `analysisHandlers.ts` | 3 | Filter, PID, and transfer function analysis |

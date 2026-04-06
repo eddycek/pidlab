@@ -104,6 +104,10 @@ Snapshots carry tuning metadata (`tuningSessionNumber`, `tuningType`, `snapshotR
 - `rebootPending` flag prevents profile clear during expected save-reboot
 - Implemented in `src/main/index.ts` after `createBaselineIfMissing()`
 
+## FC State Cache
+
+`src/main/cache/FCStateCache.ts` — centralized in-memory cache for all MSP-readable FC state. Hydrates once on connect, provides synchronous reads to IPC handlers, pushes state changes to renderer via `EVENT_FC_STATE_CHANGED`. See `src/main/cache/CLAUDE.md` for full details (hydration sequence, invalidation matrix, guards).
+
 ## Post-Apply Verification
 
 On smart reconnect after apply, `verifyAppliedConfig()` (`src/main/utils/verifyAppliedConfig.ts`) reads back full PID and filter configuration from FC via MSP, compares ALL readable values (not just applied changes), and runs sanity checks (P/I/D=0, filter bypassed). Retries PID write+readback once on mismatch (10s timeout). Results stored on `TuningSession.applyVerified`, `applyMismatches`, `applyExpected`, `applyActual`, `applySuspicious`, and `autoReportId`. On failure, auto-submits diagnostic report (Pro only).

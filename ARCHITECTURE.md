@@ -1,6 +1,6 @@
 # Architecture Overview
 
-**Last Updated:** April 5, 2026 | **Phase 4 Complete, Phase 6 Complete** | **3090 unit tests, 141 files + 37 Playwright E2E tests**
+**Last Updated:** April 6, 2026 | **Phase 4 Complete, Phase 6 Complete** | **3099 unit tests, 144 files + 37 Playwright E2E tests**
 
 ---
 
@@ -37,13 +37,13 @@
 │  ┌───────────────────────────────┼──────────────────────────────────────┐  │
 │  │              Preload Script (contextBridge, 689 lines)              │  │
 │  └───────────────────────────────┼──────────────────────────────────────┘  │
-│                                  │ IPC (64 channels, 16 event types)        │
+│                                  │ IPC (67 channels, 16 event types)        │
 │                                  │                                         │
 │  ┌───────────────────────────────┼──────────────────────────────────────┐  │
 │  │                     Main Process (Node.js)                          │  │
 │  │                                                                      │  │
 │  │  ┌────────────────────────────┴─────────────────────────────────┐   │  │
-│  │  │                    IPC Handlers (64 handlers, 13 modules)     │   │  │
+│  │  │                    IPC Handlers (67 handlers, 13 modules)     │   │  │
 │  │  │  connection:* | fc:* | snapshot:* | profile:* | blackbox:*  │   │  │
 │  │  │  analysis:* | tuning:* | pid:*                              │   │  │
 │  │  └───┬──────────┬──────────┬────────────┬──────────┬───────────┘   │  │
@@ -86,7 +86,7 @@
 
 ### Entry Point (`index.ts`, 424 lines)
 
-Creates and wires seven managers + optional debug server:
+Creates and wires seven managers + FCStateCache + optional debug server:
 
 ```typescript
 const mspClient = new MSPClient();
@@ -96,6 +96,7 @@ const blackboxManager = new BlackboxManager();                    // {userData}/
 const tuningSessionManager = new TuningSessionManager(`${userData}/data`); // {userData}/data/tuning
 const tuningHistoryManager = new TuningHistoryManager(`${userData}/data`); // {userData}/data/tuning-history
 const telemetryManager = new TelemetryManager(`${userData}/data`);         // {userData}/data/telemetry-settings.json
+const fcStateCache = new FCStateCache(mspClient);                 // Centralized FC state cache
 ```
 
 **Event wiring (MSPClient → Main Window):**
@@ -502,13 +503,13 @@ TuningSession {
 
 ### IPC Layer (`src/main/ipc/`)
 
-**64 IPC channels** organized by domain:
+**67 IPC channels** organized by domain:
 
 | Domain | Channels | Key Operations |
 |--------|----------|---------------|
 | Connection (8) | `list_ports`, `connect`, `disconnect`, `get_status`, `is_demo_mode`, `reset_demo`, `get_logs`, `export_logs` | Port scanning, connect/disconnect, demo mode, logs |
-| FC Info (7) | `get_info`, `export_cli`, `get_blackbox_settings`, `get_feedforward_config`, `get_rates_config`, `fix_blackbox_settings`, `select_pid_profile` | FC data, CLI export, FF config, rates config, BB settings fix, BF PID profile selection (MSP_SELECT_SETTING) |
-| Profiles (10) | `create`, `create_from_preset`, `update`, `delete`, `list`, `get`, `get_current`, `set_current`, `export`, `get_fc_serial` | Full profile CRUD |
+| FC Info (8) | `get_info`, `get_state`, `export_cli`, `get_blackbox_settings`, `get_feedforward_config`, `get_rates_config`, `fix_blackbox_settings`, `select_pid_profile` | FC data, cached state, CLI export, FF config, rates config, BB settings fix, BF PID profile selection (MSP_SELECT_SETTING) |
+| Profiles (11) | `create`, `create_from_preset`, `update`, `delete`, `wipe`, `list`, `get`, `get_current`, `set_current`, `export`, `get_fc_serial` | Full profile CRUD + wipe |
 | Snapshots (6) | `create`, `list`, `delete`, `export`, `load`, `restore` | Snapshot CRUD + rollback |
 | Blackbox (9) | `get_info`, `download_log`, `list_logs`, `delete_log`, `erase_flash`, `open_folder`, `test_read`, `parse_log`, `import_log` | Flash ops + parsing + import |
 | Analysis (3) | `run_filter`, `run_pid`, `run_transfer_function` | FFT + step response + Wiener deconvolution |
@@ -523,6 +524,7 @@ TuningSession {
 
 | Event | Payload |
 |-------|---------|
+| `fc_state_changed` | `FCState` |
 | `connection_changed` | `ConnectionStatus` |
 | `profile_changed` | `DroneProfile \| null` |
 | `new_fc_detected` | `(fcSerial, fcInfo)` |
@@ -843,7 +845,7 @@ Hardware error (FC timeout, USB disconnect)
 
 ## Testing Strategy
 
-**3090 unit tests across 141 files + 37 Playwright E2E tests**. See [TESTING.md](./TESTING.md) for complete inventory.
+**3099 unit tests across 144 files + 37 Playwright E2E tests**. See [TESTING.md](./TESTING.md) for complete inventory.
 
 | Area | Files | Tests |
 |------|-------|-------|

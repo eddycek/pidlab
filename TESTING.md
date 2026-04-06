@@ -167,7 +167,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 
 ## Test Inventory
 
-**Total: 3090 unit tests across 141 files + 37 Playwright E2E tests across 7 spec files** (last verified: April 5, 2026)
+**Total: 3099 unit tests across 144 files + 37 Playwright E2E tests across 7 spec files** (last verified: April 6, 2026)
 
 ### UI Components
 
@@ -256,6 +256,7 @@ npm run test:ui           # Visual interface with DOM snapshots
 | `hooks/useTelemetrySettings.test.ts` | 4 | Telemetry settings hook, toggle enabled, send now, load failure handling |
 | `hooks/useLicense.test.ts` | 9 | License load, activate, remove, events |
 | `hooks/useAutoUpdate.test.ts` | 5 | Update state, events, install, cleanup |
+| `hooks/useFCState.test.ts` | 6 | FC state cache hook, mount hydration, push updates, cleanup |
 | `hooks/useDemoMode.test.ts` | 3 | Demo mode detection, reset demo |
 | `utils/bbSettingsUtils.test.ts` | 18 | BB settings status computation, version-aware debug mode, fix/reset commands |
 | `utils/spectrogramUtils.test.ts` | 15 | Spectrogram data transformation, color mapping, frequency/throttle axis utilities, compact data heatmap preparation |
@@ -315,6 +316,12 @@ npm run test:ui           # Visual interface with DOM snapshots
 | File | Tests | Description |
 |------|-------|-------------|
 | `diagnostic/DiagnosticBundleBuilder.test.ts` | 12 | Diagnostic bundle building: profile/snapshot/telemetry assembly, recommendation extraction, filter/PID/TF analysis summary, verification metrics, event log, empty/missing data handling |
+
+### FC State Cache
+
+| File | Tests | Description |
+|------|-------|-------------|
+| `cache/FCStateCache.test.ts` | 17 | Hydrate, invalidate, clear, CLI mode guard, flash-to-none guard, generation counter, event emission, blackbox settings from snapshot |
 
 ### Main Process Utils
 

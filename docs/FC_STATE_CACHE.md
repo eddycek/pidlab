@@ -1,6 +1,6 @@
 # FC State Cache — Centralized FC Data Management
 
-> **Status**: Proposed
+> **Status**: Complete
 
 ## Problem Statement
 
@@ -295,65 +295,65 @@ onFCStateChanged: (callback) => {
 },
 ```
 
-## Implementation (single PR)
+## Implementation (single PR — merged as PR #428)
 
 Implementation in bottom-up order — tests pass at each step.
 
-### Step 1: Types + cache class + tests
+### Step 1: Types + cache class + tests ✅
 
-- Create `src/shared/types/fcState.types.ts` — FCState interface, FCStateSlice type
-- Create `src/main/cache/FCStateCache.ts` (~250 lines) — Cache class with hydrate/invalidate/clear
-- Create `src/main/cache/FCStateCache.test.ts` (~15 tests)
+- [x] Create `src/shared/types/fcState.types.ts` — FCState interface, FCStateSlice type
+- [x] Create `src/main/cache/FCStateCache.ts` (~370 lines) — Cache class with hydrate/invalidate/clear
+- [x] Create `src/main/cache/FCStateCache.test.ts` (17 tests)
 
-### Step 2: IPC plumbing
+### Step 2: IPC plumbing ✅
 
-- Add `FC_GET_STATE`, `EVENT_FC_STATE_CHANGED` to `src/shared/types/ipc.types.ts`
-- Add `getFCState()`, `onFCStateChanged()` to `BetaflightAPI` and preload bridge
-- Add `sendFCStateChanged()` to `src/main/ipc/handlers/events.ts`
-- Add `fcStateCache` to `HandlerDependencies`
-- Register `FC_GET_STATE` handler in `src/main/ipc/handlers/index.ts`
+- [x] Add `FC_GET_STATE`, `EVENT_FC_STATE_CHANGED` to `src/shared/types/ipc.types.ts`
+- [x] Add `getFCState()`, `onFCStateChanged()` to `BetaflightAPI` and preload bridge
+- [x] Add `sendFCStateChanged()` to `src/main/ipc/handlers/events.ts`
+- [x] Add `fcStateCache` to `HandlerDependencies`
+- [x] Register `FC_GET_STATE` handler in `src/main/ipc/handlers/index.ts`
 
-### Step 3: Hydration lifecycle
+### Step 3: Hydration lifecycle ✅
 
-- Instantiate `FCStateCache` in `src/main/index.ts`
-- Replace post-connect MSP reads with `cache.hydrate()`
-- Call `cache.clear()` on disconnect
-- Remove `suppressConnectEvent` pattern (cache push replaces final re-emit)
+- [x] Instantiate `FCStateCache` in `src/main/index.ts`
+- [x] Replace post-connect MSP reads with `cache.hydrate()`
+- [x] Call `cache.clear()` on disconnect
+- [x] Remove `suppressConnectEvent` pattern (cache push replaces final re-emit)
 
-### Step 4: Handler migration (read path)
+### Step 4: Handler migration (read path) ✅
 
-- `BLACKBOX_GET_INFO` → read from cache with MSP fallback
-- `FC_GET_INFO` → read from cache with MSP fallback
-- `FC_GET_BLACKBOX_SETTINGS` → read from cache with snapshot fallback
-- `PID_GET_CONFIG` → read from cache with MSP fallback
+- [x] `BLACKBOX_GET_INFO` → read from cache with MSP fallback
+- [x] `FC_GET_INFO` → read from cache with MSP fallback
+- [x] `FC_GET_BLACKBOX_SETTINGS` → read from cache with snapshot fallback
+- [x] `PID_GET_CONFIG` → read from cache with MSP fallback
 
-### Step 5: Handler migration (write path)
+### Step 5: Handler migration (write path) ✅
 
-- `BLACKBOX_ERASE_FLASH` → `invalidate(['blackboxInfo'])` after erase
-- `BLACKBOX_DOWNLOAD_LOG` → `invalidate(['blackboxInfo'])` after download
-- `FC_SELECT_PID_PROFILE` → `invalidate(['pidConfig', 'filterConfig', ...])` after switch
+- [x] `BLACKBOX_ERASE_FLASH` → `invalidate(['blackboxInfo'])` after erase
+- [x] `BLACKBOX_DOWNLOAD_LOG` → `invalidate(['blackboxInfo'])` after download
+- [x] `FC_SELECT_PID_PROFILE` → `invalidate(['pidConfig', 'filterConfig', ...])` after switch
 
-### Step 6: useFCState hook + renderer migration
+### Step 6: useFCState hook + renderer migration ✅
 
-- Create `src/renderer/hooks/useFCState.ts` (~60 lines)
-- Create `src/renderer/hooks/useFCState.test.ts` (~6 tests)
-- Migrate `App.tsx`:
-  - Remove 7 state vars: `flashUsedSize`, `storageType`, `storageTypeRef`, `bbSettings`, `fcVersion`, `connectedFcInfo`, `bbRefreshKey`
-  - Remove 2 functions: `refreshBlackboxInfo()`, `fetchBBSettings()`
-  - Replace with `const fcState = useFCState();`
-  - Update all JSX props to use `fcState.*`
+- [x] Create `src/renderer/hooks/useFCState.ts` (~30 lines)
+- [x] Create `src/renderer/hooks/useFCState.test.ts` (6 tests)
+- [x] Migrate `App.tsx`:
+  - [x] Remove 7 state vars: `flashUsedSize`, `storageType`, `storageTypeRef`, `bbSettings`, `fcVersion`, `connectedFcInfo`, `bbRefreshKey`
+  - [x] Remove 2 functions: `refreshBlackboxInfo()`, `fetchBBSettings()`
+  - [x] Replace with `const fcState = useFCState();`
+  - [x] Update all JSX props to use `fcState.*`
 
-### Step 7: Optimizations + cleanup
+### Step 7: Optimizations + cleanup ✅
 
-- `SnapshotManager.createSnapshot()`: read MSP config from cache instead of 4 MSP calls
-- `MockMSPClient`: add `getStatusEx()` if missing
-- Update `src/renderer/test/setup.ts` with new mocks
-- Simplify `useBlackboxInfo` (thin wrapper around `useFCState().blackboxInfo`)
+- [x] `SnapshotManager.createSnapshot()`: read MSP config from cache instead of 4 MSP calls
+- [x] `MockMSPClient`: add `getStatusEx()` if missing
+- [x] Update `src/renderer/test/setup.ts` with new mocks
+- [x] Simplify `useBlackboxInfo` (thin wrapper around `useFCState().blackboxInfo`)
 
-### Step 8: E2E validation
+### Step 8: E2E validation ✅
 
-- Run `npm run test:e2e` — all 37 E2E tests must pass
-- Run `npm run test:run` — all 3076+ unit tests must pass
+- [x] Run `npm run test:e2e` — all 37 E2E tests pass
+- [x] Run `npm run test:run` — all 3099 unit tests pass
 
 ## Bug Fix Mapping
 

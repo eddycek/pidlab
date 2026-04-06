@@ -213,7 +213,7 @@ See [QUICK_START.md](./QUICK_START.md) for installation, setup, all available co
 
 All UI changes must include tests. Tests automatically run before commits. Coverage thresholds enforced: 80% lines/functions/statements, 75% branches.
 
-**Unit tests:** 3090 tests across 141 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation, telemetry, diagnostic, license, auto-updater.
+**Unit tests:** 3099 tests across 144 files — MSP protocol, storage managers, IPC handlers, UI components, hooks, BBL parser fuzz, analysis pipeline validation, telemetry, diagnostic, license, auto-updater.
 
 **Playwright E2E:** 37 tests across 7 spec files — launches real Electron app in demo mode, walks through complete tuning cycles (Filter Tune, PID Tune, Flash Tune, diagnostic reports, and stress-test edge cases).
 
@@ -294,15 +294,17 @@ pidlab/
 │   │   ├── demo/               # Demo mode (offline UX testing)
 │   │   │   ├── MockMSPClient.ts       # Simulated FC (47 tests)
 │   │   │   └── DemoDataGenerator.ts   # Realistic BBL generation (26 tests)
-│   │   ├── ipc/                 # IPC handlers (62 handlers across 12 modules)
+│   │   ├── cache/              # FC state cache (centralized MSP data)
+│   │   │   └── FCStateCache.ts        # Hydrate/invalidate/clear, event push
+│   │   ├── ipc/                 # IPC handlers (67 handlers across 13 modules)
 │   │   │   ├── handlers/       # Domain-split handler modules
 │   │   │   │   ├── index.ts            # DI container, registerIPCHandlers
 │   │   │   │   ├── types.ts            # HandlerDependencies interface
 │   │   │   │   ├── events.ts           # Event broadcast functions
 │   │   │   │   ├── connectionHandlers.ts   # 8 handlers
-│   │   │   │   ├── fcInfoHandlers.ts       # 6 handlers
+│   │   │   │   ├── fcInfoHandlers.ts       # 7 handlers
 │   │   │   │   ├── snapshotHandlers.ts     # 6 handlers
-│   │   │   │   ├── profileHandlers.ts      # 10 handlers
+│   │   │   │   ├── profileHandlers.ts      # 11 handlers
 │   │   │   │   ├── pidHandlers.ts          # 3 handlers
 │   │   │   │   ├── blackboxHandlers.ts     # 9 handlers
 │   │   │   │   ├── analysisHandlers.ts     # 3 handlers
@@ -354,7 +356,7 @@ pidlab/
 │   │   │   ├── ProfileCard.tsx        # Individual profile display
 │   │   │   ├── ProfileEditModal.tsx   # Profile editing dialog
 │   │   │   └── ProfileDeleteModal.tsx # Profile deletion confirmation
-│   │   ├── hooks/               # React hooks (15)
+│   │   ├── hooks/               # React hooks (16)
 │   │   │   ├── useConnection.ts       # Connection state management
 │   │   │   ├── useProfiles.ts         # Profile CRUD operations
 │   │   │   ├── useSnapshots.ts        # Snapshot management
@@ -364,6 +366,7 @@ pidlab/
 │   │   │   ├── useTuningHistory.ts    # Tuning history loading
 │   │   │   ├── useBlackboxInfo.ts     # BB flash info
 │   │   │   ├── useBlackboxLogs.ts     # BB log list
+│   │   │   ├── useFCState.ts          # Centralized FC state from cache
 │   │   │   ├── useFCInfo.ts           # FC info polling
 │   │   │   ├── useTelemetrySettings.ts # Telemetry settings + manual upload
 │   │   │   ├── useLicense.ts          # License activation + status
