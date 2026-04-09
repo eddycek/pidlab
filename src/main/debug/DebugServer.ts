@@ -45,6 +45,7 @@ import { analyzePID, analyzeTransferFunction } from '../analysis/PIDAnalyzer';
 import { extractFlightPIDs } from '../analysis/PIDRecommender';
 import { validateBBLHeader, enrichSettingsFromBBLHeaders } from '../analysis/headerValidation';
 import { DEFAULT_FILTER_SETTINGS } from '@shared/types/analysis.types';
+import type { CompletedTuningRecord } from '@shared/types/tuning-history.types';
 
 const DEFAULT_PORT = 9300;
 const MAX_LOG_LINES = 500;
@@ -471,16 +472,27 @@ async function getTuningHistory() {
       profileId: currentProfile.id,
       profileName: currentProfile.name,
       totalSessions: records.length,
-      records: records.map((r: any) => ({
+      records: records.map((r: CompletedTuningRecord) => ({
         id: r.id,
-        type: r.type,
+        tuningType: r.tuningType,
         completedAt: r.completedAt,
-        phase: r.phase,
-        qualityScore: r.qualityScore,
+        startedAt: r.startedAt,
         filterMetrics: r.filterMetrics,
         pidMetrics: r.pidMetrics,
-        appliedChanges: r.appliedChanges,
-        dataQuality: r.dataQuality,
+        verificationMetrics: r.verificationMetrics,
+        verificationPidMetrics: r.verificationPidMetrics,
+        transferFunctionMetrics: r.transferFunctionMetrics,
+        verificationTransferFunctionMetrics: r.verificationTransferFunctionMetrics,
+        appliedFilterChanges: r.appliedFilterChanges,
+        appliedPIDChanges: r.appliedPIDChanges,
+        appliedFeedforwardChanges: r.appliedFeedforwardChanges,
+        filterLogId: r.filterLogId,
+        pidLogId: r.pidLogId,
+        quickLogId: r.quickLogId,
+        verificationLogId: r.verificationLogId,
+        convergence: r.convergence,
+        qualityScore: r.qualityScore,
+        bfPidProfileIndex: r.bfPidProfileIndex,
       })),
     };
   } catch (err: any) {
