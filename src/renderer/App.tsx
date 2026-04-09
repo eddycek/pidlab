@@ -520,20 +520,21 @@ function AppContent() {
   };
 
   const handleQualityGateAccept = async () => {
-    if (!pendingVerification) return;
+    const pending = pendingVerification;
+    if (!pending) return;
+    setPendingVerification(null); // Clear immediately to prevent double-click
     try {
       setAnalyzingVerification(true);
       await commitVerification(
-        pendingVerification.verificationMetrics,
-        pendingVerification.verificationPidMetrics,
-        pendingVerification.verificationTFMetrics,
-        pendingVerification.historyRecordId,
-        pendingVerification.isReanalyze
+        pending.verificationMetrics,
+        pending.verificationPidMetrics,
+        pending.verificationTFMetrics,
+        pending.historyRecordId,
+        pending.isReanalyze
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to complete verification');
     } finally {
-      setPendingVerification(null);
       setAnalyzingVerification(false);
     }
   };
@@ -618,7 +619,6 @@ function AppContent() {
         historyRecordId,
         isReanalyze
       );
-      setErasedForPhase(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to analyze verification');
     } finally {

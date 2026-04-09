@@ -7,13 +7,19 @@ interface VerificationQualityWarningProps {
   onReject: () => void;
 }
 
+const TIER_DISPLAY: Record<DataQualityScore['tier'], { label: string; color: string }> = {
+  poor: { label: 'Poor', color: '#e74c3c' },
+  fair: { label: 'Fair', color: '#f39c12' },
+  good: { label: 'Good', color: '#27ae60' },
+  excellent: { label: 'Excellent', color: '#2ecc71' },
+};
+
 export function VerificationQualityWarning({
   dataQuality,
   onAccept,
   onReject,
 }: VerificationQualityWarningProps) {
-  const tierLabel = dataQuality.tier === 'poor' ? 'Poor' : 'Fair';
-  const tierColor = dataQuality.tier === 'poor' ? '#e74c3c' : '#f39c12';
+  const { label: tierLabel, color: tierColor } = TIER_DISPLAY[dataQuality.tier];
 
   return (
     <div className="profile-wizard-overlay" role="dialog" aria-label="Verification quality warning">
