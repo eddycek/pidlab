@@ -46,13 +46,25 @@ import type {
   PIDMetricsSummary,
   TransferFunctionMetricsSummary,
 } from '@shared/types/tuning-history.types';
+import type { DataQualityScore } from '@shared/types/analysis.types';
 import {
   extractFilterMetrics,
   extractPIDMetrics,
   extractTransferFunctionMetrics,
 } from '@shared/utils/metricsExtract';
 import type { TuningAction } from './components/TuningStatusBanner/TuningStatusBanner';
+import { VerificationQualityWarning } from './components/TuningHistory/VerificationQualityWarning';
 import './App.css';
+
+/** Pending verification data held while quality warning is shown */
+interface PendingVerification {
+  verificationMetrics?: FilterMetricsSummary;
+  verificationPidMetrics?: PIDMetricsSummary;
+  verificationTFMetrics?: TransferFunctionMetricsSummary;
+  dataQuality: DataQualityScore;
+  historyRecordId: string | null;
+  isReanalyze: boolean;
+}
 
 function AppContent() {
   const [showProfileWizard, setShowProfileWizard] = useState(false);
@@ -73,6 +85,7 @@ function AppContent() {
   const [fixingSettings, setFixingSettings] = useState(false);
   const [showBannerFixConfirm, setShowBannerFixConfirm] = useState(false);
   const [analyzingVerification, setAnalyzingVerification] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState<PendingVerification | null>(null);
   const [preparingSession, setPreparingSession] = useState(false);
   const [verificationPickerLogId, setVerificationPickerLogId] = useState<string | null>(null);
   const [showLogPicker, setShowLogPicker] = useState(false);
@@ -475,6 +488,62 @@ function AppContent() {
     }
   };
 
+  /** Commit verification metrics to session/history (shared by direct path and quality-gate accept) */
+  const commitVerification = async (
+    verificationMetrics: FilterMetricsSummary | undefined,
+    verificationPidMetrics: PIDMetricsSummary | undefined,
+    verificationTFMetrics: TransferFunctionMetricsSummary | undefined,
+    historyRecordId: string | null,
+    isReanalyzeFlow: boolean
+  ) => {
+    if (historyRecordId) {
+      await window.betaflight.updateHistoryVerification(
+        historyRecordId,
+        verificationMetrics,
+        verificationPidMetrics
+      );
+      await tuningHistory.reload();
+    } else if (isReanalyzeFlow) {
+      await window.betaflight.updateVerificationMetrics(
+        verificationMetrics,
+        verificationTFMetrics,
+        verificationPidMetrics
+      );
+    } else {
+      await tuning.updatePhase(TUNING_PHASE.COMPLETED, {
+        verificationMetrics,
+        verificationTransferFunctionMetrics: verificationTFMetrics,
+        verificationPidMetrics,
+      });
+    }
+    setErasedForPhase(null);
+  };
+
+  const handleQualityGateAccept = async () => {
+    const pending = pendingVerification;
+    if (!pending) return;
+    setPendingVerification(null); // Clear immediately to prevent double-click
+    try {
+      setAnalyzingVerification(true);
+      await commitVerification(
+        pending.verificationMetrics,
+        pending.verificationPidMetrics,
+        pending.verificationTFMetrics,
+        pending.historyRecordId,
+        pending.isReanalyze
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to complete verification');
+    } finally {
+      setAnalyzingVerification(false);
+    }
+  };
+
+  const handleQualityGateReject = () => {
+    setPendingVerification(null);
+    toast.info('Verification discarded. Fly again with more stick inputs for better data.');
+  };
+
   const handleVerificationAnalyze = async (sessionIndex: number) => {
     const verLogId = verificationPickerLogId;
     const historyRecordId = reanalyzeHistoryRecordId;
@@ -491,15 +560,18 @@ function AppContent() {
       let verificationMetrics: FilterMetricsSummary | undefined;
       let verificationPidMetrics: PIDMetricsSummary | undefined;
       let verificationTFMetrics: TransferFunctionMetricsSummary | undefined;
+      let dataQuality: DataQualityScore | undefined;
 
       if (isPidSession) {
         // PID Tune verification: run PID analysis (stick snaps comparison)
         const pidResult = await window.betaflight.analyzePID(verLogId, sessionIndex);
         verificationPidMetrics = extractPIDMetrics(pidResult);
+        dataQuality = pidResult.dataQuality;
       } else {
         // Filter Tune / Flash Tune: run filter analysis (noise/spectrogram comparison)
         const filterResult = await window.betaflight.analyzeFilters(verLogId, sessionIndex);
         verificationMetrics = extractFilterMetrics(filterResult);
+        dataQuality = filterResult.dataQuality;
 
         // Flash Tune: also run TF analysis on verification flight
         if (isFlashSession) {
@@ -522,30 +594,31 @@ function AppContent() {
         }
       }
 
-      if (historyRecordId) {
-        // Re-analyze a historical record
-        await window.betaflight.updateHistoryVerification(
-          historyRecordId,
+      // Quality gate: warn user if verification flight data quality is poor/fair
+      if (
+        dataQuality &&
+        (dataQuality.tier === 'poor' || dataQuality.tier === 'fair') &&
+        !historyRecordId &&
+        !isReanalyze
+      ) {
+        setPendingVerification({
           verificationMetrics,
-          verificationPidMetrics
-        );
-        await tuningHistory.reload();
-      } else if (isReanalyze) {
-        // Re-analyze — update session + history without duplicate archive
-        await window.betaflight.updateVerificationMetrics(
-          verificationMetrics,
-          verificationTFMetrics,
-          verificationPidMetrics
-        );
-      } else {
-        // First-time — transition to completed (archives session)
-        await tuning.updatePhase(TUNING_PHASE.COMPLETED, {
-          verificationMetrics,
-          verificationTransferFunctionMetrics: verificationTFMetrics,
           verificationPidMetrics,
+          verificationTFMetrics,
+          dataQuality,
+          historyRecordId,
+          isReanalyze,
         });
+        return; // Wait for user decision in VerificationQualityWarning modal
       }
-      setErasedForPhase(null);
+
+      await commitVerification(
+        verificationMetrics,
+        verificationPidMetrics,
+        verificationTFMetrics,
+        historyRecordId,
+        isReanalyze
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to analyze verification');
     } finally {
@@ -870,6 +943,14 @@ function AppContent() {
           logId={verificationPickerLogId}
           onAnalyze={handleVerificationAnalyze}
           onCancel={() => setVerificationPickerLogId(null)}
+        />
+      )}
+
+      {pendingVerification && (
+        <VerificationQualityWarning
+          dataQuality={pendingVerification.dataQuality}
+          onAccept={handleQualityGateAccept}
+          onReject={handleQualityGateReject}
         />
       )}
 
