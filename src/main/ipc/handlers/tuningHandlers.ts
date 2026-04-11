@@ -500,6 +500,11 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
         sendProgress({ stage: 'save', message: 'Saving and rebooting FC...', percent: 85 });
         await mspClient.saveAndReboot();
 
+        // Clear cache immediately — connection handler's hydrate() runs async and may not
+        // finish before we call verifyAppliedConfig() or createSnapshot() below.
+        // Clearing ensures SnapshotManager falls back to fresh MSP reads (not stale cache).
+        deps.fcStateCache?.clear();
+
         // FC is now reconnected (or failed to reconnect). Continue with verify+snapshot.
         sendProgress({ stage: 'reboot', message: 'FC reconnected', percent: 88 });
 
