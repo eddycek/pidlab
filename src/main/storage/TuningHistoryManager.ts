@@ -64,6 +64,7 @@ export class TuningHistoryManager {
       verificationMetrics: session.verificationMetrics ?? null,
       verificationPidMetrics: session.verificationPidMetrics ?? null,
       transferFunctionMetrics: session.transferFunctionMetrics ?? null,
+      verificationTransferFunctionMetrics: session.verificationTransferFunctionMetrics ?? null,
       bfPidProfileIndex: session.bfPidProfileIndex,
       appVersion: APP_VERSION,
       ratesConfig: session.ratesConfig,
@@ -71,6 +72,7 @@ export class TuningHistoryManager {
       convergence: session.convergence,
       verificationSimilarity: session.verificationSimilarity,
       iterationCount: session.iterationCount,
+      recommendationTraces: session.recommendationTraces,
     };
 
     const existing = await this.loadRecords(session.profileId);
@@ -123,7 +125,8 @@ export class TuningHistoryManager {
     profileId: string,
     recordId: string,
     verificationMetrics?: FilterMetricsSummary,
-    verificationPidMetrics?: PIDMetricsSummary
+    verificationPidMetrics?: PIDMetricsSummary,
+    verificationTransferFunctionMetrics?: TransferFunctionMetricsSummary
   ): Promise<boolean> {
     const records = await this.loadRecords(profileId);
     const record = records.find((r) => r.id === recordId);
@@ -131,6 +134,9 @@ export class TuningHistoryManager {
 
     if (verificationMetrics) record.verificationMetrics = verificationMetrics;
     if (verificationPidMetrics) record.verificationPidMetrics = verificationPidMetrics;
+    if (verificationTransferFunctionMetrics) {
+      record.verificationTransferFunctionMetrics = verificationTransferFunctionMetrics;
+    }
     await this.saveRecords(profileId, records);
     logger.info(`Updated verification metrics on history record ${recordId}`);
     return true;
