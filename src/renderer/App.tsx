@@ -127,6 +127,9 @@ function AppContent() {
   const sessionPhase = tuning.session?.phase;
   useEffect(() => {
     setPendingVerification(null);
+    setVerificationPickerLogId(null);
+    setReanalyzeHistoryRecordId(null);
+    setIsReanalyze(false);
   }, [sessionPhase]);
 
   // Clear erased state when flash has new data (post-flight reconnect via cache push)
@@ -425,6 +428,7 @@ function AppContent() {
           setErasedForPhase(null);
           setPendingVerification(null);
           setVerificationPickerLogId(null);
+          setReanalyzeHistoryRecordId(null);
           setIsReanalyze(false);
           await tuning.resetSession();
         } catch (err) {
