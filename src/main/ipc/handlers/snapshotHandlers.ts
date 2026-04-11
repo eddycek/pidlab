@@ -189,8 +189,10 @@ export function registerSnapshotHandlers(deps: HandlerDependencies): void {
         // from the dump. This ensures exact 1:1 state match including default values.
         if (hasDump) {
           sendProgress({ stage: 'cli', message: 'Resetting to defaults...', percent: 26 });
-          await deps.mspClient.connection.sendCLICommand('defaults nosave');
-          logger.info('Restore: sent defaults nosave (dump-based full restore)');
+          const defaultsResponse =
+            await deps.mspClient.connection.sendCLICommand('defaults nosave');
+          validateCLIResponse('defaults nosave', defaultsResponse);
+          logger.info('Restore: defaults nosave validated (dump-based full restore)');
         }
 
         const failedCommands: string[] = [];

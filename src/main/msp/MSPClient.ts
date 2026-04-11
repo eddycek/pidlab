@@ -561,13 +561,18 @@ export class MSPClient extends EventEmitter {
 
   /** Recovery after CLI export error — exit CLI to avoid leaving FC stuck. */
   private async recoverFromCLIError(): Promise<void> {
+    this._rebootPending = true;
     try {
-      await this.connection.writeCLIRaw('exit');
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 4000));
-    this.connection.resetProtocol();
-    await this.connection.forceExitCLI();
-    this.connection.clearFCRebootedFromCLI();
+      try {
+        await this.connection.writeCLIRaw('exit');
+      } catch {}
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+      this.connection.resetProtocol();
+      await this.connection.forceExitCLI();
+      this.connection.clearFCRebootedFromCLI();
+    } finally {
+      this._rebootPending = false;
+    }
   }
 
   async exportCLIDiff(): Promise<string> {
