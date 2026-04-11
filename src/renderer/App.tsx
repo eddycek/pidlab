@@ -123,6 +123,15 @@ function AppContent() {
       .catch(() => setAvailableLogIds(new Set()));
   };
 
+  // Clear stale verification state when session changes (disconnect, reset, new session)
+  const sessionPhase = tuning.session?.phase;
+  useEffect(() => {
+    setPendingVerification(null);
+    setVerificationPickerLogId(null);
+    setReanalyzeHistoryRecordId(null);
+    setIsReanalyze(false);
+  }, [sessionPhase]);
+
   // Clear erased state when flash has new data (post-flight reconnect via cache push)
   const flashUsedSize = fcState.blackboxInfo?.usedSize ?? null;
   const storageType = fcState.blackboxInfo?.storageType ?? 'flash';
@@ -417,6 +426,10 @@ function AppContent() {
       case 'dismiss':
         try {
           setErasedForPhase(null);
+          setPendingVerification(null);
+          setVerificationPickerLogId(null);
+          setReanalyzeHistoryRecordId(null);
+          setIsReanalyze(false);
           await tuning.resetSession();
         } catch (err) {
           toast.error(err instanceof Error ? err.message : 'Failed to reset session');
@@ -500,7 +513,8 @@ function AppContent() {
       await window.betaflight.updateHistoryVerification(
         historyRecordId,
         verificationMetrics,
-        verificationPidMetrics
+        verificationPidMetrics,
+        verificationTFMetrics
       );
       await tuningHistory.reload();
     } else if (isReanalyzeFlow) {
@@ -547,8 +561,10 @@ function AppContent() {
   const handleVerificationAnalyze = async (sessionIndex: number) => {
     const verLogId = verificationPickerLogId;
     const historyRecordId = reanalyzeHistoryRecordId;
+    const isReanalyzeFlow = isReanalyze;
     setVerificationPickerLogId(null);
     setReanalyzeHistoryRecordId(null);
+    setIsReanalyze(false);
     if (!verLogId) return;
 
     try {
@@ -599,7 +615,7 @@ function AppContent() {
         dataQuality &&
         (dataQuality.tier === 'poor' || dataQuality.tier === 'fair') &&
         !historyRecordId &&
-        !isReanalyze
+        !isReanalyzeFlow
       ) {
         setPendingVerification({
           verificationMetrics,
@@ -607,7 +623,7 @@ function AppContent() {
           verificationTFMetrics,
           dataQuality,
           historyRecordId,
-          isReanalyze,
+          isReanalyze: isReanalyzeFlow,
         });
         return; // Wait for user decision in VerificationQualityWarning modal
       }
@@ -617,7 +633,7 @@ function AppContent() {
         verificationPidMetrics,
         verificationTFMetrics,
         historyRecordId,
-        isReanalyze
+        isReanalyzeFlow
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to analyze verification');
@@ -781,6 +797,7 @@ function AppContent() {
             mode={wizardMode}
             onExit={() => {
               setActiveLogId(null);
+              setPendingVerification(null);
               document.querySelector('.app-main')?.scrollTo({ top: 0 });
             }}
             onApplyComplete={handleApplyComplete}

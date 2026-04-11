@@ -119,6 +119,30 @@ describe('TuningHistoryManager', () => {
       expect(record.verificationMetrics).toBeNull();
     });
 
+    it('archives verificationTransferFunctionMetrics and recommendationTraces', async () => {
+      const session: TuningSession = {
+        profileId: 'profile-1',
+        phase: TUNING_PHASE.COMPLETED,
+        tuningType: TUNING_TYPE.FLASH,
+        startedAt: '2026-01-15T10:00:00.000Z',
+        updatedAt: '2026-01-15T11:00:00.000Z',
+        verificationTransferFunctionMetrics: {
+          roll: { bandwidthHz: 45, phaseMarginDeg: 55, dcGainDb: -0.5 },
+          pitch: { bandwidthHz: 42, phaseMarginDeg: 50, dcGainDb: -0.8 },
+          yaw: { bandwidthHz: 30, phaseMarginDeg: 60, dcGainDb: -1.2 },
+        } as any,
+        recommendationTraces: [
+          { ruleId: 'P-OS-P-roll', setting: 'pid_roll_p', from: 45, to: 40, confidence: 'high' },
+        ] as any,
+      };
+
+      const record = await manager.archiveSession(session);
+      expect(record.verificationTransferFunctionMetrics).toEqual(
+        session.verificationTransferFunctionMetrics
+      );
+      expect(record.recommendationTraces).toEqual(session.recommendationTraces);
+    });
+
     it('rejects non-completed sessions', async () => {
       const session: TuningSession = {
         profileId: 'profile-1',

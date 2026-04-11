@@ -1067,7 +1067,8 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
       _event,
       recordId: string,
       verificationMetrics?: FilterMetricsSummary,
-      verificationPidMetrics?: PIDMetricsSummary
+      verificationPidMetrics?: PIDMetricsSummary,
+      verificationTransferFunctionMetrics?: TransferFunctionMetricsSummary
     ): Promise<IPCResponse<void>> => {
       try {
         if (!tuningHistoryManager || !profileManager) {
@@ -1082,7 +1083,8 @@ export function registerTuningHandlers(deps: HandlerDependencies): void {
           profileId,
           recordId,
           verificationMetrics,
-          verificationPidMetrics
+          verificationPidMetrics,
+          verificationTransferFunctionMetrics
         );
         if (!updated) {
           return createResponse<void>(undefined, `History record not found: ${recordId}`);

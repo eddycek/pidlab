@@ -333,7 +333,8 @@ export interface BetaflightAPI {
   updateHistoryVerification(
     recordId: string,
     verificationMetrics?: FilterMetricsSummary,
-    verificationPidMetrics?: PIDMetricsSummary
+    verificationPidMetrics?: PIDMetricsSummary,
+    verificationTransferFunctionMetrics?: TransferFunctionMetricsSummary
   ): Promise<void>;
 
   // Telemetry

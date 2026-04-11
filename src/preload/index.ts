@@ -823,13 +823,15 @@ const betaflightAPI: BetaflightAPI = {
   async updateHistoryVerification(
     recordId: string,
     verificationMetrics?: FilterMetricsSummary,
-    verificationPidMetrics?: PIDMetricsSummary
+    verificationPidMetrics?: PIDMetricsSummary,
+    verificationTransferFunctionMetrics?: TransferFunctionMetricsSummary
   ): Promise<void> {
     const response = await ipcRenderer.invoke(
       IPCChannel.TUNING_UPDATE_HISTORY_VERIFICATION,
       recordId,
       verificationMetrics,
-      verificationPidMetrics
+      verificationPidMetrics,
+      verificationTransferFunctionMetrics
     );
     if (!response.success) {
       throw new Error(response.error || 'Failed to update history verification');
